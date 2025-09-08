@@ -1,6 +1,8 @@
 ﻿namespace Parquet.FSharp.Thrift
 
+open Parquet.FSharp
 open System
+open System.Text
 
 type Type =
     | BOOLEAN = 0
@@ -128,6 +130,25 @@ type SchemaElement() =
     member val field_id : int option = Option.None with get, set
     member val logicalType : LogicalType option = Option.None with get, set
 
+    override this.ToString() =
+        let stringBuilder = StringBuilder()
+        stringBuilder.Append("{") |> ignore
+        stringBuilder.Append($" Name = {this.name}") |> ignore
+        if this.repetition_type.IsSome then
+            stringBuilder.Append($", Repetition = {this.repetition_type.Value}") |> ignore
+        if this.num_children.IsSome then
+            stringBuilder.Append($", NumChildren = {this.num_children.Value}") |> ignore
+        if this.type'.IsSome then
+            stringBuilder.Append($", Type = {this.type'.Value}") |> ignore
+        if this.type_length.IsSome then
+            stringBuilder.Append($", TypeLength = {this.type_length.Value}") |> ignore
+        if this.logicalType.IsSome then
+            stringBuilder.Append($", LogicalType = {this.logicalType.Value}") |> ignore
+        if this.converted_type.IsSome then
+            stringBuilder.Append($", ConvertedType = {this.converted_type.Value}") |> ignore
+        stringBuilder.Append(" }") |> ignore
+        stringBuilder.ToString()
+
 type FileMetaData = {
     version: int
     schema: SchemaElement[] }
@@ -138,13 +159,49 @@ module SchemaElement =
             name = "root",
             num_children = Option.Some numChildren)
         
-    let group repetitionType name numChildren =
+    let private group repetitionType name numChildren convertedType logicalType =
         SchemaElement(
             repetition_type = Option.Some repetitionType,
             name = name,
-            num_children = Option.Some numChildren)
+            num_children = Option.Some numChildren,
+            converted_type = convertedType,
+            logicalType = logicalType)
 
-    let primitive repetitionType name logicalType =
+    let recordGroup repetitionType name numChildren =
+        let convertedType = Option.None
+        let logicalType = Option.None
+        group repetitionType name numChildren convertedType logicalType
+
+    let listOuter repetitionType name =
+        let numChildren = 1
+        let convertedType = Option.Some ConvertedType.LIST
+        let logicalType = Option.Some (LogicalType.LIST ())
+        group repetitionType name numChildren convertedType logicalType
+
+    let listMiddle () =
+        let repetitionType = FieldRepetitionType.REPEATED
+        let name = "list"
+        let numChildren = 1
+        let convertedType = Option.None
+        let logicalType = Option.None
+        group repetitionType name numChildren convertedType logicalType
+
+    let primitive repetitionType name type' =
+        SchemaElement(
+            type' = Option.Some type',
+            repetition_type = Option.Some repetitionType,
+            name = name)
+
+    let bool repetitionType name =
+        primitive repetitionType name Type.BOOLEAN
+
+    let float repetitionType name =
+        primitive repetitionType name Type.FLOAT
+
+    let double repetitionType name =
+        primitive repetitionType name Type.DOUBLE
+
+    let logical repetitionType name logicalType =
         let schemaElement =
             SchemaElement(
                 repetition_type = Option.Some repetitionType,
@@ -249,3 +306,56 @@ module SchemaElement =
         | LogicalType.GEOMETRY geometryType -> failwith $"unsupported logical type %A{logicalType}"
         | LogicalType.GEOGRAPHY geographyType -> failwith $"unsupported logical type %A{logicalType}"
         schemaElement
+
+module FileMetaData =
+    let create version schemaElements =
+        { FileMetaData.version = version
+          FileMetaData.schema = schemaElements }
+
+    let rec private generateSchemaElements (field: FieldType) =
+        let repetitionType =
+            if field.Value.IsRequired
+            then FieldRepetitionType.REQUIRED
+            else FieldRepetitionType.OPTIONAL
+        let name = field.Name
+        match field.Value.Type with
+        | ValueType.Bool ->
+            [| SchemaElement.bool repetitionType name |]
+        | ValueType.Int32 ->
+            let logicalType = LogicalType.INTEGER { bitWidth = 32y; isSigned = true }
+            [| SchemaElement.logical repetitionType name logicalType |]
+        | ValueType.Float64 ->
+            [| SchemaElement.double repetitionType name |]
+        | ValueType.DateTimeOffset ->
+            let logicalType =
+                LogicalType.TIMESTAMP {
+                    isAdjustedToUTC = true
+                    unit = TimeUnit.MicroSeconds () }
+            [| SchemaElement.logical repetitionType name logicalType |]
+        | ValueType.String ->
+            let logicalType = LogicalType.STRING ()
+            [| SchemaElement.logical repetitionType name logicalType |]
+        | ValueType.Array arrayType ->
+            let outerElement = SchemaElement.listOuter repetitionType name
+            let middleElement = SchemaElement.listMiddle ()
+            let schemaElements = ResizeArray([| outerElement; middleElement |])
+            let elementField = FieldType.create "element" arrayType.Element
+            schemaElements.AddRange(generateSchemaElements elementField)
+            Array.ofSeq schemaElements
+        | ValueType.Record recordType ->
+            let numChildren = recordType.Fields.Length
+            let groupElement = SchemaElement.recordGroup repetitionType name numChildren
+            let schemaElements = ResizeArray([| groupElement |])
+            for field in recordType.Fields do
+                schemaElements.AddRange(generateSchemaElements field)
+            Array.ofSeq schemaElements
+
+    let ofSchema (schema: Schema) =
+        let version = 1
+        let numChildren = schema.Fields.Length
+        let rootElement = SchemaElement.root numChildren
+        let schemaElements = ResizeArray([| rootElement |])
+        for field in schema.Fields do
+            schemaElements.AddRange(generateSchemaElements field)
+        let schemaElements = Array.ofSeq schemaElements
+        create version schemaElements

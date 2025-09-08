@@ -9,6 +9,23 @@ type Record1 = {
     Field3: float
     Field4: string }
 
+type Gps = {
+    Latitude: float
+    Longitude: float }
+
+type Data = {
+    Value1: float
+    Value2: float
+    Value3: float }
+
+type Message = {
+    Time: DateTimeOffset
+    Level: float
+    Count: int
+    Samples: int[]
+    Gps: Gps
+    Values: Data[] }
+
 module Random =
     let private Random = Random()
 
@@ -42,12 +59,13 @@ and ColumnSchema = {
     DotnetType: Type }
 
 let generateColumns (records: 'Record[]) =
-    let recordType = RecordType.of'<'Record>
+    let recordType = Schema.ofRecord<'Record>
     Seq.empty<Column>
 
 [<EntryPoint>]
 let main _ =
-    let recordType = RecordType.of'<Record1>
+    let schema = Schema.ofRecord<Message>
+    let fileMetaData = Thrift.FileMetaData.ofSchema schema
     let records = Array.init 10 (fun _ -> Random.record1 ())
     let columns = generateColumns records
     0

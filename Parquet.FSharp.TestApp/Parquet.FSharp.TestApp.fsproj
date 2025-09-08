@@ -7,8 +7,8 @@
 
   <ItemGroup>
     <None Include="parquet.thrift" />
+    <Compile Include="Schema.fs" />
     <Compile Include="Thrift.fs" />
-    <Compile Include="Library.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

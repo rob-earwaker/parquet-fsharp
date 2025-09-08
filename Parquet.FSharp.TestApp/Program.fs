@@ -13,7 +13,7 @@ module Random =
     let private Random = Random()
 
     let bool () =
-        Random.NextDouble() >= 0.5
+        Random.NextDouble() >= 0.4
 
     let int () =
         Random.Next(0, 100)
@@ -47,6 +47,7 @@ let generateColumns (records: 'Record[]) =
 
 [<EntryPoint>]
 let main _ =
+    let recordType = RecordType.of'<Record1>
     let records = Array.init 10 (fun _ -> Random.record1 ())
     let columns = generateColumns records
     0

@@ -6,8 +6,8 @@ open System.Reflection
 
 type ValueType =
     | Bool
-    | Int
-    | Float
+    | Int32
+    | Float64
     | String
     | Record of RecordType
 
@@ -61,27 +61,30 @@ module private FieldType =
         | dotnetType when dotnetType = typeof<bool> ->
             required ValueType.Bool fieldInfo.Name parentLevel
         | dotnetType when dotnetType = typeof<int> ->
-            required ValueType.Int fieldInfo.Name parentLevel
+            required ValueType.Int32 fieldInfo.Name parentLevel
         | dotnetType when dotnetType = typeof<float> ->
-            required ValueType.Float fieldInfo.Name parentLevel
+            required ValueType.Float64 fieldInfo.Name parentLevel
         | dotnetType when dotnetType = typeof<string> ->
             let level = Level.incrementDefinition parentLevel
-            required ValueType.String fieldInfo.Name level
+            optional ValueType.String fieldInfo.Name level
         | dotnetType when FSharpType.IsRecord(dotnetType) ->
-            let recordType = RecordType.ofType dotnetType parentLevel
+            let recordType = RecordType.ofType' dotnetType parentLevel
             let valueType = ValueType.Record recordType
             required valueType fieldInfo.Name parentLevel
         | dotnetType ->
             failwith $"type '{dotnetType.FullName}' is not supported"
 
 module RecordType =
-    let ofType (dotnetType: Type) level =
+    let internal ofType' (dotnetType: Type) level =
         if not (FSharpType.IsRecord(dotnetType)) then
-            failwith $"type '{dotnetType.FullName}' is not an fsharp record type"
+            failwith $"type '{dotnetType.FullName}' is not an F# record type"
         let fieldTypes =
             FSharpType.GetRecordFields(dotnetType)
             |> Array.map (FieldType.ofFieldInfo level)
         { RecordType.FieldTypes = fieldTypes }
 
+    let ofType dotnetType =
+        ofType' dotnetType Level.Root
+
     let of'<'Record> =
-        ofType typeof<'Record> Level.Root
+        ofType typeof<'Record>

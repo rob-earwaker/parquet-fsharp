@@ -1,0 +1,7 @@
+# parquet.fsharp
+
+## Generate Thrift Types
+
+```
+thrift.exe --out .\Parquet.FSharp.Thrift\Generated --gen netstd .\Parquet.FSharp.Thrift\parquet.thrift
+```

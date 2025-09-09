@@ -2,170 +2,24 @@
 
 open Parquet.FSharp
 open System
-open System.Text
-
-type Type =
-    | BOOLEAN = 0
-    | INT32 = 1
-    | INT64 = 2
-    | INT96 = 3
-    | FLOAT = 4
-    | DOUBLE = 5
-    | BYTE_ARRAY = 6
-    | FIXED_LEN_BYTE_ARRAY = 7
-
-type ConvertedType =
-    | UTF8 = 0
-    | MAP = 1
-    | MAP_KEY_VALUE = 2
-    | LIST = 3
-    | ENUM = 4
-    | DECIMAL = 5
-    | DATE = 6
-    | TIME_MILLIS = 7
-    | TIME_MICROS = 8
-    | TIMESTAMP_MILLIS = 9
-    | TIMESTAMP_MICROS = 10
-    | UINT_8 = 11
-    | UINT_16 = 12
-    | UINT_32 = 13
-    | UINT_64 = 14
-    | INT_8 = 15
-    | INT_16 = 16
-    | INT_32 = 17
-    | INT_64 = 18
-    | JSON = 19
-    | BSON = 20
-    | INTERVAL = 21
-
-type FieldRepetitionType =
-    | REQUIRED = 0
-    | OPTIONAL = 1
-    | REPEATED = 2
-
-type StringType = unit
-type UUIDType = unit
-type MapType = unit
-type ListType = unit
-type EnumType = unit
-type DateType = unit
-type Float16Type = unit
-
-type NullType = unit
-
-type DecimalType = {
-    scale: int
-    precision: int }
-
-type MilliSeconds = unit
-type MicroSeconds = unit
-type NanoSeconds = unit
-
-type TimeUnit =
-    | MilliSeconds of MilliSeconds
-    | MicroSeconds of MicroSeconds
-    | NanoSeconds of NanoSeconds
-
-type TimestampType = {
-    isAdjustedToUTC: bool
-    unit: TimeUnit }
-
-type TimeType = {
-    isAdjustedToUTC: bool
-    unit: TimeUnit }
-
-type IntType = {
-    bitWidth: sbyte
-    isSigned: bool }
-
-type JsonType = unit
-
-type BsonType = unit
-
-type VariantType = {
-    specification_version: sbyte option }
-
-type EdgeInterpolationAlgorithm =
-    | SPHERICAL = 0
-    | VINCENTY = 1
-    | THOMAS = 2
-    | ANDOYER = 3
-    | KARNEY = 4
-
-type GeometryType = {
-    crs: string option }
-
-type GeographyType = {
-    crs: string option
-    algorithm: EdgeInterpolationAlgorithm option }
-
-type LogicalType =
-    | STRING of StringType
-    | MAP of MapType
-    | LIST of ListType
-    | ENUM of EnumType
-    | DECIMAL of DecimalType
-    | DATE of DateType
-    | TIME of TimeType
-    | TIMESTAMP of TimestampType
-    | INTEGER of IntType
-    | UNKNOWN of NullType
-    | JSON of JsonType
-    | BSON of BsonType
-    | UUID of UUIDType
-    | FLOAT16 of Float16Type
-    | VARIANT of VariantType
-    | GEOMETRY of GeometryType
-    | GEOGRAPHY of GeographyType
-
-type SchemaElement() =
-    member val type' : Type option = Option.None with get, set
-    member val type_length : int option = Option.None with get, set
-    member val repetition_type : FieldRepetitionType option = Option.None with get, set
-    member val name : string = null with get, set
-    member val num_children : int option = Option.None with get, set
-    member val converted_type : ConvertedType option = Option.None with get, set
-    member val scale : int option = Option.None with get, set
-    member val precision : int option = Option.None with get, set
-    member val field_id : int option = Option.None with get, set
-    member val logicalType : LogicalType option = Option.None with get, set
-
-    override this.ToString() =
-        let stringBuilder = StringBuilder()
-        stringBuilder.Append("{") |> ignore
-        stringBuilder.Append($" Name = {this.name}") |> ignore
-        if this.repetition_type.IsSome then
-            stringBuilder.Append($", Repetition = {this.repetition_type.Value}") |> ignore
-        if this.num_children.IsSome then
-            stringBuilder.Append($", NumChildren = {this.num_children.Value}") |> ignore
-        if this.type'.IsSome then
-            stringBuilder.Append($", Type = {this.type'.Value}") |> ignore
-        if this.type_length.IsSome then
-            stringBuilder.Append($", TypeLength = {this.type_length.Value}") |> ignore
-        if this.logicalType.IsSome then
-            stringBuilder.Append($", LogicalType = {this.logicalType.Value}") |> ignore
-        if this.converted_type.IsSome then
-            stringBuilder.Append($", ConvertedType = {this.converted_type.Value}") |> ignore
-        stringBuilder.Append(" }") |> ignore
-        stringBuilder.ToString()
-
-type FileMetaData = {
-    version: int
-    schema: SchemaElement[] }
 
 module SchemaElement =
     let root numChildren =
         SchemaElement(
-            name = "root",
-            num_children = Option.Some numChildren)
+            Name = "root",
+            Num_children = numChildren)
         
     let private group repetitionType name numChildren convertedType logicalType =
-        SchemaElement(
-            repetition_type = Option.Some repetitionType,
-            name = name,
-            num_children = Option.Some numChildren,
-            converted_type = convertedType,
-            logicalType = logicalType)
+        let schemaElement =
+            SchemaElement(
+                Repetition_type = repetitionType,
+                Name = name,
+                Num_children = numChildren)
+        if Option.isSome convertedType then
+            schemaElement.Converted_type <- convertedType.Value
+        if Option.isSome logicalType then
+            schemaElement.LogicalType <- logicalType.Value
+        schemaElement
 
     let recordGroup repetitionType name numChildren =
         let convertedType = Option.None
@@ -175,7 +29,7 @@ module SchemaElement =
     let listOuter repetitionType name =
         let numChildren = 1
         let convertedType = Option.Some ConvertedType.LIST
-        let logicalType = Option.Some (LogicalType.LIST ())
+        let logicalType = Option.Some (LogicalType(LIST = ListType()))
         group repetitionType name numChildren convertedType logicalType
 
     let listMiddle () =
@@ -188,9 +42,9 @@ module SchemaElement =
 
     let primitive repetitionType name type' =
         SchemaElement(
-            type' = Option.Some type',
-            repetition_type = Option.Some repetitionType,
-            name = name)
+            Type = type',
+            Repetition_type = repetitionType,
+            Name = name)
 
     let bool repetitionType name =
         primitive repetitionType name Type.BOOLEAN
@@ -204,28 +58,30 @@ module SchemaElement =
     let logical repetitionType name logicalType =
         let schemaElement =
             SchemaElement(
-                repetition_type = Option.Some repetitionType,
-                name = name,
-                logicalType = Option.Some logicalType)
+                Repetition_type = repetitionType,
+                Name = name,
+                LogicalType = logicalType)
         // Where applicable, fill in the {type'}, {type_length},
         // {converted_type}, {scale} and {precision} fields fields based on the
         // logical type.
-        match logicalType with
-        | LogicalType.STRING () ->
-            schemaElement.type' <- Option.Some Type.BYTE_ARRAY
-            schemaElement.converted_type <- Option.Some ConvertedType.UTF8
-        | LogicalType.MAP () -> failwith $"unsupported logical type %A{logicalType}"
-        | LogicalType.LIST () -> failwith $"unsupported logical type %A{logicalType}"
-        | LogicalType.ENUM () ->
-            schemaElement.type' <- Option.Some Type.BYTE_ARRAY
-            schemaElement.converted_type <- Option.Some ConvertedType.ENUM
-        | LogicalType.DECIMAL decimalType ->
-            if decimalType.precision <= 0 then
-                failwith $"invalid decimal precision {decimalType.precision}"
-            elif decimalType.precision <= 9 then
-                schemaElement.type' <- Option.Some Type.INT32
-            elif decimalType.precision <= 18 then
-                schemaElement.type' <- Option.Some Type.INT64
+        if logicalType.__isset.STRING then
+            schemaElement.Type <- Type.BYTE_ARRAY
+            schemaElement.Converted_type <- ConvertedType.UTF8
+        elif logicalType.__isset.MAP then
+            failwith $"unsupported logical type %A{logicalType}"
+        elif logicalType.__isset.LIST then
+            failwith $"unsupported logical type %A{logicalType}"
+        elif logicalType.__isset.ENUM then
+            schemaElement.Type <- Type.BYTE_ARRAY
+            schemaElement.Converted_type <- ConvertedType.ENUM
+        elif logicalType.__isset.DECIMAL then
+            let decimalType = logicalType.DECIMAL
+            if decimalType.Precision <= 0 then
+                failwith $"invalid decimal precision {decimalType.Precision}"
+            elif decimalType.Precision <= 9 then
+                schemaElement.Type <- Type.INT32
+            elif decimalType.Precision <= 18 then
+                schemaElement.Type <- Type.INT64
             else
                 // Length n can store <= floor(log_10(2^(8*n - 1) - 1)) base-10 digits.
                 //   => log_10(2^(8*n - 1) - 1) = p
@@ -235,120 +91,123 @@ module SchemaElement =
                 //   => 8*n = log_2(10^p + 1) + 1
                 //   => n = (log_2(10^p + 1) + 1)/8
                 // Precision p requires >= ceil((log_2(10^p + 1) + 1)/8) bytes to store.
-                let n = int (ceil ((Math.Log(10. ** decimalType.precision + 1., 2) + 1.) / 8.))
-                schemaElement.type' <- Option.Some Type.FIXED_LEN_BYTE_ARRAY
-                schemaElement.type_length <- Option.Some n
-            schemaElement.converted_type <- Option.Some ConvertedType.DECIMAL
-            schemaElement.scale <- Option.Some decimalType.scale
-            schemaElement.precision <- Option.Some decimalType.precision
-        | LogicalType.DATE () ->
-            schemaElement.type' <- Option.Some Type.INT32
-            schemaElement.converted_type <- Option.Some ConvertedType.DATE
-        | LogicalType.TIME timeType ->
-            match timeType.unit with
-            | TimeUnit.MilliSeconds () ->
-                schemaElement.type' <- Option.Some Type.INT32
-                schemaElement.converted_type <- Option.Some ConvertedType.TIME_MILLIS
-            | TimeUnit.MicroSeconds () ->
-                schemaElement.type' <- Option.Some Type.INT64
-                schemaElement.converted_type <- Option.Some ConvertedType.TIME_MICROS
-            | TimeUnit.NanoSeconds () ->
-                schemaElement.type' <- Option.Some Type.INT64
-        | LogicalType.TIMESTAMP timestampType ->
-            schemaElement.type' <- Option.Some Type.INT64
-            match timestampType.unit with
-            | TimeUnit.MilliSeconds () ->
-                schemaElement.converted_type <- Option.Some ConvertedType.TIMESTAMP_MILLIS
-            | TimeUnit.MicroSeconds () ->
-                schemaElement.converted_type <- Option.Some ConvertedType.TIMESTAMP_MICROS
-            | TimeUnit.NanoSeconds () -> ()
-        | LogicalType.INTEGER intType ->
-            match intType with
-            | { bitWidth = 8y; isSigned = true } ->
-                schemaElement.type' <- Option.Some Type.INT32
-                schemaElement.converted_type <- Option.Some ConvertedType.INT_8
-            | { bitWidth = 16y; isSigned = true } ->
-                schemaElement.type' <- Option.Some Type.INT32
-                schemaElement.converted_type <- Option.Some ConvertedType.INT_16
-            | { bitWidth = 32y; isSigned = true } ->
-                schemaElement.type' <- Option.Some Type.INT32
-                schemaElement.converted_type <- Option.Some ConvertedType.INT_32
-            | { bitWidth = 64y; isSigned = true } ->
-                schemaElement.type' <- Option.Some Type.INT64
-                schemaElement.converted_type <- Option.Some ConvertedType.INT_64
-            | { bitWidth = 8y; isSigned = false } ->
-                schemaElement.type' <- Option.Some Type.INT32
-                schemaElement.converted_type <- Option.Some ConvertedType.UINT_8
-            | { bitWidth = 16y; isSigned = false } ->
-                schemaElement.type' <- Option.Some Type.INT32
-                schemaElement.converted_type <- Option.Some ConvertedType.UINT_16
-            | { bitWidth = 32y; isSigned = false } ->
-                schemaElement.type' <- Option.Some Type.INT32
-                schemaElement.converted_type <- Option.Some ConvertedType.UINT_32
-            | { bitWidth = 64y; isSigned = false } ->
-                schemaElement.type' <- Option.Some Type.INT64
-                schemaElement.converted_type <- Option.Some ConvertedType.UINT_64
-            | _ -> failwith $"unsupported int type %A{intType}"
-        | LogicalType.UNKNOWN () -> failwith $"unsupported logical type %A{logicalType}"
-        | LogicalType.JSON () ->
-            schemaElement.type' <- Option.Some Type.BYTE_ARRAY
-            schemaElement.converted_type <- Option.Some ConvertedType.JSON
-        | LogicalType.BSON () ->
-            schemaElement.type' <- Option.Some Type.BYTE_ARRAY
-            schemaElement.converted_type <- Option.Some ConvertedType.BSON
-        | LogicalType.UUID () ->
-            schemaElement.type' <- Option.Some Type.FIXED_LEN_BYTE_ARRAY
-            schemaElement.type_length <- Option.Some 16
-        | LogicalType.FLOAT16 () ->
-            schemaElement.type' <- Option.Some Type.FIXED_LEN_BYTE_ARRAY
-            schemaElement.type_length <- Option.Some 2
-        | LogicalType.VARIANT variantType -> failwith $"unsupported logical type %A{logicalType}"
-        | LogicalType.GEOMETRY geometryType -> failwith $"unsupported logical type %A{logicalType}"
-        | LogicalType.GEOGRAPHY geographyType -> failwith $"unsupported logical type %A{logicalType}"
+                let n = int (ceil ((Math.Log(10. ** decimalType.Precision + 1., 2) + 1.) / 8.))
+                schemaElement.Type <- Type.FIXED_LEN_BYTE_ARRAY
+                schemaElement.Type_length <- n
+            schemaElement.Converted_type <- ConvertedType.DECIMAL
+            schemaElement.Scale <- decimalType.Scale
+            schemaElement.Precision <- decimalType.Precision
+        elif logicalType.__isset.DATE then
+            schemaElement.Type <- Type.INT32
+            schemaElement.Converted_type <- ConvertedType.DATE
+        elif logicalType.__isset.TIME then
+            if logicalType.TIME.Unit.__isset.MILLIS then
+                schemaElement.Type <- Type.INT32
+                schemaElement.Converted_type <- ConvertedType.TIME_MILLIS
+            elif logicalType.TIME.Unit.__isset.MICROS then
+                schemaElement.Type <- Type.INT64
+                schemaElement.Converted_type <- ConvertedType.TIME_MICROS
+            elif logicalType.TIME.Unit.__isset.NANOS then
+                schemaElement.Type <- Type.INT64
+        elif logicalType.__isset.TIMESTAMP then
+            schemaElement.Type <- Type.INT64
+            if logicalType.TIMESTAMP.Unit.__isset.MILLIS then
+                schemaElement.Converted_type <- ConvertedType.TIMESTAMP_MILLIS
+            elif logicalType.TIMESTAMP.Unit.__isset.MICROS then
+                schemaElement.Converted_type <- ConvertedType.TIMESTAMP_MICROS
+        elif logicalType.__isset.INTEGER then
+            let bitWidth = logicalType.INTEGER.BitWidth
+            let isSigned = logicalType.INTEGER.IsSigned
+            if bitWidth = 8y && isSigned then
+                schemaElement.Type <- Type.INT32
+                schemaElement.Converted_type <- ConvertedType.INT_8
+            elif bitWidth = 16y && isSigned then
+                schemaElement.Type <- Type.INT32
+                schemaElement.Converted_type <- ConvertedType.INT_16
+            elif bitWidth = 32y && isSigned then
+                schemaElement.Type <- Type.INT32
+                schemaElement.Converted_type <- ConvertedType.INT_32
+            elif bitWidth = 64y && isSigned then
+                schemaElement.Type <- Type.INT64
+                schemaElement.Converted_type <- ConvertedType.INT_64
+            elif bitWidth = 8y && not isSigned then
+                schemaElement.Type <- Type.INT32
+                schemaElement.Converted_type <- ConvertedType.UINT_8
+            elif bitWidth = 16y && not isSigned then
+                schemaElement.Type <- Type.INT32
+                schemaElement.Converted_type <- ConvertedType.UINT_16
+            elif bitWidth = 32y && not isSigned then
+                schemaElement.Type <- Type.INT32
+                schemaElement.Converted_type <- ConvertedType.UINT_32
+            elif bitWidth = 64y && not isSigned then
+                schemaElement.Type <- Type.INT64
+                schemaElement.Converted_type <- ConvertedType.UINT_64
+            else
+                failwith $"unsupported int type %A{logicalType.INTEGER}"
+        elif logicalType.__isset.UNKNOWN then
+            failwith $"unsupported logical type %A{logicalType}"
+        elif logicalType.__isset.JSON then
+            schemaElement.Type <- Type.BYTE_ARRAY
+            schemaElement.Converted_type <- ConvertedType.JSON
+        elif logicalType.__isset.BSON then
+            schemaElement.Type <- Type.BYTE_ARRAY
+            schemaElement.Converted_type <- ConvertedType.BSON
+        elif logicalType.__isset.UUID then
+            schemaElement.Type <- Type.FIXED_LEN_BYTE_ARRAY
+            schemaElement.Type_length <- 16
+        elif logicalType.__isset.FLOAT16 then
+            schemaElement.Type <- Type.FIXED_LEN_BYTE_ARRAY
+            schemaElement.Type_length <- 2
+        elif logicalType.__isset.VARIANT then
+            failwith $"unsupported logical type %A{logicalType}"
+        elif logicalType.__isset.GEOMETRY then
+            failwith $"unsupported logical type %A{logicalType}"
+        elif logicalType.__isset.GEOGRAPHY then
+            failwith $"unsupported logical type %A{logicalType}"
         schemaElement
 
 module FileMetaData =
     let create version schemaElements =
-        { FileMetaData.version = version
-          FileMetaData.schema = schemaElements }
+        FileMetaData(
+            Version = version,
+            Schema = schemaElements)
 
     let rec private generateSchemaElements (field: FieldType) =
-        let repetitionType =
-            if field.Value.IsRequired
-            then FieldRepetitionType.REQUIRED
-            else FieldRepetitionType.OPTIONAL
-        let name = field.Name
-        match field.Value.Type with
-        | ValueType.Bool ->
-            [| SchemaElement.bool repetitionType name |]
-        | ValueType.Int32 ->
-            let logicalType = LogicalType.INTEGER { bitWidth = 32y; isSigned = true }
-            [| SchemaElement.logical repetitionType name logicalType |]
-        | ValueType.Float64 ->
-            [| SchemaElement.double repetitionType name |]
-        | ValueType.DateTimeOffset ->
-            let logicalType =
-                LogicalType.TIMESTAMP {
-                    isAdjustedToUTC = true
-                    unit = TimeUnit.MicroSeconds () }
-            [| SchemaElement.logical repetitionType name logicalType |]
-        | ValueType.String ->
-            let logicalType = LogicalType.STRING ()
-            [| SchemaElement.logical repetitionType name logicalType |]
-        | ValueType.Array arrayType ->
-            let outerElement = SchemaElement.listOuter repetitionType name
-            let middleElement = SchemaElement.listMiddle ()
-            let schemaElements = ResizeArray([| outerElement; middleElement |])
-            let elementField = FieldType.create "element" arrayType.Element
-            schemaElements.AddRange(generateSchemaElements elementField)
-            Array.ofSeq schemaElements
-        | ValueType.Record recordType ->
-            let numChildren = recordType.Fields.Length
-            let groupElement = SchemaElement.recordGroup repetitionType name numChildren
-            let schemaElements = ResizeArray([| groupElement |])
-            for field in recordType.Fields do
-                schemaElements.AddRange(generateSchemaElements field)
-            Array.ofSeq schemaElements
+        seq {
+            let repetitionType =
+                if field.Value.IsRequired
+                then FieldRepetitionType.REQUIRED
+                else FieldRepetitionType.OPTIONAL
+            let name = field.Name
+            match field.Value.Type with
+            | ValueType.Bool ->
+                yield SchemaElement.bool repetitionType name
+            | ValueType.Int32 ->
+                let intType = IntType(BitWidth = 32y, IsSigned = true)
+                let logicalType = LogicalType(INTEGER = intType)
+                yield SchemaElement.logical repetitionType name logicalType
+            | ValueType.Float64 ->
+                yield SchemaElement.double repetitionType name
+            | ValueType.DateTimeOffset ->
+                let timestampType =
+                    TimestampType(
+                        IsAdjustedToUTC = true,
+                        Unit = TimeUnit(MICROS = MicroSeconds()))
+                let logicalType = LogicalType(TIMESTAMP = timestampType)
+                yield SchemaElement.logical repetitionType name logicalType
+            | ValueType.String ->
+                let logicalType = LogicalType(STRING = StringType())
+                yield SchemaElement.logical repetitionType name logicalType
+            | ValueType.Array arrayType ->
+                yield SchemaElement.listOuter repetitionType name
+                yield SchemaElement.listMiddle ()
+                let elementField = FieldType.create "element" arrayType.Element
+                yield! generateSchemaElements elementField
+            | ValueType.Record recordType ->
+                yield SchemaElement.recordGroup repetitionType name recordType.Fields.Length
+                for field in recordType.Fields do
+                    yield! generateSchemaElements field
+        }
 
     let ofSchema (schema: Schema) =
         let version = 1
@@ -357,5 +216,4 @@ module FileMetaData =
         let schemaElements = ResizeArray([| rootElement |])
         for field in schema.Fields do
             schemaElements.AddRange(generateSchemaElements field)
-        let schemaElements = Array.ofSeq schemaElements
         create version schemaElements

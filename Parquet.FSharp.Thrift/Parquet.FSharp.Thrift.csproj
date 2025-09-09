@@ -4,4 +4,12 @@
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="Generated\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ApacheThrift" Version="0.22.0" />
+  </ItemGroup>
+
 </Project>

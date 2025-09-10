@@ -7,6 +7,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Parquet.FSharp.TestApp", "P
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Parquet.FSharp.Thrift", "Parquet.FSharp.Thrift\Parquet.FSharp.Thrift.csproj", "{7E9BBC45-6F94-463D-A03B-6BD9170F6202}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Parquet.FSharp", "Parquet.FSharp\Parquet.FSharp.fsproj", "{95D448D6-A179-49A2-B8D3-82A48CAF8FFD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{7E9BBC45-6F94-463D-A03B-6BD9170F6202}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7E9BBC45-6F94-463D-A03B-6BD9170F6202}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7E9BBC45-6F94-463D-A03B-6BD9170F6202}.Release|Any CPU.Build.0 = Release|Any CPU
+		{95D448D6-A179-49A2-B8D3-82A48CAF8FFD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{95D448D6-A179-49A2-B8D3-82A48CAF8FFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{95D448D6-A179-49A2-B8D3-82A48CAF8FFD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{95D448D6-A179-49A2-B8D3-82A48CAF8FFD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

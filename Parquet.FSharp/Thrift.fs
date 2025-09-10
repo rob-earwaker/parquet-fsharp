@@ -1,6 +1,5 @@
-﻿namespace Parquet.FSharp.Thrift
+﻿namespace Parquet.FSharp
 
-open Parquet.FSharp
 open System
 
 module SchemaElement =
@@ -165,55 +164,3 @@ module SchemaElement =
         elif logicalType.__isset.GEOGRAPHY then
             failwith $"unsupported logical type %A{logicalType}"
         schemaElement
-
-module FileMetaData =
-    let create version schemaElements =
-        FileMetaData(
-            Version = version,
-            Schema = schemaElements)
-
-    let rec private generateSchemaElements (field: FieldType) =
-        seq {
-            let repetitionType =
-                if field.Value.IsRequired
-                then FieldRepetitionType.REQUIRED
-                else FieldRepetitionType.OPTIONAL
-            let name = field.Name
-            match field.Value.Type with
-            | ValueType.Bool ->
-                yield SchemaElement.bool repetitionType name
-            | ValueType.Int32 ->
-                let intType = IntType(BitWidth = 32y, IsSigned = true)
-                let logicalType = LogicalType(INTEGER = intType)
-                yield SchemaElement.logical repetitionType name logicalType
-            | ValueType.Float64 ->
-                yield SchemaElement.double repetitionType name
-            | ValueType.DateTimeOffset ->
-                let timestampType =
-                    TimestampType(
-                        IsAdjustedToUTC = true,
-                        Unit = TimeUnit(MICROS = MicroSeconds()))
-                let logicalType = LogicalType(TIMESTAMP = timestampType)
-                yield SchemaElement.logical repetitionType name logicalType
-            | ValueType.String ->
-                let logicalType = LogicalType(STRING = StringType())
-                yield SchemaElement.logical repetitionType name logicalType
-            | ValueType.Array arrayType ->
-                yield SchemaElement.listOuter repetitionType name
-                yield SchemaElement.listMiddle ()
-                let elementField = FieldType.create "element" arrayType.Element
-                yield! generateSchemaElements elementField
-            | ValueType.Record recordType ->
-                yield SchemaElement.recordGroup repetitionType name recordType.Fields.Length
-                for field in recordType.Fields do
-                    yield! generateSchemaElements field
-        }
-
-    let ofSchema (schema: Schema) =
-        let version = 1
-        let numChildren = schema.Fields.Length
-        let rootElement = SchemaElement.root numChildren
-        let schemaElements = ResizeArray([| rootElement |])
-        for field in schema.Fields do
-            schemaElements.AddRange(generateSchemaElements field)
-        create version schemaElements

@@ -2,12 +2,16 @@
 
 open Parquet.FSharp
 open System
+open System.IO
 
 type Record1 = {
     Field1: bool
     Field2: int
     Field3: float
     Field4: string }
+
+type Record2 = {
+    Field1: bool }
 
 type Gps = {
     Latitude: float
@@ -49,23 +53,17 @@ module Random =
           Record1.Field3 = float ()
           Record1.Field4 = string () }
 
-type Column = {
-    Schema: ColumnSchema
-    Values: Array
-    RepetitionLevels: int[] option
-    DefinitionLevels: int[] option }
-
-and ColumnSchema = {
-    DotnetType: Type }
-
-let generateColumns (records: 'Record[]) =
-    let recordType = Schema.ofRecord<'Record>
-    Seq.empty<Column>
+    let record2 () =
+        { Record2.Field1 = bool () }
 
 [<EntryPoint>]
 let main _ =
-    let schema = Schema.ofRecord<Message>
-    let fileMetaData = Thrift.FileMetaData.ofSchema schema
-    let records = Array.init 10 (fun _ -> Random.record1 ())
-    let columns = generateColumns records
+    let records = Array.init 10 (fun _ -> Random.record2 ())
+    use stream = new MemoryStream()
+    use fileWriter = new ParquetStreamWriter<Record2>(stream)
+    fileWriter.WriteHeader()
+    fileWriter.WriteRowGroup(records)
+    fileWriter.WriteFooter()
+    let filePath = @"..\..\..\..\data\data.parquet"
+    File.WriteAllBytes(filePath, stream.ToArray())
     0

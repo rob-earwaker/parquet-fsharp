@@ -6,14 +6,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="parquet.thrift" />
-    <Compile Include="Schema.fs" />
-    <Compile Include="Thrift.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Parquet.FSharp.Thrift\Parquet.FSharp.Thrift.csproj" />
+    <ProjectReference Include="..\Parquet.FSharp\Parquet.FSharp.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="9.0.303" />
   </ItemGroup>
 
 </Project>

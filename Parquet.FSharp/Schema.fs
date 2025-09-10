@@ -6,6 +6,14 @@ open System
 type Schema = {
     Fields: FieldType[] }
 
+type FieldType = {
+    Name: string
+    Value: NestedType }
+
+type NestedType = {
+    Type: ValueType
+    IsRequired: bool }
+
 type ValueType =
     | Bool
     | Int32
@@ -15,19 +23,11 @@ type ValueType =
     | Array of ArrayType
     | Record of RecordType
 
-and ArrayType = {
+type ArrayType = {
     Element: NestedType }
 
-and RecordType = {
+type RecordType = {
     Fields: FieldType[] }
-
-and FieldType = {
-    Name: string
-    Value: NestedType }
-
-and NestedType = {
-    Type: ValueType
-    IsRequired: bool }
 
 module private NestedType =
     let create valueType isRequired =
@@ -74,10 +74,47 @@ module private ValueType =
         | dotnetType ->
             failwith $"type '{dotnetType.FullName}' is not supported"
 
-module private FieldType =
+module FieldType =
     let create name valueType =
         { FieldType.Name = name
           FieldType.Value = valueType }
+
+    let rec toThriftSchema (field: FieldType) =
+        seq {
+            let repetitionType =
+                if field.Value.IsRequired
+                then FieldRepetitionType.REQUIRED
+                else FieldRepetitionType.OPTIONAL
+            let name = field.Name
+            match field.Value.Type with
+            | ValueType.Bool ->
+                yield SchemaElement.bool repetitionType name
+            | ValueType.Int32 ->
+                let intType = IntType(BitWidth = 32y, IsSigned = true)
+                let logicalType = LogicalType(INTEGER = intType)
+                yield SchemaElement.logical repetitionType name logicalType
+            | ValueType.Float64 ->
+                yield SchemaElement.double repetitionType name
+            | ValueType.DateTimeOffset ->
+                let timestampType =
+                    TimestampType(
+                        IsAdjustedToUTC = true,
+                        Unit = TimeUnit(MICROS = MicroSeconds()))
+                let logicalType = LogicalType(TIMESTAMP = timestampType)
+                yield SchemaElement.logical repetitionType name logicalType
+            | ValueType.String ->
+                let logicalType = LogicalType(STRING = StringType())
+                yield SchemaElement.logical repetitionType name logicalType
+            | ValueType.Array arrayType ->
+                yield SchemaElement.listOuter repetitionType name
+                yield SchemaElement.listMiddle ()
+                let elementField = FieldType.create "element" arrayType.Element
+                yield! toThriftSchema elementField
+            | ValueType.Record recordType ->
+                yield SchemaElement.recordGroup repetitionType name recordType.Fields.Length
+                for field in recordType.Fields do
+                    yield! toThriftSchema field
+        }
 
 module Schema =
     let private create fieldTypes =
@@ -90,3 +127,11 @@ module Schema =
 
     let ofRecord<'Record> =
         ofRecordType typeof<'Record>
+
+    let toThriftSchema (schema: Schema) =
+        let numChildren = schema.Fields.Length
+        let rootElement = SchemaElement.root numChildren
+        let schemaElements = ResizeArray([| rootElement |])
+        for field in schema.Fields do
+            schemaElements.AddRange(FieldType.toThriftSchema field)
+        schemaElements

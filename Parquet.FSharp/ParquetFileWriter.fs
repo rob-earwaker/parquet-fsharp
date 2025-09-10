@@ -26,7 +26,17 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
         Stream.writeAscii stream magicNumber
 
     member this.WriteRowGroup(records: 'Record seq) =
-        for record in records do
+        let records = Array.ofSeq records
+        let rowGroup =
+            RowGroup(
+                Columns = ResizeArray(),
+                Total_byte_size = 0,
+                Num_rows = records.Length,
+                File_offset = stream.Position)
+        let columns = Dremel.disassemble records
+        for column in columns do
+            
+            //Update row group column list and total size
             ()
 
     member this.WriteFooter() =

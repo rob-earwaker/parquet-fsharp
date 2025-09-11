@@ -4,7 +4,7 @@ open System
 open System.Collections.Generic
 
 let shred (records: 'Record[]) =
-    let recordTypeInfo = RecordTypeInfo.ofRecord<'Record>
+    let recordTypeInfo = RecordInfo.ofRecord<'Record>
     let values = Dictionary()
     for fieldTypeInfo in recordTypeInfo.Fields do
         values[fieldTypeInfo.Name] <- ResizeArray()

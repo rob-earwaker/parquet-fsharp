@@ -13,6 +13,7 @@
   <ItemGroup>
     <Compile Include="Library.fs" />
     <Compile Include="Thrift.fs" />
+    <Compile Include="Schema.fs" />
     <Compile Include="TypeInfo.fs" />
     <Compile Include="Data.fs" />
     <Compile Include="Dremel.fs" />

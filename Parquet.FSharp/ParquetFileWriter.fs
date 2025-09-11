@@ -1,21 +1,20 @@
 ﻿namespace Parquet.FSharp
 
-open FSharp.Reflection
+open Parquet.FSharp.Schema
 open System
 open System.IO
-open System.Text
 open System.Threading
-open Thrift
 open Thrift.Protocol
 open Thrift.Transport.Client
 
 type ParquetStreamWriter<'Record>(stream: Stream) =
     let magicNumber = "PAR1"
-    let recordTypeInfo = RecordTypeInfo.ofRecord<'Record>
+    let recordInfo = RecordInfo.ofRecord<'Record>
+    let schema = recordInfo.Fields |> Array.map _.Schema |> Schema.create
     let fileMetaData =
-        FileMetaData(
+        Thrift.FileMetaData(
             Version = 1,
-            Schema = Schema.toThriftSchema recordTypeInfo,
+            Schema = Schema.toThrift schema,
             Num_rows = 0,
             Row_groups = ResizeArray(),
             Created_by =
@@ -28,7 +27,7 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
     member this.WriteRowGroup(records: 'Record seq) =
         let records = Array.ofSeq records
         let rowGroup =
-            RowGroup(
+            Thrift.RowGroup(
                 Columns = ResizeArray(),
                 Total_byte_size = 0,
                 Num_rows = records.Length,
@@ -36,15 +35,15 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
         let columns = Dremel.shred records
         for column in columns do
             let columnChunk =
-                ColumnChunk(
+                Thrift.ColumnChunk(
                     File_offset = 0,
-                    Meta_data = ColumnMetaData(
-                        Type = Type.BOOLEAN))
+                    Meta_data = Thrift.ColumnMetaData(
+                        Type = Thrift.Type.BOOLEAN))
             //Update row group column list and total size
             ()
 
     member this.WriteFooter() =
-        use transport = new TMemoryBufferTransport(TConfiguration())
+        use transport = new TMemoryBufferTransport(Thrift.TConfiguration())
         use protocol = new TCompactProtocol(transport)
         fileMetaData.WriteAsync(protocol, CancellationToken.None)
         |> Async.AwaitTask

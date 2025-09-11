@@ -1,6 +1,14 @@
-﻿namespace Parquet.FSharp
+﻿namespace Parquet.FSharp.Thrift
 
 open System
+
+module LogicalType =
+    let private INT bitWidth isSigned =
+        LogicalType(INTEGER = IntType(BitWidth = bitWidth, IsSigned = isSigned))
+
+    let INT32 = INT 32y true
+    let STRING = LogicalType(STRING = StringType())
+    let LIST = LogicalType(LIST = ListType())
 
 module SchemaElement =
     let root numChildren =
@@ -20,7 +28,7 @@ module SchemaElement =
             schemaElement.LogicalType <- logicalType.Value
         schemaElement
 
-    let recordGroup repetitionType name numChildren =
+    let record repetitionType name numChildren =
         let convertedType = Option.None
         let logicalType = Option.None
         group repetitionType name numChildren convertedType logicalType
@@ -39,22 +47,13 @@ module SchemaElement =
         let logicalType = Option.None
         group repetitionType name numChildren convertedType logicalType
 
-    let primitive repetitionType name type' =
+    let primitiveValue repetitionType name type' =
         SchemaElement(
             Type = type',
             Repetition_type = repetitionType,
             Name = name)
 
-    let bool repetitionType name =
-        primitive repetitionType name Type.BOOLEAN
-
-    let float repetitionType name =
-        primitive repetitionType name Type.FLOAT
-
-    let double repetitionType name =
-        primitive repetitionType name Type.DOUBLE
-
-    let logical repetitionType name logicalType =
+    let logicalValue repetitionType name logicalType =
         let schemaElement =
             SchemaElement(
                 Repetition_type = repetitionType,

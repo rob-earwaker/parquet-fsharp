@@ -11,11 +11,11 @@ open Thrift.Transport.Client
 
 type ParquetStreamWriter<'Record>(stream: Stream) =
     let magicNumber = "PAR1"
-    let schema = Schema.ofRecord<'Record>
+    let recordTypeInfo = RecordTypeInfo.ofRecord<'Record>
     let fileMetaData =
         FileMetaData(
             Version = 1,
-            Schema = Schema.toThriftSchema schema,
+            Schema = Schema.toThriftSchema recordTypeInfo,
             Num_rows = 0,
             Row_groups = ResizeArray(),
             Created_by =
@@ -33,9 +33,13 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 Total_byte_size = 0,
                 Num_rows = records.Length,
                 File_offset = stream.Position)
-        let columns = Dremel.disassemble records
+        let columns = Dremel.shred records
         for column in columns do
-            
+            let columnChunk =
+                ColumnChunk(
+                    File_offset = 0,
+                    Meta_data = ColumnMetaData(
+                        Type = Type.BOOLEAN))
             //Update row group column list and total size
             ()
 

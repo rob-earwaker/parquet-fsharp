@@ -3,36 +3,59 @@
 open FSharp.Reflection
 open System
 
-type Schema = {
-    Fields: FieldType[] }
-
-type FieldType = {
-    Name: string
-    Value: NestedType }
-
-type NestedType = {
-    Type: ValueType
-    IsRequired: bool }
-
 type ValueType =
     | Bool
     | Int32
     | Float64
     | DateTimeOffset
     | String
-    | Array of ArrayType
-    | Record of RecordType
+    | Array of ArrayTypeInfo
+    | Record of RecordTypeInfo
 
-type ArrayType = {
-    Element: NestedType }
+type NestedTypeInfo = {
+    Type: ValueType
+    IsRequired: bool }
 
-type RecordType = {
-    Fields: FieldType[] }
+type ArrayTypeInfo = {
+    Element: NestedTypeInfo }
 
-module private NestedType =
+type FieldTypeInfo = {
+    Name: string
+    Value: NestedTypeInfo
+    GetValue: obj -> objnull }
+
+type RecordTypeInfo = {
+    Fields: FieldTypeInfo[] }
+
+module private ValueType =
+    let ofType dotnetType =
+        match dotnetType with
+        | dotnetType when dotnetType = typeof<bool> -> ValueType.Bool
+        | dotnetType when dotnetType = typeof<int> -> ValueType.Int32
+        | dotnetType when dotnetType = typeof<float> -> ValueType.Float64
+        | dotnetType when dotnetType = typeof<DateTimeOffset> -> ValueType.DateTimeOffset
+        | dotnetType when dotnetType = typeof<string> -> ValueType.String
+        | dotnetType when dotnetType.IsArray ->
+            if dotnetType.GetArrayRank() <> 1 then
+                failwith "multi-dimensional arrays are not supported"
+            let elementDotnetType = dotnetType.GetElementType()
+            let elementTypeInfo = NestedTypeInfo.ofType elementDotnetType
+            ValueType.Array { Element = elementTypeInfo }
+        | dotnetType when FSharpType.IsRecord(dotnetType) ->
+            let fieldTypeInfo =
+                FSharpType.GetRecordFields(dotnetType)
+                |> Array.map (fun field ->
+                    let valueTypeInfo = NestedTypeInfo.ofType field.PropertyType
+                    let getValue = FSharpValue.PreComputeRecordFieldReader(field)
+                    FieldTypeInfo.create field.Name valueTypeInfo getValue)
+            ValueType.Record { Fields = fieldTypeInfo }
+        | dotnetType ->
+            failwith $"type '{dotnetType.FullName}' is not supported"
+
+module private NestedTypeInfo =
     let create valueType isRequired =
-        { NestedType.Type = valueType
-          NestedType.IsRequired = isRequired }
+        { NestedTypeInfo.Type = valueType
+          NestedTypeInfo.IsRequired = isRequired }
 
     let private isOptionType (dotnetType: Type) =
         dotnetType.IsGenericType
@@ -50,43 +73,13 @@ module private NestedType =
         let isRequired = not isOptionType'
         create valueType isRequired
 
-module private ValueType =
-    let ofType dotnetType =
-        match dotnetType with
-        | dotnetType when dotnetType = typeof<bool> -> ValueType.Bool
-        | dotnetType when dotnetType = typeof<int> -> ValueType.Int32
-        | dotnetType when dotnetType = typeof<float> -> ValueType.Float64
-        | dotnetType when dotnetType = typeof<DateTimeOffset> -> ValueType.DateTimeOffset
-        | dotnetType when dotnetType = typeof<string> -> ValueType.String
-        | dotnetType when dotnetType.IsArray ->
-            if dotnetType.GetArrayRank() <> 1 then
-                failwith "multi-dimensional arrays are not supported"
-            let elementDotnetType = dotnetType.GetElementType()
-            let elementType = NestedType.ofType elementDotnetType
-            ValueType.Array { Element = elementType }
-        | dotnetType when FSharpType.IsRecord(dotnetType) ->
-            let fieldTypes =
-                FSharpType.GetRecordFields(dotnetType)
-                |> Array.map (fun fieldInfo ->
-                    let valueType = NestedType.ofType fieldInfo.PropertyType
-                    FieldType.create fieldInfo.Name valueType)
-            ValueType.Record { Fields = fieldTypes }
-        | dotnetType ->
-            failwith $"type '{dotnetType.FullName}' is not supported"
-
-module FieldType =
-    let create name valueType =
-        { FieldType.Name = name
-          FieldType.Value = valueType }
-
-    let rec toThriftSchema (field: FieldType) =
+    let rec toThriftSchema name (nestedTypeInfo: NestedTypeInfo) =
         seq {
             let repetitionType =
-                if field.Value.IsRequired
+                if nestedTypeInfo.IsRequired
                 then FieldRepetitionType.REQUIRED
                 else FieldRepetitionType.OPTIONAL
-            let name = field.Name
-            match field.Value.Type with
+            match nestedTypeInfo.Type with
             | ValueType.Bool ->
                 yield SchemaElement.bool repetitionType name
             | ValueType.Int32 ->
@@ -105,20 +98,28 @@ module FieldType =
             | ValueType.String ->
                 let logicalType = LogicalType(STRING = StringType())
                 yield SchemaElement.logical repetitionType name logicalType
-            | ValueType.Array arrayType ->
+            | ValueType.Array arrayTypeInfo ->
                 yield SchemaElement.listOuter repetitionType name
                 yield SchemaElement.listMiddle ()
-                let elementField = FieldType.create "element" arrayType.Element
-                yield! toThriftSchema elementField
+                yield! toThriftSchema "element" arrayTypeInfo.Element
             | ValueType.Record recordType ->
                 yield SchemaElement.recordGroup repetitionType name recordType.Fields.Length
-                for field in recordType.Fields do
-                    yield! toThriftSchema field
+                for fieldTypeInfo in recordType.Fields do
+                    yield! FieldTypeInfo.toThriftSchema fieldTypeInfo
         }
 
-module Schema =
-    let private create fieldTypes =
-        { Schema.Fields = fieldTypes }
+module FieldTypeInfo =
+    let create name valueType getValue =
+        { FieldTypeInfo.Name = name
+          FieldTypeInfo.Value = valueType
+          FieldTypeInfo.GetValue = getValue }
+
+    let toThriftSchema (fieldTypeInfo: FieldTypeInfo) =
+        NestedTypeInfo.toThriftSchema fieldTypeInfo.Name fieldTypeInfo.Value
+
+module RecordTypeInfo =
+    let private create fieldTypeInfo =
+        { RecordTypeInfo.Fields = fieldTypeInfo }
 
     let ofRecordType dotnetType =
         match ValueType.ofType dotnetType with
@@ -128,10 +129,11 @@ module Schema =
     let ofRecord<'Record> =
         ofRecordType typeof<'Record>
 
-    let toThriftSchema (schema: Schema) =
-        let numChildren = schema.Fields.Length
+module Schema =
+    let toThriftSchema (recordTypeInfo: RecordTypeInfo) =
+        let numChildren = recordTypeInfo.Fields.Length
         let rootElement = SchemaElement.root numChildren
         let schemaElements = ResizeArray([| rootElement |])
-        for field in schema.Fields do
-            schemaElements.AddRange(FieldType.toThriftSchema field)
+        for fieldTypeInfo in recordTypeInfo.Fields do
+            schemaElements.AddRange(FieldTypeInfo.toThriftSchema fieldTypeInfo)
         schemaElements

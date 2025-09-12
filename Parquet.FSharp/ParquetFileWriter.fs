@@ -38,7 +38,11 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 Thrift.ColumnChunk(
                     File_offset = 0,
                     Meta_data = Thrift.ColumnMetaData(
-                        Type = Thrift.Type.BOOLEAN))
+                        Type = Thrift.Type.BOOLEAN,
+                        Encodings = ResizeArray([ Thrift.Encoding.PLAIN ]),
+                        Path_in_schema = ResizeArray(),
+                        Codec = Thrift.CompressionCodec.UNCOMPRESSED,
+                        Num_values = column.Values.Length))
             //Update row group column list and total size
             ()
 

@@ -47,13 +47,13 @@ module SchemaElement =
         let logicalType = Option.None
         group repetitionType name numChildren convertedType logicalType
 
-    let primitiveValue repetitionType name type' =
+    let primitive repetitionType name type' =
         SchemaElement(
             Type = type',
             Repetition_type = repetitionType,
             Name = name)
 
-    let logicalValue repetitionType name logicalType =
+    let logical repetitionType name logicalType =
         let schemaElement =
             SchemaElement(
                 Repetition_type = repetitionType,

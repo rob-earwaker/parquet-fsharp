@@ -10,28 +10,16 @@ type Field = {
     Value: Value }
 
 type Value = {
-    Repetition: Repetition
-    Type: ValueType }
-
-type Repetition =
-    | Required
-    | Optional
-    | Repeated
+    Type: ValueType
+    IsRequired: bool }
 
 type ValueType =
-    | PrimitiveType of PrimitiveType
-    | LogicalType of LogicalType
-    | RecordType of RecordType
-    | ListType of ListType
-
-type PrimitiveType =
     | Bool
     | Int32
     | ByteArray
-
-type LogicalType =
-    | Int32
     | String
+    | Record of RecordType
+    | List of ListType
 
 type RecordType = {
     Fields: Field[] }
@@ -39,75 +27,53 @@ type RecordType = {
 type ListType = {
     Element: Value }
 
-module LogicalType =
-    let toThrift logicalType =
-        match logicalType with
-        | LogicalType.Int32 -> Thrift.LogicalType.INT32
-        | LogicalType.String -> Thrift.LogicalType.STRING
-
-module PrimitiveType =
-    let toThrift primitiveType =
-        match primitiveType with
-        | PrimitiveType.Bool -> Thrift.Type.BOOLEAN
-        | PrimitiveType.Int32 -> Thrift.Type.INT32
-        | PrimitiveType.ByteArray -> Thrift.Type.BYTE_ARRAY
-
 module ValueType =
-    module Primitive =
-        let Bool = ValueType.PrimitiveType PrimitiveType.Bool
-        let Int32 = ValueType.PrimitiveType PrimitiveType.Int32
-        let ByteArray = ValueType.PrimitiveType PrimitiveType.ByteArray
-
-    module Logical =
-        let Int32 = ValueType.LogicalType LogicalType.Int32
-        let String = ValueType.LogicalType LogicalType.String
-
     let record fields =
-        ValueType.RecordType { Fields = fields }
+        ValueType.Record { Fields = fields }
 
     let list element =
-        ValueType.ListType { Element = element }
+        ValueType.List { Element = element }
 
 module Value =
-    let create repetition valueType =
-        { Value.Repetition = repetition
-          Value.Type = valueType }
+    let create valueType isRequired =
+        { Value.Type = valueType
+          Value.IsRequired = isRequired }
 
     let required valueType =
-        create Repetition.Required valueType
+        create valueType true
 
     let optional valueType =
-        create Repetition.Optional valueType
-
-    let repeated valueType =
-        create Repetition.Repeated valueType
+        create valueType false
 
     let toThrift name (value: Value) =
         seq {
-            let repetitionType = Repetition.toThrift value.Repetition
+            let repetitionType =
+                if value.IsRequired
+                then Thrift.FieldRepetitionType.REQUIRED
+                else Thrift.FieldRepetitionType.OPTIONAL
             match value.Type with
-            | ValueType.PrimitiveType primitiveType ->
-                let primitiveType = PrimitiveType.toThrift primitiveType
-                yield Thrift.SchemaElement.primitiveValue repetitionType name primitiveType
-            | ValueType.LogicalType logicalType ->
-                let logicalType = LogicalType.toThrift logicalType
-                yield Thrift.SchemaElement.logicalValue repetitionType name logicalType
-            | ValueType.RecordType recordType ->
-                yield Thrift.SchemaElement.record repetitionType name recordType.Fields.Length
+            | ValueType.Bool ->
+                let type' = Thrift.Type.BOOLEAN
+                yield Thrift.SchemaElement.primitive repetitionType name type'
+            | ValueType.Int32 ->
+                let logicalType = Thrift.LogicalType.INT32
+                yield Thrift.SchemaElement.logical repetitionType name logicalType
+            | ValueType.ByteArray ->
+                let type' = Thrift.Type.BYTE_ARRAY
+                yield Thrift.SchemaElement.primitive repetitionType name type'
+            | ValueType.String ->
+                let logicalType = Thrift.LogicalType.STRING
+                yield Thrift.SchemaElement.logical repetitionType name logicalType
+            | ValueType.Record recordType ->
+                let numFields = recordType.Fields.Length
+                yield Thrift.SchemaElement.record repetitionType name numFields
                 for field in recordType.Fields do
                     yield! Field.toThrift field
-            | ValueType.ListType listType ->
+            | ValueType.List listType ->
                 yield Thrift.SchemaElement.listOuter repetitionType name
                 yield Thrift.SchemaElement.listMiddle ()
                 yield! Value.toThrift "element" listType.Element
         }
-
-module Repetition =
-    let toThrift repetition =
-        match repetition with
-        | Repetition.Required -> Thrift.FieldRepetitionType.REQUIRED
-        | Repetition.Optional -> Thrift.FieldRepetitionType.OPTIONAL
-        | Repetition.Repeated -> Thrift.FieldRepetitionType.REPEATED
 
 module Field =
     let create name value =

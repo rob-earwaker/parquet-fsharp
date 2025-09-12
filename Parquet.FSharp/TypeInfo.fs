@@ -40,6 +40,11 @@ module DotnetType =
         then Option.Some ()
         else Option.None
 
+    let (|Int32|_|) (dotnetType: Type) =
+        if dotnetType = typeof<int>
+        then Option.Some ()
+        else Option.None
+
 module FieldInfo =
     let create name dotnetType getValue schema =
         { FieldInfo.Name = name
@@ -54,7 +59,8 @@ module FieldInfo =
         let schema =
             let valueType =
                 match dotnetType with
-                | DotnetType.Bool -> Schema.ValueType.Primitive.Bool
+                | DotnetType.Bool -> Schema.ValueType.Bool
+                | DotnetType.Int32 -> Schema.ValueType.Int32
                 | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
             let value = Schema.Value.required valueType
             Schema.Field.create name value

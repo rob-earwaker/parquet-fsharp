@@ -11,7 +11,8 @@ type Record1 = {
     Field4: string }
 
 type Record2 = {
-    Field1: bool }
+    Field1: bool
+    Field2: int }
 
 type Gps = {
     Latitude: float
@@ -54,7 +55,8 @@ module Random =
           Record1.Field4 = string () }
 
     let record2 () =
-        { Record2.Field1 = bool () }
+        { Record2.Field1 = bool ()
+          Record2.Field2 = int () }
 
 [<EntryPoint>]
 let main _ =

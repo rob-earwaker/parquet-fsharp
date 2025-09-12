@@ -4,8 +4,6 @@ open Parquet.FSharp.Schema
 open System
 open System.IO
 open System.Threading
-open Thrift.Protocol
-open Thrift.Transport.Client
 
 type ParquetStreamWriter<'Record>(stream: Stream) =
     let magicNumber = "PAR1"
@@ -34,25 +32,58 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 File_offset = stream.Position)
         let columns = Dremel.shred records
         for column in columns do
+            let columnMetaData =
+                Thrift.ColumnMetaData(
+                    Encodings = ResizeArray([ Thrift.Encoding.PLAIN ]),
+                    Path_in_schema = ResizeArray([ column.FieldName ]),
+                    Codec = Thrift.CompressionCodec.UNCOMPRESSED,
+                    Num_values = column.Values.Length,
+                    // Assume only data pages for now.
+                    Data_page_offset = stream.Position)
+            let dataPageHeader =
+                Thrift.DataPageHeader(
+                    Num_values = column.Values.Length,
+                    Definition_level_encoding = Thrift.Encoding.RLE,
+                    Repetition_level_encoding = Thrift.Encoding.RLE)
+            let type', encoding, dataBytes =
+                match column.Values.GetType().GetElementType() with
+                | DotnetType.Bool ->
+                    let values = column.Values :?> bool[]
+                    let type' = Thrift.Type.BOOLEAN
+                    let encoding = Thrift.Encoding.PLAIN
+                    let bytes = Encoding.Plain.Bool.encode values
+                    type', encoding, bytes
+                | DotnetType.Int32 ->
+                    let values = column.Values :?> int[]
+                    let type' = Thrift.Type.INT32
+                    let encoding = Thrift.Encoding.PLAIN
+                    let bytes = Encoding.Plain.Int32.encode values
+                    type', encoding, bytes
+                | dotnetType -> failwith $"unsupported type {dotnetType.FullName}"
+            dataPageHeader.Encoding <- encoding
+            let pageHeader =
+                Thrift.PageHeader(
+                    Type = Thrift.PageType.DATA_PAGE,
+                    Uncompressed_page_size = dataBytes.Length,
+                    Compressed_page_size = dataBytes.Length,
+                    Data_page_header = dataPageHeader)
+            let pageHeaderBytes = Thrift.Serialization.serialize pageHeader
+            let startPosition = stream.Position
+            Stream.writeBytes stream pageHeaderBytes
+            Stream.writeBytes stream dataBytes
+            columnMetaData.Type <- type'
+            columnMetaData.Total_uncompressed_size <- stream.Position - startPosition
+            columnMetaData.Total_compressed_size <- columnMetaData.Total_uncompressed_size
             let columnChunk =
                 Thrift.ColumnChunk(
                     File_offset = 0,
-                    Meta_data = Thrift.ColumnMetaData(
-                        Type = Thrift.Type.BOOLEAN,
-                        Encodings = ResizeArray([ Thrift.Encoding.PLAIN ]),
-                        Path_in_schema = ResizeArray(),
-                        Codec = Thrift.CompressionCodec.UNCOMPRESSED,
-                        Num_values = column.Values.Length))
-            //Update row group column list and total size
-            ()
+                    Meta_data = columnMetaData)
+            rowGroup.Columns.Add(columnChunk)
+        fileMetaData.Row_groups.Add(rowGroup)
+        fileMetaData.Num_rows <- fileMetaData.Num_rows + rowGroup.Num_rows
 
     member this.WriteFooter() =
-        use transport = new TMemoryBufferTransport(Thrift.TConfiguration())
-        use protocol = new TCompactProtocol(transport)
-        fileMetaData.WriteAsync(protocol, CancellationToken.None)
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
-        let metaDataBytes = transport.GetBuffer()
+        let metaDataBytes = Thrift.Serialization.serialize fileMetaData
         Stream.writeBytes stream metaDataBytes
         Stream.writeInt32 stream metaDataBytes.Length
         Stream.writeAscii stream magicNumber

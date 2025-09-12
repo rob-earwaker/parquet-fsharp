@@ -52,7 +52,10 @@ type ColumnBuilder(fieldInfo: FieldInfo) =
             definitionLevels.Add(value.Levels.Definition)
 
     member this.BuildColumn() =
-        let values = Array.ofSeq values :> Array
+        let valuesArray = Array.CreateInstance(fieldInfo.DotnetType, values.Count)
+        for index in [ 0 .. values.Count - 1 ] do
+            let value = values[index]
+            valuesArray.SetValue(value, index)
         let repetitionLevels =
             if repetitionLevelsRequired
             then Option.Some (Array.ofSeq repetitionLevels)
@@ -61,7 +64,8 @@ type ColumnBuilder(fieldInfo: FieldInfo) =
             if definitionLevelsRequired
             then Option.Some (Array.ofSeq definitionLevels)
             else Option.None
-        { Column.Values = values
+        { Column.FieldName = fieldInfo.Name
+          Column.Values = valuesArray
           Column.RepetitionLevels = repetitionLevels
           Column.DefinitionLevels = definitionLevels }
 

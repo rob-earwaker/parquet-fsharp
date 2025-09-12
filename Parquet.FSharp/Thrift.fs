@@ -1,6 +1,9 @@
 ﻿namespace Parquet.FSharp.Thrift
 
 open System
+open System.Threading
+open Thrift.Protocol
+open Thrift.Transport.Client
 
 module LogicalType =
     let private INT bitWidth isSigned =
@@ -163,3 +166,12 @@ module SchemaElement =
         elif logicalType.__isset.GEOGRAPHY then
             failwith $"unsupported logical type %A{logicalType}"
         schemaElement
+
+module Serialization =
+    let serialize (value: #TBase) =
+        use transport = new TMemoryBufferTransport(Thrift.TConfiguration())
+        use protocol = new TCompactProtocol(transport)
+        value.WriteAsync(protocol, CancellationToken.None)
+        |> Async.AwaitTask
+        |> Async.RunSynchronously
+        transport.GetBuffer()

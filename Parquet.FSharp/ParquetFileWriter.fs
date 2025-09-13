@@ -3,7 +3,6 @@
 open Parquet.FSharp.Schema
 open System
 open System.IO
-open System.Threading
 
 type ParquetStreamWriter<'Record>(stream: Stream) =
     let magicNumber = "PAR1"
@@ -30,12 +29,11 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 Total_byte_size = 0,
                 Num_rows = records.Length,
                 File_offset = stream.Position)
-        let columns = Dremel.shred records
-        for column in columns do
+        for column in Dremel.shred records do
             let columnMetaData =
                 Thrift.ColumnMetaData(
                     Encodings = ResizeArray([ Thrift.Encoding.PLAIN ]),
-                    Path_in_schema = ResizeArray([ column.FieldName ]),
+                    Path_in_schema = ResizeArray([ column.FieldInfo.Name ]),
                     Codec = Thrift.CompressionCodec.UNCOMPRESSED,
                     Num_values = column.Values.Length,
                     // Assume only data pages for now.

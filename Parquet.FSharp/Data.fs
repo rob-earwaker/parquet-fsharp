@@ -3,7 +3,7 @@
 open System
 
 type Column = {
-    FieldName: string
+    FieldInfo: FieldInfo
     Values: Array
     RepetitionLevels: int[] option
     DefinitionLevels: int[] option }

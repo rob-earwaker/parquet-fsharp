@@ -27,12 +27,20 @@ type RecordType = {
 type ListType = {
     Element: Value }
 
+module ListType =
+    let create element =
+        { ListType.Element = element }
+
+module RecordType =
+    let create fields =
+        { RecordType.Fields = fields }
+
 module ValueType =
     let record fields =
-        ValueType.Record { Fields = fields }
+        ValueType.Record (RecordType.create fields)
 
     let list element =
-        ValueType.List { Element = element }
+        ValueType.List (ListType.create element)
 
 module Value =
     let create valueType isRequired =

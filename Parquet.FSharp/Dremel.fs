@@ -64,7 +64,7 @@ type ColumnBuilder(fieldInfo: FieldInfo) =
             if definitionLevelsRequired
             then Option.Some (Array.ofSeq definitionLevels)
             else Option.None
-        { Column.FieldName = fieldInfo.Name
+        { Column.FieldInfo = fieldInfo
           Column.Values = valuesArray
           Column.RepetitionLevels = repetitionLevels
           Column.DefinitionLevels = definitionLevels }

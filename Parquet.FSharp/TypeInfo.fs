@@ -5,13 +5,20 @@ open System
 open System.Reflection
 
 type FieldInfo = {
-    Name: string
     DotnetType: Type
     GetValue: obj -> objnull
     Schema: Schema.Field }
+    with
+    member this.Name =
+        this.Schema.Name
 
 type RecordInfo = {
     Fields: FieldInfo[] }
+    with
+    member this.Schema =
+        this.Fields
+        |> Array.map _.Schema
+        |> Schema.RecordType.create
 
 //module private NestedTypeInfo =
 //    let create valueType isRequired =
@@ -46,14 +53,12 @@ module DotnetType =
         else Option.None
 
 module FieldInfo =
-    let create name dotnetType getValue schema =
-        { FieldInfo.Name = name
-          FieldInfo.DotnetType = dotnetType
+    let create dotnetType getValue schema =
+        { FieldInfo.DotnetType = dotnetType
           FieldInfo.GetValue = getValue
           FieldInfo.Schema = schema }
 
     let ofField (field: PropertyInfo) =
-        let name = field.Name
         let dotnetType = field.PropertyType
         let getValue = FSharpValue.PreComputeRecordFieldReader(field)
         let schema =
@@ -63,8 +68,8 @@ module FieldInfo =
                 | DotnetType.Int32 -> Schema.ValueType.Int32
                 | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
             let value = Schema.Value.required valueType
-            Schema.Field.create name value
-        create name dotnetType getValue schema
+            Schema.Field.create field.Name value
+        create dotnetType getValue schema
 
 module RecordInfo =
     let create fields =

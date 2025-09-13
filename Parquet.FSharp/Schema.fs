@@ -11,7 +11,8 @@ type Field = {
 
 type Value = {
     Type: ValueType
-    IsRequired: bool }
+    IsRequired: bool
+    IsPrimitive: bool }
 
 type ValueType =
     | Bool
@@ -42,10 +43,21 @@ module ValueType =
     let list element =
         ValueType.List (ListType.create element)
 
+    let isPrimitive valueType =
+        match valueType with
+        | ValueType.Bool -> true
+        | ValueType.Int32 -> true
+        | ValueType.ByteArray -> true
+        | ValueType.String -> true
+        | ValueType.Record _ -> false
+        | ValueType.List _ -> false
+
 module Value =
     let create valueType isRequired =
+        let isPrimitive = ValueType.isPrimitive valueType
         { Value.Type = valueType
-          Value.IsRequired = isRequired }
+          Value.IsRequired = isRequired
+          Value.IsPrimitive = isPrimitive }
 
     let required valueType =
         create valueType true

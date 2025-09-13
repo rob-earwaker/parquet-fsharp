@@ -1,10 +1,11 @@
 ﻿module Parquet.FSharp.Encoding
 
+open System
 open System.Collections
 open System.IO
 
-module Plain =
-    module Bool =
+module Bool =
+    module Plain =
         let encode (values: bool[]) =
             let bitArray = BitArray(values)
             let byteCount =
@@ -15,9 +16,72 @@ module Plain =
             bitArray.CopyTo(bytes, 0)
             bytes
 
-    module Int32 =
+module Int32 =
+    module Plain =
         let encode (values: int[]) =
             use stream = new MemoryStream()
             for value in values do
                 Stream.writeInt32 stream value
+            stream.ToArray()
+
+    module RunLengthBitPackingHybrid =
+        // The run length and bit packed headers are a 4-byte word with one bit
+        // reserved to differentiate between the two run types. The remaining
+        // 31 bits are used to store the run length. This means the maximum run
+        // length is the maximum integer that can be represented by 31 bits,
+        // i.e. {2^31 - 1}.
+        let private MaxRunLength = int (2. ** 31 - 1.)
+
+        let private writeRunLengthRun stream count value byteWidth =
+            let header = uint64 (count <<< 1)
+            Stream.writeUleb128 stream header
+            Stream.writeInt32FixedWidth stream value byteWidth
+
+        let private runLengthEncode bitWidth (values: int[]) =
+            // Round up bit width to nearest byte to get byte width of values.
+            let byteWidth =
+                if bitWidth % 8 = 0
+                then bitWidth / 8
+                else bitWidth / 8 + 1
+            use stream = new MemoryStream()
+            let mutable previousValue = values[0]
+            let mutable count = 0
+            for value in values do
+                if value = previousValue then
+                    // Value hasn't changed. Update the count to say we've seen
+                    // another of the same value.
+                    count <- count + 1
+                    // If the count has now reached the maximum run length then
+                    // write the value and count as a new run and reset the
+                    // count to zero.
+                    if count = MaxRunLength then
+                        writeRunLengthRun stream count previousValue byteWidth
+                        count <- 0
+                else
+                    // Value has changed. Write the previous value and count as
+                    // a new run. Update the previous value to the new value and
+                    // set the count to say we've seen one of this value so far.
+                    writeRunLengthRun stream count previousValue byteWidth
+                    previousValue <- value
+                    count <- 1
+            // The loop will usually terminate without writing the last run of
+            // values, so write this last run if the count is greater than zero.
+            if count > 0 then
+                writeRunLengthRun stream count previousValue byteWidth
+            stream.ToArray()
+
+        let encode values (maxValue: int) =
+            // Calculate fixed bit width based on max value. The maximum value
+            // {i} that can be stored in {n} bits is {2^n - 1}.
+            //   >> i <= 2^n - 1
+            //   >> i + 1 <= 2^n
+            //   >> log2(i + 1) <= n
+            //   >> ceil(log2(i + 1)) = n
+            // Therefore, the minimum bit width {n} required to store value {i}
+            // is {ceil(log2(i + 1))}.
+            let bitWidth = int (Math.Ceiling(Math.Log(float maxValue + 1., 2)))
+            let data = runLengthEncode bitWidth values
+            use stream = new MemoryStream()
+            Stream.writeInt32 stream data.Length
+            Stream.writeBytes stream data
             stream.ToArray()

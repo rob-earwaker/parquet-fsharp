@@ -4,13 +4,40 @@ open System
 open System.IO
 open System.Text
 
+let writeByte (stream: Stream) byte =
+    stream.WriteByte(byte)
+
 let writeBytes (stream: Stream) (bytes: byte[]) =
     stream.Write(bytes, 0, bytes.Length)
 
-let writeAscii stream (ascii: string) =
-    let bytes = Encoding.ASCII.GetBytes(ascii)
+let writeAscii stream (value: string) =
+    let bytes = Encoding.ASCII.GetBytes(value)
     writeBytes stream bytes
 
-let writeInt32 stream (int: int) =
-    let bytes = BitConverter.GetBytes(int)
+let writeInt32 stream (value: int) =
+    let bytes = BitConverter.GetBytes(value)
     writeBytes stream bytes
+
+let writeInt32FixedWidth stream (value: int) byteWidth =
+    let bytes = BitConverter.GetBytes(value)
+    let skipCount = 4 - byteWidth
+    writeBytes stream bytes[skipCount..]
+
+let rec writeUleb128 stream (value: uint64) =
+    // Create the next byte by extracting least significant 7 bits of the
+    // value using a bitwise AND with {0b01111111}.
+    let nextByte = byte (value &&& 0b01111111UL)
+    // Now that we've captured the least significant 7 bits, we chop them
+    // off the value by left-shifting.
+    let remainingValue = value >>> 7
+    // If the remaining value is zero then there is no more information to
+    // write so we indicate that this is the last byte of our integer by
+    // leaving the most significant bit as zero. Otherwise, we indicate that
+    // there are more bytes to come by setting the most significant bit.
+    // This is done using a bitwise AND with {0b10000000}.
+    if remainingValue = 0UL
+    then writeByte stream nextByte
+    else
+        let nextByte = nextByte &&& byte 0b10000000
+        writeByte stream nextByte
+        writeUleb128 stream remainingValue

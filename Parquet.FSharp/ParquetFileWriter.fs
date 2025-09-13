@@ -34,30 +34,38 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
             let repetitionLevelEncoding, repetitionLevelBytes =
                 match column.RepetitionLevels with
                 | Option.Some repetitionLevels ->
-                    let encoding = Thrift.Encoding.PLAIN
-                    let bytes = Encoding.Plain.Int32.encode repetitionLevels
+                    let encoding = Thrift.Encoding.RLE
+                    let maxValue = 0
+                    let bytes =
+                        Encoding.Int32.RunLengthBitPackingHybrid.encode
+                            repetitionLevels maxValue
                     encoding, bytes
-                | Option.None -> Thrift.Encoding.PLAIN, [||]
+                | Option.None -> Thrift.Encoding.RLE, [||]
             let definitionLevelEncoding, definitionLevelBytes =
                 match column.DefinitionLevels with
                 | Option.Some definitionLevels ->
-                    let encoding = Thrift.Encoding.PLAIN
-                    let bytes = Encoding.Plain.Int32.encode definitionLevels
+                    let encoding = Thrift.Encoding.RLE
+                    let maxValue =
+                        if column.FieldInfo.DotnetType.IsOptional
+                        then 1 else 0
+                    let bytes =
+                        Encoding.Int32.RunLengthBitPackingHybrid.encode
+                            definitionLevels maxValue
                     encoding, bytes
-                | Option.None -> Thrift.Encoding.PLAIN, [||]
+                | Option.None -> Thrift.Encoding.RLE, [||]
             let valueType, valueEncoding, valueBytes =
                 match column.Values.GetType().GetElementType() with
                 | dotnetType when dotnetType = typeof<bool> ->
                     let values = column.Values :?> bool[]
                     let type' = Thrift.Type.BOOLEAN
                     let encoding = Thrift.Encoding.PLAIN
-                    let bytes = Encoding.Plain.Bool.encode values
+                    let bytes = Encoding.Bool.Plain.encode values
                     type', encoding, bytes
                 | dotnetType when dotnetType = typeof<int> ->
                     let values = column.Values :?> int[]
                     let type' = Thrift.Type.INT32
                     let encoding = Thrift.Encoding.PLAIN
-                    let bytes = Encoding.Plain.Int32.encode values
+                    let bytes = Encoding.Int32.Plain.encode values
                     type', encoding, bytes
                 | dotnetType -> failwith $"unsupported type {dotnetType.FullName}"
             let dataPageUncompressedSize =
@@ -80,13 +88,17 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
             Stream.writeBytes stream repetitionLevelBytes
             Stream.writeBytes stream definitionLevelBytes
             Stream.writeBytes stream valueBytes
+            let columnEncodings =
+                set [ repetitionLevelEncoding; definitionLevelEncoding; valueEncoding ]
+                |> Seq.sort
+                |> ResizeArray
             let columnTotalUncompressedSize = stream.Position - dataPageOffset
             let columnChunk =
                 Thrift.ColumnChunk(
                     File_offset = 0,
                     Meta_data = Thrift.ColumnMetaData(
                         Type = valueType,
-                        Encodings = ResizeArray([ Thrift.Encoding.PLAIN ]),
+                        Encodings = columnEncodings,
                         Path_in_schema = ResizeArray([ column.FieldInfo.Name ]),
                         Codec = Thrift.CompressionCodec.UNCOMPRESSED,
                         Num_values = column.ValueCount,

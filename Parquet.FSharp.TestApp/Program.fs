@@ -12,7 +12,9 @@ type Record1 = {
 
 type Record2 = {
     Field1: bool
-    Field2: int }
+    Field2: int
+    Field3: Nullable<bool>
+    Field4: Nullable<int> }
 
 type Gps = {
     Latitude: float
@@ -48,6 +50,16 @@ module Random =
         then null
         else Random.NextInt64().ToString("X8")
 
+    let nullableBool () =
+        if Random.NextDouble() >= 0.75
+        then Nullable<bool>()
+        else Nullable<bool>(bool ())
+
+    let nullableInt () =
+        if Random.NextDouble() >= 0.75
+        then Nullable<int>()
+        else Nullable<int>(int ())
+
     let record1 () =
         { Record1.Field1 = bool ()
           Record1.Field2 = int ()
@@ -56,7 +68,9 @@ module Random =
 
     let record2 () =
         { Record2.Field1 = bool ()
-          Record2.Field2 = int () }
+          Record2.Field2 = int ()
+          Record2.Field3 = nullableBool ()
+          Record2.Field4 = nullableInt () }
 
 [<EntryPoint>]
 let main _ =

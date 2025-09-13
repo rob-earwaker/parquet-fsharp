@@ -11,7 +11,7 @@ type Field = {
 
 type Value = {
     Type: ValueType
-    IsRequired: bool
+    IsOptional: bool
     IsPrimitive: bool }
 
 type ValueType =
@@ -53,24 +53,18 @@ module ValueType =
         | ValueType.List _ -> false
 
 module Value =
-    let create valueType isRequired =
+    let create valueType isOptional =
         let isPrimitive = ValueType.isPrimitive valueType
         { Value.Type = valueType
-          Value.IsRequired = isRequired
+          Value.IsOptional = isOptional
           Value.IsPrimitive = isPrimitive }
-
-    let required valueType =
-        create valueType true
-
-    let optional valueType =
-        create valueType false
 
     let toThrift name (value: Value) =
         seq {
             let repetitionType =
-                if value.IsRequired
-                then Thrift.FieldRepetitionType.REQUIRED
-                else Thrift.FieldRepetitionType.OPTIONAL
+                if value.IsOptional
+                then Thrift.FieldRepetitionType.OPTIONAL
+                else Thrift.FieldRepetitionType.REQUIRED
             match value.Type with
             | ValueType.Bool ->
                 let type' = Thrift.Type.BOOLEAN

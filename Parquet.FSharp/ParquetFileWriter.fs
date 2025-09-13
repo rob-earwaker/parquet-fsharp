@@ -29,53 +29,70 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 Total_byte_size = 0,
                 Num_rows = records.Length,
                 File_offset = stream.Position)
-        for column in Dremel.shred records do
-            let columnMetaData =
-                Thrift.ColumnMetaData(
-                    Encodings = ResizeArray([ Thrift.Encoding.PLAIN ]),
-                    Path_in_schema = ResizeArray([ column.FieldInfo.Name ]),
-                    Codec = Thrift.CompressionCodec.UNCOMPRESSED,
-                    Num_values = column.Values.Length,
-                    // Assume only data pages for now.
-                    Data_page_offset = stream.Position)
-            let dataPageHeader =
-                Thrift.DataPageHeader(
-                    Num_values = column.Values.Length,
-                    Definition_level_encoding = Thrift.Encoding.RLE,
-                    Repetition_level_encoding = Thrift.Encoding.RLE)
-            let type', encoding, dataBytes =
+        let columns = Dremel.shred records
+        for column in columns do
+            let repetitionLevelEncoding, repetitionLevelBytes =
+                match column.RepetitionLevels with
+                | Option.Some repetitionLevels ->
+                    let encoding = Thrift.Encoding.PLAIN
+                    let bytes = Encoding.Plain.Int32.encode repetitionLevels
+                    encoding, bytes
+                | Option.None -> Thrift.Encoding.PLAIN, [||]
+            let definitionLevelEncoding, definitionLevelBytes =
+                match column.DefinitionLevels with
+                | Option.Some definitionLevels ->
+                    let encoding = Thrift.Encoding.PLAIN
+                    let bytes = Encoding.Plain.Int32.encode definitionLevels
+                    encoding, bytes
+                | Option.None -> Thrift.Encoding.PLAIN, [||]
+            let valueType, valueEncoding, valueBytes =
                 match column.Values.GetType().GetElementType() with
-                | DotnetType.Bool ->
+                | dotnetType when dotnetType = typeof<bool> ->
                     let values = column.Values :?> bool[]
                     let type' = Thrift.Type.BOOLEAN
                     let encoding = Thrift.Encoding.PLAIN
                     let bytes = Encoding.Plain.Bool.encode values
                     type', encoding, bytes
-                | DotnetType.Int32 ->
+                | dotnetType when dotnetType = typeof<int> ->
                     let values = column.Values :?> int[]
                     let type' = Thrift.Type.INT32
                     let encoding = Thrift.Encoding.PLAIN
                     let bytes = Encoding.Plain.Int32.encode values
                     type', encoding, bytes
                 | dotnetType -> failwith $"unsupported type {dotnetType.FullName}"
-            dataPageHeader.Encoding <- encoding
+            let dataPageUncompressedSize =
+                repetitionLevelBytes.Length
+                + definitionLevelBytes.Length
+                + valueBytes.Length
             let pageHeader =
                 Thrift.PageHeader(
                     Type = Thrift.PageType.DATA_PAGE,
-                    Uncompressed_page_size = dataBytes.Length,
-                    Compressed_page_size = dataBytes.Length,
-                    Data_page_header = dataPageHeader)
+                    Uncompressed_page_size = dataPageUncompressedSize,
+                    Compressed_page_size = dataPageUncompressedSize,
+                    Data_page_header = Thrift.DataPageHeader(
+                        Num_values = column.ValueCount,
+                        Encoding = valueEncoding,
+                        Definition_level_encoding = definitionLevelEncoding,
+                        Repetition_level_encoding = repetitionLevelEncoding))
             let pageHeaderBytes = Thrift.Serialization.serialize pageHeader
-            let startPosition = stream.Position
+            let dataPageOffset = stream.Position
             Stream.writeBytes stream pageHeaderBytes
-            Stream.writeBytes stream dataBytes
-            columnMetaData.Type <- type'
-            columnMetaData.Total_uncompressed_size <- stream.Position - startPosition
-            columnMetaData.Total_compressed_size <- columnMetaData.Total_uncompressed_size
+            Stream.writeBytes stream repetitionLevelBytes
+            Stream.writeBytes stream definitionLevelBytes
+            Stream.writeBytes stream valueBytes
+            let columnTotalUncompressedSize = stream.Position - dataPageOffset
             let columnChunk =
                 Thrift.ColumnChunk(
                     File_offset = 0,
-                    Meta_data = columnMetaData)
+                    Meta_data = Thrift.ColumnMetaData(
+                        Type = valueType,
+                        Encodings = ResizeArray([ Thrift.Encoding.PLAIN ]),
+                        Path_in_schema = ResizeArray([ column.FieldInfo.Name ]),
+                        Codec = Thrift.CompressionCodec.UNCOMPRESSED,
+                        Num_values = column.ValueCount,
+                        Total_uncompressed_size = columnTotalUncompressedSize,
+                        Total_compressed_size  = columnTotalUncompressedSize,
+                        Data_page_offset = dataPageOffset))
             rowGroup.Columns.Add(columnChunk)
         fileMetaData.Row_groups.Add(rowGroup)
         fileMetaData.Num_rows <- fileMetaData.Num_rows + rowGroup.Num_rows

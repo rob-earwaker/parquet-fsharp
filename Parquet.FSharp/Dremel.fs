@@ -17,32 +17,28 @@ module Levels =
         Levels.Repetition = 0
         Levels.Definition = 0 }
 
-    //let incrementRepetition (levels: Levels) =
-    //    { levels with Repetition = levels.Repetition + 1 }
-
     let incrementDefinition (levels: Levels) =
         { levels with Definition = levels.Definition + 1 }
 
 let private traverseRecord (recordInfo: RecordInfo) parentLevels record =
     seq {
         for fieldInfo in recordInfo.Fields do
-            let fieldValue = fieldInfo.GetValue record
-            let primitiveValue = fieldInfo.DotnetType.ConvertValueToPrimitive fieldValue
+            let primitiveValue = fieldInfo.GetPrimitiveValue record
             let levels =
-                if fieldInfo.DotnetType.IsOptional
+                if fieldInfo.IsOptional
                     && not (isNull primitiveValue)
                 then Levels.incrementDefinition parentLevels
                 else parentLevels
             yield {
                 Value.FieldName = fieldInfo.Name
-                Value.Object = fieldValue
+                Value.Object = primitiveValue
                 Value.Levels = levels }
     }
 
 type ColumnBuilder(fieldInfo: FieldInfo) =
     // Derive these from schema.
     let repetitionLevelsRequired = false
-    let definitionLevelsRequired = fieldInfo.DotnetType.IsOptional
+    let definitionLevelsRequired = fieldInfo.IsOptional
 
     let mutable valueCount = 0
     let values = ResizeArray()
@@ -59,11 +55,14 @@ type ColumnBuilder(fieldInfo: FieldInfo) =
             definitionLevels.Add(value.Levels.Definition)
 
     member this.BuildColumn() =
-        let primitiveType = fieldInfo.DotnetType.PrimitiveType
-        let valuesArray = Array.CreateInstance(primitiveType, values.Count)
-        for index in [ 0 .. values.Count - 1 ] do
-            let value = values[index]
-            valuesArray.SetValue(value, index)
+        let columnValues =
+            match fieldInfo.Primitive.Type with
+            | PrimitiveType.Bool ->
+                let values = values |> Seq.cast<bool> |> Array.ofSeq
+                ColumnValues.Bool values
+            | PrimitiveType.Int32 ->
+                let values = values |> Seq.cast<int> |> Array.ofSeq
+                ColumnValues.Int32 values
         let repetitionLevels =
             if repetitionLevelsRequired
             then Option.Some (Array.ofSeq repetitionLevels)
@@ -74,7 +73,7 @@ type ColumnBuilder(fieldInfo: FieldInfo) =
             else Option.None
         { Column.FieldInfo = fieldInfo
           Column.ValueCount = valueCount
-          Column.Values = valuesArray
+          Column.Values = columnValues
           Column.RepetitionLevels = repetitionLevels
           Column.DefinitionLevels = definitionLevels }
 

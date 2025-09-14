@@ -1,10 +1,12 @@
 ﻿namespace Parquet.FSharp
 
-open System
+type ColumnValues =
+    | Bool of bool[]
+    | Int32 of int[]
 
 type Column = {
     FieldInfo: FieldInfo
     ValueCount: int
-    Values: Array
+    Values: ColumnValues
     RepetitionLevels: int[] option
     DefinitionLevels: int[] option }

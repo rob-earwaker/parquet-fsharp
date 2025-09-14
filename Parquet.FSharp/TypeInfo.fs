@@ -4,17 +4,28 @@ open FSharp.Reflection
 open System
 open System.Reflection
 
-type DotnetTypeInfo = {
-    SourceType: Type
+type PrimitiveType =
+    | Bool
+    | Int32
+
+type Primitive = {
+    Type: PrimitiveType
+    DotnetType: Type
+    Schema: Schema.ValueType }
+
+type private DotnetTypeInfo = {
+    DotnetType: Type
     IsOptional: bool
-    PrimitiveType: Type
-    ConvertValueToPrimitive: objnull -> obj
+    Primitive: Primitive
+    ConvertValueToPrimitive: obj -> obj
     Schema: Schema.Value }
 
 type FieldInfo = {
     Name: string
-    DotnetType: DotnetTypeInfo
-    GetValue: obj -> objnull
+    DotnetType: Type
+    IsOptional: bool
+    Primitive: Primitive
+    GetPrimitiveValue: obj -> obj
     Schema: Schema.Field }
 
 type RecordInfo = {
@@ -42,6 +53,15 @@ type RecordInfo = {
 //        let isRequired = not isOptionType'
 //        create valueType isRequired
 
+module Primitive =
+    let private create type' dotnetType schema =
+        { Primitive.Type = type'
+          Primitive.DotnetType = dotnetType
+          Primitive.Schema = schema }
+
+    let Bool = create PrimitiveType.Bool typeof<bool> Schema.ValueType.Bool
+    let Int32 = create PrimitiveType.Int32 typeof<int> Schema.ValueType.Int32
+
 module DotnetType =
     let (|Bool|_|) dotnetType =
         if dotnetType = typeof<bool>
@@ -59,61 +79,65 @@ module DotnetType =
         then Option.Some ()
         else Option.None
 
-    let (|NullableInt32|_|) dotnetType =
-        if dotnetType = typeof<Nullable<int>>
-        then Option.Some ()
-        else Option.None
-
-module DotnetTypeInfo =
-    let create sourceType isOptional primitiveType convertValueToPrimitive schema =
-        { DotnetTypeInfo.SourceType = sourceType
+module private DotnetTypeInfo =
+    let create dotnetType isOptional primitive convertValueToPrimitive schema =
+        { DotnetTypeInfo.DotnetType = dotnetType
           DotnetTypeInfo.IsOptional = isOptional
-          DotnetTypeInfo.PrimitiveType = primitiveType
+          DotnetTypeInfo.Primitive = primitive
           DotnetTypeInfo.ConvertValueToPrimitive = convertValueToPrimitive
           DotnetTypeInfo.Schema = schema }
 
-    let private ofPrimitive sourceType valueType =
+    let private ofPrimitive (primitive: Primitive) =
+        let dotnetType = primitive.DotnetType
         let isOptional = false
-        let primitiveType = sourceType
         let convertValueToPrimitive = id
-        let schema = Schema.Value.create valueType isOptional
-        create sourceType isOptional primitiveType convertValueToPrimitive schema
+        let schema = Schema.Value.create primitive.Schema isOptional
+        create dotnetType isOptional primitive convertValueToPrimitive schema
 
-    let private ofNullable (sourceType: Type) =
-        let valueDotnetType = Nullable.GetUnderlyingType(sourceType)
-        let valueTypeInfo = DotnetTypeInfo.ofType valueDotnetType
+    let private ofNullable (dotnetType: Type) =
+        let valueTypeInfo =
+            let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
+            DotnetTypeInfo.ofType valueDotnetType
         let isOptional = true
-        let primitiveType = valueTypeInfo.PrimitiveType
-        let getValueMethod = sourceType.GetProperty("Value").GetGetMethod()
-        let convertValueToPrimitive (nullableValue: objnull) =
+        let primitive = valueTypeInfo.Primitive
+        let getValueMethod = dotnetType.GetProperty("Value").GetGetMethod()
+        let convertValueToPrimitive (nullableValue: obj) =
             if isNull nullableValue
             then null
             else
                 let value = getValueMethod.Invoke(nullableValue, [||])
                 valueTypeInfo.ConvertValueToPrimitive value
         let schema = Schema.Value.create valueTypeInfo.Schema.Type isOptional
-        create sourceType isOptional primitiveType convertValueToPrimitive schema
+        create dotnetType isOptional primitive convertValueToPrimitive schema
 
-    let ofType (sourceType: Type) =
-        match sourceType with
-        | DotnetType.Bool -> ofPrimitive sourceType Schema.ValueType.Bool
-        | DotnetType.Int32 -> ofPrimitive sourceType Schema.ValueType.Int32
-        | DotnetType.Nullable -> ofNullable sourceType
-        | _ -> failwith $"unsupported type '{sourceType.FullName}'"
+    let ofType (dotnetType: Type) : DotnetTypeInfo =
+        match dotnetType with
+        | DotnetType.Bool -> ofPrimitive Primitive.Bool
+        | DotnetType.Int32 -> ofPrimitive Primitive.Int32
+        | DotnetType.Nullable -> ofNullable dotnetType
+        | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
 
 module FieldInfo =
-    let create name dotnetTypeInfo getValue schema =
+    let create name dotnetType isOptional primitive getPrimitiveValue schema =
         { FieldInfo.Name = name
-          FieldInfo.DotnetType = dotnetTypeInfo
-          FieldInfo.GetValue = getValue
+          FieldInfo.DotnetType = dotnetType
+          FieldInfo.IsOptional = isOptional
+          FieldInfo.Primitive = primitive
+          FieldInfo.GetPrimitiveValue = getPrimitiveValue
           FieldInfo.Schema = schema }
 
     let ofField (field: PropertyInfo) =
+        let dotnetType = field.PropertyType
+        let dotnetTypeInfo = DotnetTypeInfo.ofType dotnetType
         let name = field.Name
-        let dotnetTypeInfo = DotnetTypeInfo.ofType field.PropertyType
+        let isOptional = dotnetTypeInfo.IsOptional
+        let primitive = dotnetTypeInfo.Primitive
         let getValue = FSharpValue.PreComputeRecordFieldReader(field)
+        let getPrimitiveValue (record: obj) =
+            let value = getValue record
+            dotnetTypeInfo.ConvertValueToPrimitive value
         let schema = Schema.Field.create name dotnetTypeInfo.Schema
-        create name dotnetTypeInfo getValue schema
+        create name dotnetType isOptional primitive getPrimitiveValue schema
 
 module RecordInfo =
     let create fields schema =

@@ -45,29 +45,24 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 match column.DefinitionLevels with
                 | Option.Some definitionLevels ->
                     let encoding = Thrift.Encoding.RLE
-                    let maxValue =
-                        if column.FieldInfo.DotnetType.IsOptional
-                        then 1 else 0
+                    let maxValue = if column.FieldInfo.IsOptional then 1 else 0
                     let bytes =
                         Encoding.Int32.RunLengthBitPackingHybrid.encode
                             definitionLevels maxValue
                     encoding, bytes
                 | Option.None -> Thrift.Encoding.RLE, [||]
             let valueType, valueEncoding, valueBytes =
-                match column.Values.GetType().GetElementType() with
-                | dotnetType when dotnetType = typeof<bool> ->
-                    let values = column.Values :?> bool[]
+                match column.Values with
+                | ColumnValues.Bool values ->
                     let type' = Thrift.Type.BOOLEAN
                     let encoding = Thrift.Encoding.PLAIN
                     let bytes = Encoding.Bool.Plain.encode values
                     type', encoding, bytes
-                | dotnetType when dotnetType = typeof<int> ->
-                    let values = column.Values :?> int[]
+                | ColumnValues.Int32 values ->
                     let type' = Thrift.Type.INT32
                     let encoding = Thrift.Encoding.PLAIN
                     let bytes = Encoding.Int32.Plain.encode values
                     type', encoding, bytes
-                | dotnetType -> failwith $"unsupported type {dotnetType.FullName}"
             let dataPageUncompressedSize =
                 repetitionLevelBytes.Length
                 + definitionLevelBytes.Length

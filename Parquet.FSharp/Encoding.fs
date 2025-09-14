@@ -25,15 +25,8 @@ module Int32 =
             stream.ToArray()
 
     module RunLengthBitPackingHybrid =
-        // The run length and bit packed headers are a 4-byte word with one bit
-        // reserved to differentiate between the two run types. The remaining
-        // 31 bits are used to store the run length. This means the maximum run
-        // length is the maximum integer that can be represented by 31 bits,
-        // i.e. {2^31 - 1}.
-        let private MaxRunLength = int (2. ** 31 - 1.)
-
         let private writeRunLengthRun stream count value byteWidth =
-            let header = uint64 (count <<< 1)
+            let header = uint32 count <<< 1
             Stream.writeUleb128 stream header
             Stream.writeInt32FixedWidth stream value byteWidth
 
@@ -51,12 +44,6 @@ module Int32 =
                     // Value hasn't changed. Update the count to say we've seen
                     // another of the same value.
                     count <- count + 1
-                    // If the count has now reached the maximum run length then
-                    // write the value and count as a new run and reset the
-                    // count to zero.
-                    if count = MaxRunLength then
-                        writeRunLengthRun stream count previousValue byteWidth
-                        count <- 0
                 else
                     // Value has changed. Write the previous value and count as
                     // a new run. Update the previous value to the new value and
@@ -64,10 +51,9 @@ module Int32 =
                     writeRunLengthRun stream count previousValue byteWidth
                     previousValue <- value
                     count <- 1
-            // The loop will usually terminate without writing the last run of
-            // values, so write this last run if the count is greater than zero.
-            if count > 0 then
-                writeRunLengthRun stream count previousValue byteWidth
+            // The loop will always terminate without writing the last run of
+            // values, so write this last run.
+            writeRunLengthRun stream count previousValue byteWidth
             stream.ToArray()
 
         let encode values (maxValue: int) =

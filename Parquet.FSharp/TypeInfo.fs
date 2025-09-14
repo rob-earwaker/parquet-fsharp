@@ -79,6 +79,12 @@ module DotnetType =
         then Option.Some ()
         else Option.None
 
+    let (|Option|_|) (dotnetType: Type) =
+        if dotnetType.IsGenericType
+            && dotnetType.GetGenericTypeDefinition() = typedefof<Option<_>>
+        then Option.Some ()
+        else Option.None
+
 module private DotnetTypeInfo =
     let create dotnetType isOptional primitive convertValueToPrimitive schema =
         { DotnetTypeInfo.DotnetType = dotnetType
@@ -110,11 +116,32 @@ module private DotnetTypeInfo =
         let schema = Schema.Value.create valueTypeInfo.Schema.Type isOptional
         create dotnetType isOptional primitive convertValueToPrimitive schema
 
+    let private ofOption (dotnetType: Type) =
+        let valueTypeInfo =
+            let valueDotnetType = dotnetType.GetGenericArguments()[0]
+            DotnetTypeInfo.ofType valueDotnetType
+        let isOptional = true
+        let primitive = valueTypeInfo.Primitive
+        let unionCases = FSharpType.GetUnionCases(dotnetType)
+        let noneCase = unionCases |> Array.find _.Name.Equals("None")
+        let someCase = unionCases |> Array.find _.Name.Equals("Some")
+        let getOptionTag = FSharpValue.PreComputeUnionTagReader(dotnetType)
+        let getSomeFields = FSharpValue.PreComputeUnionReader(someCase)
+        let convertValueToPrimitive (valueOption: obj) =
+            if getOptionTag valueOption = noneCase.Tag
+            then null
+            else
+                let value = Array.head (getSomeFields valueOption)
+                valueTypeInfo.ConvertValueToPrimitive value
+        let schema = Schema.Value.create valueTypeInfo.Schema.Type isOptional
+        create dotnetType isOptional primitive convertValueToPrimitive schema
+
     let ofType (dotnetType: Type) : DotnetTypeInfo =
         match dotnetType with
         | DotnetType.Bool -> ofPrimitive Primitive.Bool
         | DotnetType.Int32 -> ofPrimitive Primitive.Int32
         | DotnetType.Nullable -> ofNullable dotnetType
+        | DotnetType.Option -> ofOption dotnetType
         | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
 
 module FieldInfo =

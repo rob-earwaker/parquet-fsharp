@@ -13,47 +13,31 @@ type Primitive = {
     DotnetType: Type
     Schema: Schema.ValueType }
 
-type private DotnetTypeInfo = {
+type AtomicInfo = {
     DotnetType: Type
     IsOptional: bool
     Primitive: Primitive
     ConvertValueToPrimitive: obj -> obj
     Schema: Schema.Value }
 
+type ValueInfo =
+    | Atomic of AtomicInfo
+    | Record of RecordInfo
+
 type FieldInfo = {
     Name: string
     DotnetType: Type
-    IsOptional: bool
-    Primitive: Primitive
-    GetPrimitiveValue: obj -> obj
+    ValueInfo: ValueInfo
+    GetValue: obj -> obj
     Schema: Schema.Field }
 
 type RecordInfo = {
+    DotnetType: Type
+    IsOptional: bool
     Fields: FieldInfo[]
-    Schema: Schema.RecordType }
+    Schema: Schema.Value }
 
-//module private NestedTypeInfo =
-//    let create valueType isRequired =
-//        { NestedTypeInfo.Type = valueType
-//          NestedTypeInfo.IsRequired = isRequired }
-
-//    let private isOptionType (dotnetType: Type) =
-//        dotnetType.IsGenericType
-//        && dotnetType.GetGenericTypeDefinition() = typedefof<Option<_>>
-
-//    let ofType dotnetType =
-//        let isOptionType' = isOptionType dotnetType
-//        let dotnetType =
-//            if isOptionType'
-//            then dotnetType.GetGenericArguments()[0]
-//            else dotnetType
-//        if isOptionType dotnetType then
-//            failwith "multi-level option types are not supported"
-//        let valueType = ValueType.ofType dotnetType
-//        let isRequired = not isOptionType'
-//        create valueType isRequired
-
-module Primitive =
+module private Primitive =
     let private create type' dotnetType schema =
         { Primitive.Type = type'
           Primitive.DotnetType = dotnetType
@@ -62,7 +46,25 @@ module Primitive =
     let Bool = create PrimitiveType.Bool typeof<bool> Schema.ValueType.Bool
     let Int32 = create PrimitiveType.Int32 typeof<int> Schema.ValueType.Int32
 
-module DotnetType =
+module private Nullable =
+    let preComputeGetValue (dotnetType: Type) =
+        let getValueMethod = dotnetType.GetProperty("Value").GetGetMethod()
+        fun (nullableValue: obj) -> getValueMethod.Invoke(nullableValue, [||])
+
+module private Option =
+    let preComputeIsNone dotnetType =
+        let unionCases = FSharpType.GetUnionCases(dotnetType)
+        let noneCase = unionCases |> Array.find _.Name.Equals("None")
+        let getOptionTag = FSharpValue.PreComputeUnionTagReader(dotnetType)
+        fun (valueOption: obj) -> getOptionTag valueOption = noneCase.Tag
+
+    let preComputeGetValue dotnetType =
+        let unionCases = FSharpType.GetUnionCases(dotnetType)
+        let someCase = unionCases |> Array.find _.Name.Equals("Some")
+        let getSomeFields = FSharpValue.PreComputeUnionReader(someCase)
+        fun (valueOption: obj) -> Array.head (getSomeFields valueOption)
+
+module private DotnetType =
     let (|Bool|_|) dotnetType =
         if dotnetType = typeof<bool>
         then Option.Some ()
@@ -85,13 +87,18 @@ module DotnetType =
         then Option.Some ()
         else Option.None
 
-module private DotnetTypeInfo =
-    let create dotnetType isOptional primitive convertValueToPrimitive schema =
-        { DotnetTypeInfo.DotnetType = dotnetType
-          DotnetTypeInfo.IsOptional = isOptional
-          DotnetTypeInfo.Primitive = primitive
-          DotnetTypeInfo.ConvertValueToPrimitive = convertValueToPrimitive
-          DotnetTypeInfo.Schema = schema }
+    let (|Record|_|) dotnetType =
+        if FSharpType.IsRecord(dotnetType)
+        then Option.Some ()
+        else Option.None
+
+module private AtomicInfo =
+    let private create dotnetType isOptional primitive convertValueToPrimitive schema =
+        { AtomicInfo.DotnetType = dotnetType
+          AtomicInfo.IsOptional = isOptional
+          AtomicInfo.Primitive = primitive
+          AtomicInfo.ConvertValueToPrimitive = convertValueToPrimitive
+          AtomicInfo.Schema = schema }
 
     let private ofPrimitive (primitive: Primitive) =
         let dotnetType = primitive.DotnetType
@@ -100,89 +107,133 @@ module private DotnetTypeInfo =
         let schema = Schema.Value.create primitive.Schema isOptional
         create dotnetType isOptional primitive convertValueToPrimitive schema
 
-    let private ofNullable (dotnetType: Type) =
-        let valueTypeInfo =
-            let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
-            DotnetTypeInfo.ofType valueDotnetType
+    let Bool = ofPrimitive Primitive.Bool
+    let Int32 = ofPrimitive Primitive.Int32
+
+    let ofNullable (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
-        let primitive = valueTypeInfo.Primitive
-        let getValueMethod = dotnetType.GetProperty("Value").GetGetMethod()
-        let convertValueToPrimitive (nullableValue: obj) =
+        let primitive = valueInfo.Primitive
+        let getValue = Nullable.preComputeGetValue dotnetType
+        let convertValueToPrimitive nullableValue =
             if isNull nullableValue
             then null
-            else
-                let value = getValueMethod.Invoke(nullableValue, [||])
-                valueTypeInfo.ConvertValueToPrimitive value
-        let schema = Schema.Value.create valueTypeInfo.Schema.Type isOptional
+            else valueInfo.ConvertValueToPrimitive (getValue nullableValue)
+        let schema = Schema.Value.create valueInfo.Schema.Type isOptional
         create dotnetType isOptional primitive convertValueToPrimitive schema
+
+    let ofOption (dotnetType: Type) (valueInfo: AtomicInfo) =
+        let isOptional = true
+        let primitive = valueInfo.Primitive
+        let isNone = Option.preComputeIsNone dotnetType
+        let getValue = Option.preComputeGetValue dotnetType
+        let convertValueToPrimitive (valueOption: obj) =
+            if isNone valueOption
+            then null
+            else valueInfo.ConvertValueToPrimitive (getValue valueOption)
+        let schema = Schema.Value.create valueInfo.Schema.Type isOptional
+        create dotnetType isOptional primitive convertValueToPrimitive schema
+
+module ValueInfo =
+    let private ofNullable (dotnetType: Type) =
+        let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
+        match ValueInfo.ofType valueDotnetType with
+        | ValueInfo.Atomic atomicInfo ->
+            let nullableAtomicInfo = AtomicInfo.ofNullable dotnetType atomicInfo
+            ValueInfo.Atomic nullableAtomicInfo
+        | ValueInfo.Record recordInfo ->
+            let nullableRecordInfo = RecordInfo.ofNullable dotnetType recordInfo
+            ValueInfo.Record nullableRecordInfo
 
     let private ofOption (dotnetType: Type) =
-        let valueTypeInfo =
-            let valueDotnetType = dotnetType.GetGenericArguments()[0]
-            DotnetTypeInfo.ofType valueDotnetType
-        let isOptional = true
-        let primitive = valueTypeInfo.Primitive
-        let unionCases = FSharpType.GetUnionCases(dotnetType)
-        let noneCase = unionCases |> Array.find _.Name.Equals("None")
-        let someCase = unionCases |> Array.find _.Name.Equals("Some")
-        let getOptionTag = FSharpValue.PreComputeUnionTagReader(dotnetType)
-        let getSomeFields = FSharpValue.PreComputeUnionReader(someCase)
-        let convertValueToPrimitive (valueOption: obj) =
-            if getOptionTag valueOption = noneCase.Tag
-            then null
-            else
-                let value = Array.head (getSomeFields valueOption)
-                valueTypeInfo.ConvertValueToPrimitive value
-        let schema = Schema.Value.create valueTypeInfo.Schema.Type isOptional
-        create dotnetType isOptional primitive convertValueToPrimitive schema
+        let valueDotnetType = dotnetType.GetGenericArguments()[0]
+        match ValueInfo.ofType valueDotnetType with
+        | ValueInfo.Atomic atomicInfo ->
+            let atomicOptionInfo = AtomicInfo.ofOption dotnetType atomicInfo
+            ValueInfo.Atomic atomicOptionInfo
+        | ValueInfo.Record recordInfo ->
+            let recordOptionInfo = RecordInfo.ofOption dotnetType recordInfo
+            ValueInfo.Record recordOptionInfo
 
-    let ofType (dotnetType: Type) : DotnetTypeInfo =
+    let ofType (dotnetType: Type) =
         match dotnetType with
-        | DotnetType.Bool -> ofPrimitive Primitive.Bool
-        | DotnetType.Int32 -> ofPrimitive Primitive.Int32
+        | DotnetType.Bool -> ValueInfo.Atomic AtomicInfo.Bool
+        | DotnetType.Int32 -> ValueInfo.Atomic AtomicInfo.Int32
         | DotnetType.Nullable -> ofNullable dotnetType
         | DotnetType.Option -> ofOption dotnetType
+        | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
         | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
 
-module FieldInfo =
-    let create name dotnetType isOptional primitive getPrimitiveValue schema =
+    let of'<'Value> =
+        ofType typeof<'Value>
+
+    let schema valueInfo =
+        match valueInfo with
+        | ValueInfo.Atomic atomicInfo -> atomicInfo.Schema
+        | ValueInfo.Record recordInfo -> recordInfo.Schema
+
+module private FieldInfo =
+    let create name dotnetType valueInfo getValue schema =
         { FieldInfo.Name = name
           FieldInfo.DotnetType = dotnetType
-          FieldInfo.IsOptional = isOptional
-          FieldInfo.Primitive = primitive
-          FieldInfo.GetPrimitiveValue = getPrimitiveValue
+          FieldInfo.ValueInfo = valueInfo
+          FieldInfo.GetValue = getValue
           FieldInfo.Schema = schema }
 
     let ofField (field: PropertyInfo) =
-        let dotnetType = field.PropertyType
-        let dotnetTypeInfo = DotnetTypeInfo.ofType dotnetType
         let name = field.Name
-        let isOptional = dotnetTypeInfo.IsOptional
-        let primitive = dotnetTypeInfo.Primitive
+        let dotnetType = field.PropertyType
+        let valueInfo = ValueInfo.ofType dotnetType
         let getValue = FSharpValue.PreComputeRecordFieldReader(field)
-        let getPrimitiveValue (record: obj) =
-            let value = getValue record
-            dotnetTypeInfo.ConvertValueToPrimitive value
-        let schema = Schema.Field.create name dotnetTypeInfo.Schema
-        create name dotnetType isOptional primitive getPrimitiveValue schema
+        let schema =
+            let value = ValueInfo.schema valueInfo
+            Schema.Field.create name value
+        create name dotnetType valueInfo getValue schema
 
-module RecordInfo =
-    let create fields schema =
-        { RecordInfo.Fields = fields
+module private RecordInfo =
+    let create dotnetType isOptional fields schema =
+        { RecordInfo.DotnetType = dotnetType
+          RecordInfo.IsOptional = isOptional
+          RecordInfo.Fields = fields
           RecordInfo.Schema = schema }
 
-    let ofRecordType dotnetType =
-        if not (FSharpType.IsRecord(dotnetType))
-        then failwith "type is not an F# record type"
-        else
-            let fields =
-                FSharpType.GetRecordFields(dotnetType)
-                |> Array.map FieldInfo.ofField
-            let schema =
-                fields
-                |> Array.map _.Schema
-                |> Schema.RecordType.create
-            RecordInfo.create fields schema
+    let private createSchema isOptional (fields: FieldInfo[]) =
+        let fields = fields |> Array.map _.Schema
+        let valueType = Schema.ValueType.record fields
+        Schema.Value.create valueType isOptional
 
-    let ofRecord<'Record> =
-        ofRecordType typeof<'Record>
+    let ofNullable dotnetType (valueInfo: RecordInfo) =
+        let isOptional = true
+        let getValue = Nullable.preComputeGetValue dotnetType
+        let fields =
+            valueInfo.Fields
+            |> Array.map (fun fieldInfo ->
+                let getValue (nullableRecord: obj) =
+                    if isNull nullableRecord
+                    then null
+                    else fieldInfo.GetValue (getValue nullableRecord)
+                { fieldInfo with GetValue = getValue })
+        let schema = createSchema isOptional fields
+        create dotnetType isOptional fields schema
+
+    let ofOption dotnetType (valueInfo: RecordInfo) =
+        let isOptional = true
+        let isNone = Option.preComputeIsNone dotnetType
+        let getValue = Option.preComputeGetValue dotnetType
+        let fields =
+            valueInfo.Fields
+            |> Array.map (fun fieldInfo ->
+                let getValue (recordOption: obj) =
+                    if isNone recordOption
+                    then null
+                    else fieldInfo.GetValue (getValue recordOption)
+                { fieldInfo with GetValue = getValue })
+        let schema = createSchema isOptional fields
+        create dotnetType isOptional fields schema
+
+    let ofRecord dotnetType =
+        let isOptional = false
+        let fields =
+            FSharpType.GetRecordFields(dotnetType)
+            |> Array.map FieldInfo.ofField
+        let schema = createSchema isOptional fields
+        create dotnetType isOptional fields schema

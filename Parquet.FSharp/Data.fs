@@ -5,7 +5,9 @@ type ColumnValues =
     | Int32 of int[]
 
 type Column = {
-    FieldInfo: FieldInfo
+    Path: string[]
+    MaxRepetitionLevel: int
+    MaxDefinitionLevel: int
     ValueCount: int
     Values: ColumnValues
     RepetitionLevels: int[] option

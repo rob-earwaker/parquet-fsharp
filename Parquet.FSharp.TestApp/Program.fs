@@ -10,13 +10,14 @@ type Record1 = {
     Field3: float
     Field4: string }
 
+type Field3 = {
+    Field31: bool
+    Field32: int option }
+
 type Record2 = {
-    Field1: bool
+    Field1: Nullable<bool>
     Field2: int
-    Field3: Nullable<bool>
-    Field4: Nullable<int>
-    Field5: bool option
-    Field6: int option }
+    Field3: Field3 option }
 
 type Gps = {
     Latitude: float
@@ -72,6 +73,15 @@ module Random =
         then Option.None
         else Option.Some (int ())
 
+    let field3 () =
+        { Field3.Field31 = bool ()
+          Field3.Field32 = intOption () }
+
+    let field3Option () =
+        if Random.NextDouble() >= 0.75
+        then Option.None
+        else Option.Some (field3 ())
+
     let record1 () =
         { Record1.Field1 = bool ()
           Record1.Field2 = int ()
@@ -79,16 +89,13 @@ module Random =
           Record1.Field4 = string () }
 
     let record2 () =
-        { Record2.Field1 = bool ()
+        { Record2.Field1 = nullableBool ()
           Record2.Field2 = int ()
-          Record2.Field3 = nullableBool ()
-          Record2.Field4 = nullableInt ()
-          Record2.Field5 = boolOption ()
-          Record2.Field6 = intOption () }
+          Record2.Field3 = field3Option () }
 
 [<EntryPoint>]
 let main _ =
-    let records = Array.init 10 (fun _ -> Random.record2 ())
+    let records = Array.init 20 (fun _ -> Random.record2 ())
     use stream = new MemoryStream()
     use fileWriter = new ParquetStreamWriter<Record2>(stream)
     fileWriter.WriteHeader()

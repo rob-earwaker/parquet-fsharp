@@ -6,7 +6,7 @@ open System.IO
 
 type ParquetStreamWriter<'Record>(stream: Stream) =
     let magicNumber = "PAR1"
-    let recordInfo = RecordInfo.ofRecord<'Record>
+    let recordInfo = RecordInfo.ofRecord typeof<'Record>
     let schema = recordInfo.Fields |> Array.map _.Schema |> Schema.create
     let fileMetaData =
         Thrift.FileMetaData(
@@ -35,20 +35,20 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 match column.RepetitionLevels with
                 | Option.Some repetitionLevels ->
                     let encoding = Thrift.Encoding.RLE
-                    let maxValue = 0
                     let bytes =
                         Encoding.Int32.RunLengthBitPackingHybrid.encode
-                            repetitionLevels maxValue
+                            repetitionLevels
+                            column.MaxRepetitionLevel
                     encoding, bytes
                 | Option.None -> Thrift.Encoding.RLE, [||]
             let definitionLevelEncoding, definitionLevelBytes =
                 match column.DefinitionLevels with
                 | Option.Some definitionLevels ->
                     let encoding = Thrift.Encoding.RLE
-                    let maxValue = if column.FieldInfo.IsOptional then 1 else 0
                     let bytes =
                         Encoding.Int32.RunLengthBitPackingHybrid.encode
-                            definitionLevels maxValue
+                            definitionLevels
+                            column.MaxDefinitionLevel
                     encoding, bytes
                 | Option.None -> Thrift.Encoding.RLE, [||]
             let valueType, valueEncoding, valueBytes =
@@ -94,7 +94,7 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                     Meta_data = Thrift.ColumnMetaData(
                         Type = valueType,
                         Encodings = columnEncodings,
-                        Path_in_schema = ResizeArray([ column.FieldInfo.Name ]),
+                        Path_in_schema = ResizeArray(column.Path),
                         Codec = Thrift.CompressionCodec.UNCOMPRESSED,
                         Num_values = column.ValueCount,
                         Total_uncompressed_size = columnTotalUncompressedSize,

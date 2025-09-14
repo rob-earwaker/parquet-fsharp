@@ -11,8 +11,7 @@ type Field = {
 
 type Value = {
     Type: ValueType
-    IsOptional: bool
-    IsPrimitive: bool }
+    IsOptional: bool }
 
 type ValueType =
     | Bool
@@ -43,21 +42,10 @@ module ValueType =
     let list element =
         ValueType.List (ListType.create element)
 
-    let isPrimitive valueType =
-        match valueType with
-        | ValueType.Bool -> true
-        | ValueType.Int32 -> true
-        | ValueType.ByteArray -> true
-        | ValueType.String -> true
-        | ValueType.Record _ -> false
-        | ValueType.List _ -> false
-
 module Value =
     let create valueType isOptional =
-        let isPrimitive = ValueType.isPrimitive valueType
         { Value.Type = valueType
-          Value.IsOptional = isOptional
-          Value.IsPrimitive = isPrimitive }
+          Value.IsOptional = isOptional }
 
     let toThrift name (value: Value) =
         seq {

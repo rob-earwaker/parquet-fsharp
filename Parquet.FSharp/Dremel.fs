@@ -24,7 +24,7 @@ module private Levels =
     let incrementDefinition levels =
         setDefinition levels (levels.Definition + 1)
 
-type private AtomicShredder(atomicInfo: AtomicInfo, path, maxLevels: Levels) =
+type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels: Levels) =
     let repetitionLevelsRequired = maxLevels.Repetition > 0
     let definitionLevelsRequired = maxLevels.Definition > 0
 
@@ -62,11 +62,10 @@ type private AtomicShredder(atomicInfo: AtomicInfo, path, maxLevels: Levels) =
             if definitionLevelsRequired
             then Option.Some (Array.ofSeq definitionLevels)
             else Option.None
-        { Column.Path = path
+        { Column.ValueCount = valueCount
+          Column.Values = columnValues
           Column.MaxRepetitionLevel = maxLevels.Repetition
           Column.MaxDefinitionLevel = maxLevels.Definition
-          Column.ValueCount = valueCount
-          Column.Values = columnValues
           Column.RepetitionLevels = repetitionLevels
           Column.DefinitionLevels = definitionLevels }
 
@@ -84,15 +83,15 @@ type private ValueShredder =
     | Record of RecordShredder
 
 module private AtomicShredder =
-    let forAtomic (atomicInfo: AtomicInfo) path parentMaxLevels =
+    let forAtomic (atomicInfo: AtomicInfo) parentMaxLevels =
         let maxLevels =
             if atomicInfo.IsOptional
             then Levels.incrementDefinition parentMaxLevels
             else parentMaxLevels
-        AtomicShredder(atomicInfo, path, maxLevels)
+        AtomicShredder(atomicInfo, maxLevels)
 
 module private RecordShredder =
-    let forRecord (recordInfo: RecordInfo) path parentMaxLevels =
+    let forRecord (recordInfo: RecordInfo) parentMaxLevels =
         let maxLevels =
             if recordInfo.IsOptional
             then Levels.incrementDefinition parentMaxLevels
@@ -100,8 +99,7 @@ module private RecordShredder =
         let fieldShredders =
             recordInfo.Fields
             |> Array.map (fun fieldInfo ->
-                let path = Array.append path [| fieldInfo.Name |]
-                let valueShredder = ValueShredder.forValue fieldInfo.ValueInfo path maxLevels
+                let valueShredder = ValueShredder.forValue fieldInfo.ValueInfo maxLevels
                 { FieldShredder.FieldInfo = fieldInfo
                   FieldShredder.ValueShredder = valueShredder })
         { RecordShredder.RecordInfo = recordInfo
@@ -115,13 +113,13 @@ module private RecordShredder =
         }
 
 module private ValueShredder =
-    let forValue (valueInfo: ValueInfo) path parentMaxLevels =
+    let forValue (valueInfo: ValueInfo) parentMaxLevels =
         match valueInfo with
         | ValueInfo.Atomic atomicInfo ->
-            AtomicShredder.forAtomic atomicInfo path parentMaxLevels
+            AtomicShredder.forAtomic atomicInfo parentMaxLevels
             |> ValueShredder.Atomic
         | ValueInfo.Record recordInfo ->
-            RecordShredder.forRecord recordInfo path parentMaxLevels
+            RecordShredder.forRecord recordInfo parentMaxLevels
             |> ValueShredder.Record
 
     let buildColumns (valueShredder: ValueShredder) =
@@ -158,9 +156,8 @@ let rec private shredRecord (recordShredder: RecordShredder) parentLevels record
 
 let shred (records: 'Record[]) =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
-    let path = [||]
     let maxLevels = Levels.Default
-    let recordShredder = RecordShredder.forRecord recordInfo path maxLevels
+    let recordShredder = RecordShredder.forRecord recordInfo maxLevels
     for record in records do
         let levels = Levels.Default
         let recordValue = box record

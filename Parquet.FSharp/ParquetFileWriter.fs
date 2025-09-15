@@ -18,6 +18,24 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 $"{Library.Name.Value} version {Library.Version.Value}"
                 + $" (build {Library.Revision.Value})")
 
+    let columnPaths =
+        let columnPaths = ResizeArray()
+        let currentPath = ResizeArray()
+        let mutable nextIndex = 1
+        let rec processGroup numChildren =
+            for _ in [ 0 .. numChildren - 1 ] do
+                let schemaElement = fileMetaData.Schema[nextIndex]
+                nextIndex <- nextIndex + 1
+                currentPath.Add(schemaElement.Name)
+                if schemaElement.__isset.num_children then
+                    processGroup schemaElement.Num_children
+                else
+                    columnPaths.Add(Array.ofSeq currentPath)
+                currentPath.RemoveAt(currentPath.Count - 1)
+        let rootElement = fileMetaData.Schema[0]
+        processGroup rootElement.Num_children
+        Array.ofSeq columnPaths
+
     member this.WriteHeader() =
         Stream.writeAscii stream magicNumber
 
@@ -30,7 +48,7 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 Num_rows = records.Length,
                 File_offset = stream.Position)
         let columns = Dremel.shred records
-        for column in columns do
+        for columnPath, column in Array.zip columnPaths columns do
             let repetitionLevelEncoding, repetitionLevelBytes =
                 match column.RepetitionLevels with
                 | Option.Some repetitionLevels ->
@@ -94,7 +112,7 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                     Meta_data = Thrift.ColumnMetaData(
                         Type = valueType,
                         Encodings = columnEncodings,
-                        Path_in_schema = ResizeArray(column.Path),
+                        Path_in_schema = ResizeArray(columnPath),
                         Codec = Thrift.CompressionCodec.UNCOMPRESSED,
                         Num_values = column.ValueCount,
                         Total_uncompressed_size = columnTotalUncompressedSize,

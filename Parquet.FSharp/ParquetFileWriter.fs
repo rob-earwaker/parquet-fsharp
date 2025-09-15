@@ -7,7 +7,7 @@ open System.IO
 type ParquetStreamWriter<'Record>(stream: Stream) =
     let magicNumber = "PAR1"
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
-    let schema = recordInfo.Fields |> Array.map _.Schema |> Schema.create
+    let schema = Schema.ofRecordInfo recordInfo
     let fileMetaData =
         Thrift.FileMetaData(
             Version = 1,

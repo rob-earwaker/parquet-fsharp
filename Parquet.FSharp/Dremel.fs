@@ -47,7 +47,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, path, maxLevels: Levels) =
 
     member this.BuildColumn() =
         let columnValues =
-            match atomicInfo.Primitive.Type with
+            match atomicInfo.PrimitiveType with
             | PrimitiveType.Bool ->
                 let values = values |> Seq.cast<bool> |> Array.ofSeq
                 ColumnValues.Bool values

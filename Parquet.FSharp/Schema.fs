@@ -18,34 +18,57 @@ type ValueType =
     | Int32
     | ByteArray
     | String
-    | Record of RecordType
-    | List of ListType
+    | Record of Record
+    | List of List
 
-type RecordType = {
+type Record = {
     Fields: Field[] }
 
-type ListType = {
+type List = {
     Element: Value }
 
-module ListType =
+module List =
     let create element =
-        { ListType.Element = element }
+        { List.Element = element }
 
-module RecordType =
+module Record =
     let create fields =
-        { RecordType.Fields = fields }
+        { Record.Fields = fields }
+
+    let ofRecordInfo (recordInfo: RecordInfo) =
+        recordInfo.Fields
+        |> Array.map Field.ofFieldInfo
+        |> create
 
 module ValueType =
     let record fields =
-        ValueType.Record (RecordType.create fields)
+        ValueType.Record (Record.create fields)
 
     let list element =
-        ValueType.List (ListType.create element)
+        ValueType.List (List.create element)
+
+    let ofAtomicInfo (atomicInfo: AtomicInfo) =
+        match atomicInfo.PrimitiveType with
+        | PrimitiveType.Bool -> ValueType.Bool
+        | PrimitiveType.Int32 -> ValueType.Int32
+
+    let ofRecordInfo recordInfo =
+        let record = Record.ofRecordInfo recordInfo
+        ValueType.Record record
 
 module Value =
     let create valueType isOptional =
         { Value.Type = valueType
           Value.IsOptional = isOptional }
+
+    let ofValueInfo (valueInfo: ValueInfo) =
+        match valueInfo with
+        | ValueInfo.Atomic atomicInfo ->
+            let valueType = ValueType.ofAtomicInfo atomicInfo
+            create valueType atomicInfo.IsOptional
+        | ValueInfo.Record recordInfo ->
+            let valueType = ValueType.ofRecordInfo recordInfo
+            create valueType recordInfo.IsOptional
 
     let toThrift name (value: Value) =
         seq {
@@ -82,12 +105,20 @@ module Field =
         { Field.Name = name
           Field.Value = value }
 
+    let ofFieldInfo (fieldInfo: FieldInfo) =
+        let value = Value.ofValueInfo fieldInfo.ValueInfo
+        create fieldInfo.Name value
+
     let toThrift (field: Field) =
         Value.toThrift field.Name field.Value
 
 module Schema =
     let create fields =
         { Schema.Fields = fields }
+
+    let ofRecordInfo recordInfo =
+        let record = Record.ofRecordInfo recordInfo
+        create record.Fields
 
     let toThrift (schema: Schema) =
         let numChildren = schema.Fields.Length

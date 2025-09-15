@@ -50,7 +50,7 @@ module SchemaElement =
         let logicalType = Option.None
         group repetitionType name numChildren convertedType logicalType
 
-    let primitive repetitionType name type' =
+    let primitive type' repetitionType name =
         SchemaElement(
             Type = type',
             Repetition_type = repetitionType,

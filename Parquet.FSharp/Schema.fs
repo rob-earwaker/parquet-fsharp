@@ -79,13 +79,13 @@ module Value =
             match value.Type with
             | ValueType.Bool ->
                 let type' = Thrift.Type.BOOLEAN
-                yield Thrift.SchemaElement.primitive repetitionType name type'
+                yield Thrift.SchemaElement.primitive type' repetitionType name
             | ValueType.Int32 ->
                 let logicalType = Thrift.LogicalType.INT32
                 yield Thrift.SchemaElement.logical repetitionType name logicalType
             | ValueType.ByteArray ->
                 let type' = Thrift.Type.BYTE_ARRAY
-                yield Thrift.SchemaElement.primitive repetitionType name type'
+                yield Thrift.SchemaElement.primitive type' repetitionType name
             | ValueType.String ->
                 let logicalType = Thrift.LogicalType.STRING
                 yield Thrift.SchemaElement.logical repetitionType name logicalType

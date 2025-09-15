@@ -31,6 +31,10 @@ module List =
     let create element =
         { List.Element = element }
 
+    let ofListInfo (listInfo: ListInfo) =
+        let element = Value.ofValueInfo listInfo.ElementInfo
+        create element
+
 module Record =
     let create fields =
         { Record.Fields = fields }
@@ -52,6 +56,10 @@ module ValueType =
         | PrimitiveType.Bool -> ValueType.Bool
         | PrimitiveType.Int32 -> ValueType.Int32
 
+    let ofListInfo listInfo =
+        let list = List.ofListInfo listInfo
+        ValueType.List list
+
     let ofRecordInfo recordInfo =
         let record = Record.ofRecordInfo recordInfo
         ValueType.Record record
@@ -66,6 +74,9 @@ module Value =
         | ValueInfo.Atomic atomicInfo ->
             let valueType = ValueType.ofAtomicInfo atomicInfo
             create valueType atomicInfo.IsOptional
+        | ValueInfo.List listInfo ->
+            let valueType = ValueType.ofListInfo listInfo
+            create valueType listInfo.IsOptional
         | ValueInfo.Record recordInfo ->
             let valueType = ValueType.ofRecordInfo recordInfo
             create valueType recordInfo.IsOptional

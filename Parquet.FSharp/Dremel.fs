@@ -1,28 +1,23 @@
 ﻿module rec Parquet.FSharp.Dremel
 
-open System
-open System.Collections.Generic
-
 type private Levels = {
     Repetition: int
     Definition: int }
 
 module private Levels =
-    let Default = {
-        Levels.Repetition = 0
-        Levels.Definition = 0 }
+    let create repetition definition =
+        { Levels.Repetition = repetition
+          Levels.Definition = definition }
 
-    let setRepetition (levels: Levels) value =
-        { levels with Repetition = value }
+    let Default = create 0 0
 
-    let setDefinition (levels: Levels) value =
-        { levels with Definition = value }
+    let incrementForOptional (levels: Levels) =
+        { levels with Definition = levels.Definition + 1 }
 
-    let incrementRepetition levels =
-        setRepetition levels (levels.Repetition + 1)
-
-    let incrementDefinition levels =
-        setDefinition levels (levels.Definition + 1)
+    let incrementForRepeated (levels: Levels) =
+        { levels with
+            Repetition = levels.Repetition + 1
+            Definition = levels.Definition + 1 }
 
 type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels: Levels) =
     let repetitionLevelsRequired = maxLevels.Repetition > 0
@@ -69,6 +64,11 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels: Levels) =
           Column.RepetitionLevels = repetitionLevels
           Column.DefinitionLevels = definitionLevels }
 
+type private ListShredder = {
+    ListInfo: ListInfo
+    MaxLevels: Levels
+    ElementShredder: ValueShredder }
+
 type private FieldShredder = {
     FieldInfo: FieldInfo
     ValueShredder: ValueShredder }
@@ -80,21 +80,43 @@ type private RecordShredder = {
 
 type private ValueShredder =
     | Atomic of AtomicShredder
+    | List of ListShredder
     | Record of RecordShredder
+    with
+    member this.MaxLevels =
+        match this with
+        | ValueShredder.Atomic atomicShredder -> atomicShredder.MaxLevels
+        | ValueShredder.List listShredder -> listShredder.MaxLevels
+        | ValueShredder.Record recordShredder -> recordShredder.MaxLevels
 
 module private AtomicShredder =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxLevels =
         let maxLevels =
             if atomicInfo.IsOptional
-            then Levels.incrementDefinition parentMaxLevels
+            then Levels.incrementForOptional parentMaxLevels
             else parentMaxLevels
         AtomicShredder(atomicInfo, maxLevels)
+
+module private ListShredder =
+    let forList (listInfo: ListInfo) parentMaxLevels =
+        let listMaxLevels =
+            if listInfo.IsOptional
+            then Levels.incrementForOptional parentMaxLevels
+            else parentMaxLevels
+        let elementMaxLevels = Levels.incrementForRepeated listMaxLevels
+        let elementShredder = ValueShredder.forValue listInfo.ElementInfo elementMaxLevels
+        { ListShredder.ListInfo = listInfo
+          ListShredder.MaxLevels = listMaxLevels
+          ListShredder.ElementShredder = elementShredder }
+
+    let buildColumns (listShredder: ListShredder) =
+        ValueShredder.buildColumns listShredder.ElementShredder
 
 module private RecordShredder =
     let forRecord (recordInfo: RecordInfo) parentMaxLevels =
         let maxLevels =
             if recordInfo.IsOptional
-            then Levels.incrementDefinition parentMaxLevels
+            then Levels.incrementForOptional parentMaxLevels
             else parentMaxLevels
         let fieldShredders =
             recordInfo.Fields
@@ -107,10 +129,9 @@ module private RecordShredder =
           RecordShredder.FieldShredders = fieldShredders }
 
     let buildColumns (recordShredder: RecordShredder) =
-        seq {
-            for fieldShredder in recordShredder.FieldShredders do
-                yield! ValueShredder.buildColumns fieldShredder.ValueShredder
-        }
+        recordShredder.FieldShredders
+        |> Seq.map _.ValueShredder
+        |> Seq.collect ValueShredder.buildColumns
 
 module private ValueShredder =
     let forValue (valueInfo: ValueInfo) parentMaxLevels =
@@ -118,6 +139,9 @@ module private ValueShredder =
         | ValueInfo.Atomic atomicInfo ->
             AtomicShredder.forAtomic atomicInfo parentMaxLevels
             |> ValueShredder.Atomic
+        | ValueInfo.List listInfo ->
+            ListShredder.forList listInfo parentMaxLevels
+            |> ValueShredder.List
         | ValueInfo.Record recordInfo ->
             RecordShredder.forRecord recordInfo parentMaxLevels
             |> ValueShredder.Record
@@ -127,32 +151,75 @@ module private ValueShredder =
             match valueShredder with
             | ValueShredder.Atomic atomicShredder ->
                 yield atomicShredder.BuildColumn()
+            | ValueShredder.List listShredder ->
+                yield! ListShredder.buildColumns listShredder
             | ValueShredder.Record recordShredder ->
                 yield! RecordShredder.buildColumns recordShredder
         }
 
-let rec private shredRecord (recordShredder: RecordShredder) parentLevels recordValue =
+let private shredAtomic (atomicShredder: AtomicShredder) (parentLevels: Levels) atomicValue =
+    let atomicInfo = atomicShredder.AtomicInfo
+    let maxLevels = atomicShredder.MaxLevels
+    let primitiveValue = atomicInfo.ConvertValueToPrimitive atomicValue
+    let levels =
+        if atomicInfo.IsOptional
+            && not (isNull primitiveValue)
+        then Levels.create parentLevels.Repetition maxLevels.Definition
+        else parentLevels
+    atomicShredder.AddValue(primitiveValue, levels)
+
+let private shredList (listShredder: ListShredder) (parentLevels: Levels) listValue =
+    let listInfo = listShredder.ListInfo
+    let listMaxLevels = listShredder.MaxLevels
+    let elementShredder = listShredder.ElementShredder
+    let elementMaxLevels = elementShredder.MaxLevels
+    // TODO: It's a bit weird that we have to extract the list from the value
+    // here and for the atomic, but not for the record. Are records just
+    // different or should we always have a '(Try)GetValue'-like function for all
+    // that unwraps the nullable/option cases.
+    let elementList = listInfo.GetValues listValue
+    let listLevels =
+        if listInfo.IsOptional
+            && not (isNull elementList)
+        then Levels.create parentLevels.Repetition listMaxLevels.Definition
+        else parentLevels
+    // If the list is null or empty, leave the levels as they are and pass a
+    // null value down to the element shredder. This ensures we write out levels
+    // for any child values in the schema.
+    if isNull elementList
+        || elementList.Count = 0 then
+        shredValue elementShredder listLevels null
+    else
+        // The first element inherits its repetition level from the parent list,
+        // whereas subsequent elements use the max repetition level of the
+        // element value.
+        let firstElementLevels =
+            Levels.create listLevels.Repetition elementMaxLevels.Definition
+        let otherElementLevels = elementMaxLevels
+        shredValue elementShredder firstElementLevels elementList[0]
+        for index in [ 1 .. elementList.Count - 1 ] do
+            shredValue elementShredder otherElementLevels elementList[index]
+
+let private shredRecord (recordShredder: RecordShredder) (parentLevels: Levels) recordValue =
+    let recordInfo = recordShredder.RecordInfo
+    let maxLevels = recordShredder.MaxLevels
+    let levels =
+        if recordInfo.IsOptional
+            && not (isNull recordValue)
+        then Levels.create parentLevels.Repetition maxLevels.Definition
+        else parentLevels
+    // Shred all fields regardless of whether the record is null. This ensures
+    // we write out levels for any child values in the schema.
     for fieldShredder in recordShredder.FieldShredders do
-        let fieldValue = fieldShredder.FieldInfo.GetValue recordValue
-        match fieldShredder.ValueShredder with
-        | ValueShredder.Atomic atomicShredder ->
-            let atomicInfo = atomicShredder.AtomicInfo
-            let primitiveValue = atomicInfo.ConvertValueToPrimitive fieldValue
-            let levels =
-                if atomicInfo.IsOptional
-                    && not (isNull primitiveValue)
-                then Levels.setDefinition parentLevels atomicShredder.MaxLevels.Definition
-                else parentLevels
-            atomicShredder.AddValue(primitiveValue, levels)
-        | ValueShredder.Record recordShredder ->
-            let recordInfo = recordShredder.RecordInfo
-            let recordValue = fieldValue
-            let levels =
-                if recordInfo.IsOptional
-                    && not (isNull recordValue)
-                then Levels.setDefinition parentLevels recordShredder.MaxLevels.Definition
-                else parentLevels
-            shredRecord recordShredder levels recordValue
+        let fieldInfo = fieldShredder.FieldInfo
+        let fieldValue = fieldInfo.GetValue recordValue
+        shredValue fieldShredder.ValueShredder levels fieldValue
+
+let private shredValue valueShredder parentLevels value =
+    match valueShredder with
+    | ValueShredder.Atomic atomicShredder -> shredAtomic atomicShredder parentLevels value
+    | ValueShredder.List listShredder -> shredList listShredder parentLevels value
+    | ValueShredder.Record recordShredder -> shredRecord recordShredder parentLevels value
 
 let shred (records: 'Record[]) =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>

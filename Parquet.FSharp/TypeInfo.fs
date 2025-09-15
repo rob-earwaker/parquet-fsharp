@@ -2,7 +2,13 @@
 
 open FSharp.Reflection
 open System
+open System.Collections
 open System.Reflection
+
+type ValueInfo =
+    | Atomic of AtomicInfo
+    | List of ListInfo
+    | Record of RecordInfo
 
 type PrimitiveType =
     | Bool
@@ -14,9 +20,11 @@ type AtomicInfo = {
     PrimitiveType: PrimitiveType
     ConvertValueToPrimitive: obj -> obj }
 
-type ValueInfo =
-    | Atomic of AtomicInfo
-    | Record of RecordInfo
+type ListInfo = {
+    DotnetType: Type
+    IsOptional: bool
+    ElementInfo: ValueInfo
+    GetValues: obj -> IList }
 
 type FieldInfo = {
     Name: string
@@ -74,6 +82,52 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
+    let (|Array1d|_|) (dotnetType: Type) =
+        if dotnetType.IsArray
+            && dotnetType.GetArrayRank() = 1
+        then Option.Some ()
+        else Option.None
+
+module ValueInfo =
+    let private ofNullable (dotnetType: Type) =
+        let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
+        match ValueInfo.ofType valueDotnetType with
+        | ValueInfo.Atomic atomicInfo ->
+            let nullableAtomicInfo = AtomicInfo.ofNullable dotnetType atomicInfo
+            ValueInfo.Atomic nullableAtomicInfo
+        | ValueInfo.List listInfo ->
+            let nullableListInfo = ListInfo.ofNullable dotnetType listInfo
+            ValueInfo.List nullableListInfo
+        | ValueInfo.Record recordInfo ->
+            let nullableRecordInfo = RecordInfo.ofNullable dotnetType recordInfo
+            ValueInfo.Record nullableRecordInfo
+
+    let private ofOption (dotnetType: Type) =
+        let valueDotnetType = dotnetType.GetGenericArguments()[0]
+        match ValueInfo.ofType valueDotnetType with
+        | ValueInfo.Atomic atomicInfo ->
+            let atomicOptionInfo = AtomicInfo.ofOption dotnetType atomicInfo
+            ValueInfo.Atomic atomicOptionInfo
+        | ValueInfo.List listInfo ->
+            let listOptionInfo = ListInfo.ofOption dotnetType listInfo
+            ValueInfo.List listOptionInfo
+        | ValueInfo.Record recordInfo ->
+            let recordOptionInfo = RecordInfo.ofOption dotnetType recordInfo
+            ValueInfo.Record recordOptionInfo
+
+    let ofType (dotnetType: Type) =
+        match dotnetType with
+        | DotnetType.Bool -> ValueInfo.Atomic AtomicInfo.Bool
+        | DotnetType.Int32 -> ValueInfo.Atomic AtomicInfo.Int32
+        | DotnetType.Nullable -> ofNullable dotnetType
+        | DotnetType.Option -> ofOption dotnetType
+        | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
+        | DotnetType.Array1d -> ValueInfo.List (ListInfo.ofArray1d dotnetType)
+        | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
+
+    let of'<'Value> =
+        ofType typeof<'Value>
+
 module private AtomicInfo =
     let private create dotnetType isOptional primitiveType convertValueToPrimitive =
         { AtomicInfo.DotnetType = dotnetType
@@ -110,41 +164,44 @@ module private AtomicInfo =
             else valueInfo.ConvertValueToPrimitive (getValue valueOption)
         create dotnetType isOptional primitiveType convertValueToPrimitive
 
-module ValueInfo =
-    let private ofNullable (dotnetType: Type) =
-        let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
-        match ValueInfo.ofType valueDotnetType with
-        | ValueInfo.Atomic atomicInfo ->
-            let nullableAtomicInfo = AtomicInfo.ofNullable dotnetType atomicInfo
-            ValueInfo.Atomic nullableAtomicInfo
-        | ValueInfo.Record recordInfo ->
-            let nullableRecordInfo = RecordInfo.ofNullable dotnetType recordInfo
-            ValueInfo.Record nullableRecordInfo
+module private ListInfo =
+    let private create dotnetType isOptional elementInfo getValues =
+        { ListInfo.DotnetType = dotnetType
+          ListInfo.IsOptional = isOptional
+          ListInfo.ElementInfo = elementInfo
+          ListInfo.GetValues = getValues }
 
-    let private ofOption (dotnetType: Type) =
-        let valueDotnetType = dotnetType.GetGenericArguments()[0]
-        match ValueInfo.ofType valueDotnetType with
-        | ValueInfo.Atomic atomicInfo ->
-            let atomicOptionInfo = AtomicInfo.ofOption dotnetType atomicInfo
-            ValueInfo.Atomic atomicOptionInfo
-        | ValueInfo.Record recordInfo ->
-            let recordOptionInfo = RecordInfo.ofOption dotnetType recordInfo
-            ValueInfo.Record recordOptionInfo
+    let ofArray1d (dotnetType: Type) =
+        let isOptional = true
+        let elementDotnetType = dotnetType.GetElementType()
+        let elementInfo = ValueInfo.ofType elementDotnetType
+        let getValues (arrayValue: obj) =
+            arrayValue :?> IList
+        create dotnetType isOptional elementInfo getValues
 
-    let ofType (dotnetType: Type) =
-        match dotnetType with
-        | DotnetType.Bool -> ValueInfo.Atomic AtomicInfo.Bool
-        | DotnetType.Int32 -> ValueInfo.Atomic AtomicInfo.Int32
-        | DotnetType.Nullable -> ofNullable dotnetType
-        | DotnetType.Option -> ofOption dotnetType
-        | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
-        | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
+    let ofNullable (dotnetType: Type) (listInfo: ListInfo) =
+        let isOptional = true
+        let elementInfo = listInfo.ElementInfo
+        let getValue = Nullable.preComputeGetValue dotnetType
+        let getValues (nullableValue: obj) =
+            if isNull nullableValue
+            then null
+            else listInfo.GetValues (getValue nullableValue)
+        create dotnetType isOptional elementInfo getValues
 
-    let of'<'Value> =
-        ofType typeof<'Value>
+    let ofOption (dotnetType: Type) (listInfo: ListInfo) =
+        let isOptional = true
+        let elementInfo = listInfo.ElementInfo
+        let isNone = Option.preComputeIsNone dotnetType
+        let getValue = Option.preComputeGetValue dotnetType
+        let getValues (valueOption: obj) =
+            if isNone valueOption
+            then null
+            else listInfo.GetValues (getValue valueOption)
+        create dotnetType isOptional elementInfo getValues
 
 module private FieldInfo =
-    let create name valueInfo getValue =
+    let private create name valueInfo getValue =
         { FieldInfo.Name = name
           FieldInfo.ValueInfo = valueInfo
           FieldInfo.GetValue = getValue }
@@ -156,7 +213,7 @@ module private FieldInfo =
         create name valueInfo getValue
 
 module private RecordInfo =
-    let create dotnetType isOptional fields =
+    let private create dotnetType isOptional fields =
         { RecordInfo.DotnetType = dotnetType
           RecordInfo.IsOptional = isOptional
           RecordInfo.Fields = fields }

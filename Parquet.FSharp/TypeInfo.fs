@@ -20,7 +20,6 @@ type ValueInfo =
 
 type FieldInfo = {
     Name: string
-    DotnetType: Type
     ValueInfo: ValueInfo
     GetValue: obj -> obj }
 
@@ -145,18 +144,16 @@ module ValueInfo =
         ofType typeof<'Value>
 
 module private FieldInfo =
-    let create name dotnetType valueInfo getValue =
+    let create name valueInfo getValue =
         { FieldInfo.Name = name
-          FieldInfo.DotnetType = dotnetType
           FieldInfo.ValueInfo = valueInfo
           FieldInfo.GetValue = getValue }
 
     let ofField (field: PropertyInfo) =
         let name = field.Name
-        let dotnetType = field.PropertyType
-        let valueInfo = ValueInfo.ofType dotnetType
+        let valueInfo = ValueInfo.ofType field.PropertyType
         let getValue = FSharpValue.PreComputeRecordFieldReader(field)
-        create name dotnetType valueInfo getValue
+        create name valueInfo getValue
 
 module private RecordInfo =
     let create dotnetType isOptional fields =

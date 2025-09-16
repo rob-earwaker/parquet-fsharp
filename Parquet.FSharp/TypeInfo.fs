@@ -11,6 +11,12 @@ type ValueInfo =
     | List of ListInfo
     | Record of RecordInfo
 
+type LogicalType =
+    | Bool
+    | Int32
+    | Float64
+    | String
+
 type PrimitiveType =
     | Bool
     | Int32
@@ -20,6 +26,7 @@ type PrimitiveType =
 type AtomicInfo = {
     DotnetType: Type
     IsOptional: bool
+    LogicalType: LogicalType
     PrimitiveType: PrimitiveType
     ConvertValueToPrimitive: obj -> obj }
 
@@ -144,43 +151,49 @@ module ValueInfo =
         ofType typeof<'Value>
 
 module private AtomicInfo =
-    let private create dotnetType isOptional primitiveType convertValueToPrimitive =
+    let private create
+        dotnetType isOptional logicalType primitiveType convertValueToPrimitive =
         { AtomicInfo.DotnetType = dotnetType
           AtomicInfo.IsOptional = isOptional
+          AtomicInfo.LogicalType = logicalType
           AtomicInfo.PrimitiveType = primitiveType
           AtomicInfo.ConvertValueToPrimitive = convertValueToPrimitive }
 
-    let private ofPrimitive dotnetType primitiveType =
+    let private ofPrimitive<'Value> logicalType primitiveType =
+        let dotnetType = typeof<'Value>
         let isOptional = false
         let convertValueToPrimitive = id
-        create dotnetType isOptional primitiveType convertValueToPrimitive
+        create dotnetType isOptional logicalType primitiveType convertValueToPrimitive
 
-    let Bool = ofPrimitive typeof<bool> PrimitiveType.Bool
-    let Int32 = ofPrimitive typeof<int> PrimitiveType.Int32
-    let Float64 = ofPrimitive typeof<float> PrimitiveType.Float64
+    let Bool = ofPrimitive<bool> LogicalType.Bool PrimitiveType.Bool
+    let Int32 = ofPrimitive<int> LogicalType.Int32 PrimitiveType.Int32
+    let Float64 = ofPrimitive<float> LogicalType.Float64 PrimitiveType.Float64
 
     let String =
         let dotnetType = typeof<string>
         let isOptional = true
+        let logicalType = LogicalType.String
         let primitiveType = PrimitiveType.ByteArray
         let convertValueToPrimitive (stringValue: obj) =
             if isNull stringValue
             then null
             else box (Encoding.UTF8.GetBytes(stringValue :?> string))
-        create dotnetType isOptional primitiveType convertValueToPrimitive
+        create dotnetType isOptional logicalType primitiveType convertValueToPrimitive
 
     let ofNullable (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
+        let logicalType = valueInfo.LogicalType
         let primitiveType = valueInfo.PrimitiveType
         let getValue = Nullable.preComputeGetValue dotnetType
         let convertValueToPrimitive nullableValue =
             if isNull nullableValue
             then null
             else valueInfo.ConvertValueToPrimitive (getValue nullableValue)
-        create dotnetType isOptional primitiveType convertValueToPrimitive
+        create dotnetType isOptional logicalType primitiveType convertValueToPrimitive
 
     let ofOption (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
+        let logicalType = valueInfo.LogicalType
         let primitiveType = valueInfo.PrimitiveType
         let isNone = Option.preComputeIsNone dotnetType
         let getValue = Option.preComputeGetValue dotnetType
@@ -188,7 +201,7 @@ module private AtomicInfo =
             if isNone valueOption
             then null
             else valueInfo.ConvertValueToPrimitive (getValue valueOption)
-        create dotnetType isOptional primitiveType convertValueToPrimitive
+        create dotnetType isOptional logicalType primitiveType convertValueToPrimitive
 
 module private ListInfo =
     let private create dotnetType isOptional elementInfo getValues =

@@ -53,11 +53,11 @@ module ValueType =
         ValueType.List (List.create element)
 
     let ofAtomicInfo (atomicInfo: AtomicInfo) =
-        match atomicInfo.PrimitiveType with
-        | PrimitiveType.Bool -> ValueType.Bool
-        | PrimitiveType.Int32 -> ValueType.Int32
-        | PrimitiveType.Float64 -> ValueType.Float64
-        | PrimitiveType.ByteArray -> ValueType.ByteArray
+        match atomicInfo.LogicalType with
+        | LogicalType.Bool -> ValueType.Bool
+        | LogicalType.Int32 -> ValueType.Int32
+        | LogicalType.Float64 -> ValueType.Float64
+        | LogicalType.String -> ValueType.String
 
     let ofListInfo listInfo =
         let list = List.ofListInfo listInfo

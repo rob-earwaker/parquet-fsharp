@@ -20,7 +20,7 @@ let writeInt32 stream (value: int) =
 
 let writeInt32FixedWidth stream (value: int) byteWidth =
     let bytes = BitConverter.GetBytes(value)
-    writeBytes stream bytes[..byteWidth]
+    writeBytes stream bytes[0 .. byteWidth - 1]
 
 let rec writeUleb128 stream (value: uint32) =
     // Create the next byte by extracting least significant 7 bits of the
@@ -33,10 +33,10 @@ let rec writeUleb128 stream (value: uint32) =
     // write so we indicate that this is the last byte of our integer by
     // leaving the most significant bit as zero. Otherwise, we indicate that
     // there are more bytes to come by setting the most significant bit.
-    // This is done using a bitwise AND with {0b10000000}.
+    // This is done using a bitwise OR with {0b10000000}.
     if remainingValue = 0u
     then writeByte stream nextByte
     else
-        let nextByte = nextByte &&& 0b10000000uy
+        let nextByte = nextByte ||| 0b10000000uy
         writeByte stream nextByte
         writeUleb128 stream remainingValue

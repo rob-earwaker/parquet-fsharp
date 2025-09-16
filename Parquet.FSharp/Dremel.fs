@@ -192,10 +192,11 @@ let private shredList (listShredder: ListShredder) (parentLevels: Levels) listVa
     else
         // The first element inherits its repetition level from the parent list,
         // whereas subsequent elements use the max repetition level of the
-        // element value.
-        let firstElementLevels =
-            Levels.create listLevels.Repetition elementMaxLevels.Definition
-        let otherElementLevels = elementMaxLevels
+        // element value. We also need to increment the definition level since
+        // we're now inside a non-null repeated field.
+        let definitionLevel = listLevels.Definition + 1
+        let firstElementLevels = Levels.create listLevels.Repetition definitionLevel
+        let otherElementLevels = Levels.create elementMaxLevels.Repetition definitionLevel
         shredValue elementShredder firstElementLevels elementList[0]
         for index in [ 1 .. elementList.Count - 1 ] do
             shredValue elementShredder otherElementLevels elementList[index]

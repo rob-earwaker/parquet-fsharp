@@ -4,27 +4,8 @@ open Parquet.FSharp
 open System
 open System.IO
 
-type Field5 = {
-    Field51: int
-    Field52: Nullable<int>
-    Field53: int option }
-
-type Field8 = {
-    Field81: int
-    Field82: int[]
-    Field83: int option[] }
-
 type Record1 = {
-    (*Field01: bool
-    Field02: int
-    Field03: Nullable<int>
-    Field04: int option
-    Field05: Field5*)
-    Field06: int[]
-    (*Field07: int option[]
-    Field08: Field8
-    Field09: Field8[]
-    Field10: Field8 option[]*) }
+    Field1: int[] }
 
 type Gps = {
     Latitude: float
@@ -81,39 +62,12 @@ module Random =
         else Option.Some (int ())
 
     let array count (createItem: unit -> 'Item) =
-        Array.init count (fun _ -> createItem ())
-
-    let arrayOption count (createItem: unit -> 'Item) =
         if Random.NextDouble() >= 0.75
-        then Option.None
-        else option.Some (array count createItem)
-
-    let field5 () =
-        { Field5.Field51 = int ()
-          Field5.Field52 = nullableInt ()
-          Field5.Field53 = intOption () }
-
-    let field8 () =
-        { Field8.Field81 = int ()
-          Field8.Field82 = array 3 int
-          Field8.Field83 = array 3 intOption }
-
-    let field8Option () =
-        if Random.NextDouble() >= 0.75
-        then Option.None
-        else Option.Some (field8 ())
+        then null
+        else Array.init count (fun _ -> createItem ())
 
     let record1 () =
-        { (*Record1.Field01 = bool ()
-          Record1.Field02 = int ()
-          Record1.Field03 = nullableInt ()
-          Record1.Field04 = intOption ()
-          Record1.Field05 = field5 ()*)
-          Record1.Field06 = array 5 int
-          (*Record1.Field07 = array 5 intOption
-          Record1.Field08 = field8 ()
-          Record1.Field09 = array 5 field8
-          Record1.Field10 = array 5 field8Option*) }
+        { Record1.Field1 = array 5 int }
 
 [<EntryPoint>]
 let main _ =

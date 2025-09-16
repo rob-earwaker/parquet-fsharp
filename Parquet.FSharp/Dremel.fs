@@ -49,6 +49,12 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels: Levels) =
             | PrimitiveType.Int32 ->
                 let values = values |> Seq.cast<int> |> Array.ofSeq
                 ColumnValues.Int32 values
+            | PrimitiveType.Float64 ->
+                let values = values |> Seq.cast<float> |> Array.ofSeq
+                ColumnValues.Float64 values
+            | PrimitiveType.ByteArray ->
+                let values = values |> Seq.cast<byte[]> |> Array.ofSeq
+                ColumnValues.ByteArray values
         let repetitionLevels =
             if repetitionLevelsRequired
             then Option.Some (Array.ofSeq repetitionLevels)

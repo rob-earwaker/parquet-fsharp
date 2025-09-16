@@ -71,3 +71,20 @@ module Int32 =
             Stream.writeInt32 stream data.Length
             Stream.writeBytes stream data
             stream.ToArray()
+
+module Float64 =
+    module Plain =
+        let encode (values: float[]) =
+            use stream = new MemoryStream()
+            for value in values do
+                Stream.writeFloat64 stream value
+            stream.ToArray()
+
+module ByteArray =
+    module Plain =
+        let encode (values: byte[][]) =
+            use stream = new MemoryStream()
+            for value in values do
+                Stream.writeInt32 stream value.Length
+                Stream.writeBytes stream value
+            stream.ToArray()

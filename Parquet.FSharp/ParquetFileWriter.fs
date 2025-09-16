@@ -81,6 +81,16 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                     let encoding = Thrift.Encoding.PLAIN
                     let bytes = Encoding.Int32.Plain.encode values
                     type', encoding, bytes
+                | ColumnValues.Float64 values ->
+                    let type' = Thrift.Type.DOUBLE
+                    let encoding = Thrift.Encoding.PLAIN
+                    let bytes = Encoding.Float64.Plain.encode values
+                    type', encoding, bytes
+                | ColumnValues.ByteArray values ->
+                    let type' = Thrift.Type.BYTE_ARRAY
+                    let encoding = Thrift.Encoding.PLAIN
+                    let bytes = Encoding.ByteArray.Plain.encode values
+                    type', encoding, bytes
             let dataPageUncompressedSize =
                 repetitionLevelBytes.Length
                 + definitionLevelBytes.Length

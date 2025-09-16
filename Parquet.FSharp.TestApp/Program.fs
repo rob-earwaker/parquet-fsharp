@@ -3,9 +3,11 @@
 open Parquet.FSharp
 open System
 open System.IO
+open System.Text
 
 type Record1 = {
-    Field1: int[] }
+    Field1: float
+    Field2: string }
 
 type Gps = {
     Latitude: float
@@ -39,7 +41,10 @@ module Random =
     let string () =
         if Random.NextDouble() >= 0.75
         then null
-        else Random.NextInt64().ToString("X8")
+        else
+            let alphabet = "abcdefghijklmnopqrstuvxxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            Array.init 8 (fun _ -> alphabet[Random.Next(0, alphabet.Length)])
+            |> String
 
     let nullableBool () =
         if Random.NextDouble() >= 0.75
@@ -67,7 +72,8 @@ module Random =
         else Array.init count (fun _ -> createItem ())
 
     let record1 () =
-        { Record1.Field1 = array 5 int }
+        { Record1.Field1 = float ()
+          Record1.Field2 = string () }
 
 [<EntryPoint>]
 let main _ =

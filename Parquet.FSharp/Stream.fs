@@ -22,6 +22,10 @@ let writeInt32FixedWidth stream (value: int) byteWidth =
     let bytes = BitConverter.GetBytes(value)
     writeBytes stream bytes[0 .. byteWidth - 1]
 
+let writeFloat64 stream (value: float) =
+    let bytes = BitConverter.GetBytes(value)
+    writeBytes stream bytes
+
 let rec writeUleb128 stream (value: uint32) =
     // Create the next byte by extracting least significant 7 bits of the
     // value using a bitwise AND with {0b01111111}.

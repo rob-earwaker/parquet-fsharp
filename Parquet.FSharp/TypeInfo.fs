@@ -4,6 +4,7 @@ open FSharp.Reflection
 open System
 open System.Collections
 open System.Reflection
+open System.Text
 
 type ValueInfo =
     | Atomic of AtomicInfo
@@ -13,6 +14,8 @@ type ValueInfo =
 type PrimitiveType =
     | Bool
     | Int32
+    | Float64
+    | ByteArray
 
 type AtomicInfo = {
     DotnetType: Type
@@ -62,6 +65,16 @@ module private DotnetType =
 
     let (|Int32|_|) dotnetType =
         if dotnetType = typeof<int>
+        then Option.Some ()
+        else Option.None
+
+    let (|Float64|_|) dotnetType =
+        if dotnetType = typeof<float>
+        then Option.Some ()
+        else Option.None
+
+    let (|String|_|) dotnetType =
+        if dotnetType = typeof<string>
         then Option.Some ()
         else Option.None
 
@@ -119,6 +132,8 @@ module ValueInfo =
         match dotnetType with
         | DotnetType.Bool -> ValueInfo.Atomic AtomicInfo.Bool
         | DotnetType.Int32 -> ValueInfo.Atomic AtomicInfo.Int32
+        | DotnetType.Float64 -> ValueInfo.Atomic AtomicInfo.Float64
+        | DotnetType.String -> ValueInfo.Atomic AtomicInfo.String
         | DotnetType.Nullable -> ofNullable dotnetType
         | DotnetType.Option -> ofOption dotnetType
         | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
@@ -142,6 +157,17 @@ module private AtomicInfo =
 
     let Bool = ofPrimitive typeof<bool> PrimitiveType.Bool
     let Int32 = ofPrimitive typeof<int> PrimitiveType.Int32
+    let Float64 = ofPrimitive typeof<float> PrimitiveType.Float64
+
+    let String =
+        let dotnetType = typeof<string>
+        let isOptional = true
+        let primitiveType = PrimitiveType.ByteArray
+        let convertValueToPrimitive (stringValue: obj) =
+            if isNull stringValue
+            then null
+            else box (Encoding.UTF8.GetBytes(stringValue :?> string))
+        create dotnetType isOptional primitiveType convertValueToPrimitive
 
     let ofNullable (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true

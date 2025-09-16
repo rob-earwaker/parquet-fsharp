@@ -16,6 +16,7 @@ type Value = {
 type ValueType =
     | Bool
     | Int32
+    | Float64
     | ByteArray
     | String
     | Record of Record
@@ -55,6 +56,8 @@ module ValueType =
         match atomicInfo.PrimitiveType with
         | PrimitiveType.Bool -> ValueType.Bool
         | PrimitiveType.Int32 -> ValueType.Int32
+        | PrimitiveType.Float64 -> ValueType.Float64
+        | PrimitiveType.ByteArray -> ValueType.ByteArray
 
     let ofListInfo listInfo =
         let list = List.ofListInfo listInfo
@@ -94,6 +97,9 @@ module Value =
             | ValueType.Int32 ->
                 let logicalType = Thrift.LogicalType.INT32
                 yield Thrift.SchemaElement.logical repetitionType name logicalType
+            | ValueType.Float64 ->
+                let type' = Thrift.Type.DOUBLE
+                yield Thrift.SchemaElement.primitive type' repetitionType name
             | ValueType.ByteArray ->
                 let type' = Thrift.Type.BYTE_ARRAY
                 yield Thrift.SchemaElement.primitive type' repetitionType name

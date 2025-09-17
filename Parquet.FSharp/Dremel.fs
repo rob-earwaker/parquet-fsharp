@@ -172,7 +172,7 @@ let private shredAtomic (atomicShredder: AtomicShredder) (parentLevels: Levels) 
     let primitiveValue =
         if isNull value
         then null
-        else atomicInfo.GetPrimitiveValue value
+        else atomicInfo.ResolvePrimitiveValue value
     let levels =
         if atomicInfo.IsOptional && not (isNull primitiveValue)
         then Levels.create parentLevels.Repetition maxLevels.Definition
@@ -187,7 +187,7 @@ let private shredList (listShredder: ListShredder) (parentLevels: Levels) list =
     let valueList =
         if isNull list
         then null
-        else listInfo.GetValues list
+        else listInfo.ResolveValues list
     let listLevels =
         if listInfo.IsOptional && not (isNull valueList)
         then Levels.create parentLevels.Repetition listMaxLevels.Definition
@@ -215,7 +215,7 @@ let private shredRecord (recordShredder: RecordShredder) (parentLevels: Levels) 
     let fieldValues =
         if isNull record
         then null
-        else recordInfo.GetFieldValues record
+        else recordInfo.ResolveFieldValues record
     let levels =
         if recordInfo.IsOptional && not (isNull fieldValues)
         then Levels.create parentLevels.Repetition maxLevels.Definition

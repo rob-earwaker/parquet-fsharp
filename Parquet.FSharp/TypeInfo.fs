@@ -39,14 +39,13 @@ type AtomicInfo = {
     IsOptional: bool
     LogicalType: LogicalType
     PrimitiveType: PrimitiveType
-    // TODO: Resolve rather then Get to indicate more work in handling nullables etc?
-    GetPrimitiveValue: obj -> obj }
+    ResolvePrimitiveValue: obj -> obj }
 
 type ListInfo = {
     DotnetType: Type
     IsOptional: bool
     ElementInfo: ValueInfo
-    GetValues: obj -> IList }
+    ResolveValues: obj -> IList }
 
 type FieldInfo = {
     Index: int
@@ -57,7 +56,7 @@ type RecordInfo = {
     DotnetType: Type
     IsOptional: bool
     Fields: FieldInfo[]
-    GetFieldValues: obj -> obj[] }
+    ResolveFieldValues: obj -> obj[] }
 
 module private Nullable =
     let preComputeGetValue (dotnetType: Type) =
@@ -165,18 +164,18 @@ module ValueInfo =
 
 module private AtomicInfo =
     let private create
-        dotnetType isOptional logicalType primitiveType getPrimitiveValue =
+        dotnetType isOptional logicalType primitiveType resolvePrimitiveValue =
         { AtomicInfo.DotnetType = dotnetType
           AtomicInfo.IsOptional = isOptional
           AtomicInfo.LogicalType = logicalType
           AtomicInfo.PrimitiveType = primitiveType
-          AtomicInfo.GetPrimitiveValue = getPrimitiveValue }
+          AtomicInfo.ResolvePrimitiveValue = resolvePrimitiveValue }
 
     let private ofPrimitive<'Value> logicalType primitiveType =
         let dotnetType = typeof<'Value>
         let isOptional = false
-        let getPrimitiveValue = id
-        create dotnetType isOptional logicalType primitiveType getPrimitiveValue
+        let resolvePrimitiveValue = id
+        create dotnetType isOptional logicalType primitiveType resolvePrimitiveValue
 
     let Bool = ofPrimitive<bool> LogicalType.Bool PrimitiveType.Bool
     let Int32 = ofPrimitive<int> LogicalType.Int32 PrimitiveType.Int32
@@ -190,77 +189,77 @@ module private AtomicInfo =
                 IsUtc = true
                 Unit = TimeUnit.Milliseconds }
         let primitiveType = PrimitiveType.Int64
-        let getPrimitiveValue (dateTimeOffsetObj: obj) =
+        let resolvePrimitiveValue (dateTimeOffsetObj: obj) =
             let dateTimeOffsetValue = dateTimeOffsetObj :?> DateTimeOffset
             dateTimeOffsetValue.ToUnixTimeMilliseconds() :> obj
-        create dotnetType isOptional logicalType primitiveType getPrimitiveValue
+        create dotnetType isOptional logicalType primitiveType resolvePrimitiveValue
 
     let String =
         let dotnetType = typeof<string>
         let isOptional = true
         let logicalType = LogicalType.String
         let primitiveType = PrimitiveType.ByteArray
-        let getPrimitiveValue (stringObj: obj) =
+        let resolvePrimitiveValue (stringObj: obj) =
             let stringValue = stringObj :?> string
             Encoding.UTF8.GetBytes(stringValue) :> obj
-        create dotnetType isOptional logicalType primitiveType getPrimitiveValue
+        create dotnetType isOptional logicalType primitiveType resolvePrimitiveValue
 
     let ofNullable (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
         let logicalType = valueInfo.LogicalType
         let primitiveType = valueInfo.PrimitiveType
-        let getPrimitiveValue =
+        let resolvePrimitiveValue =
             let getValue = Nullable.preComputeGetValue dotnetType
             fun nullableObj ->
                 let valueObj = getValue nullableObj
-                valueInfo.GetPrimitiveValue valueObj
-        create dotnetType isOptional logicalType primitiveType getPrimitiveValue
+                valueInfo.ResolvePrimitiveValue valueObj
+        create dotnetType isOptional logicalType primitiveType resolvePrimitiveValue
 
     let ofOption (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
         let logicalType = valueInfo.LogicalType
         let primitiveType = valueInfo.PrimitiveType
-        let getPrimitiveValue =
+        let resolvePrimitiveValue =
             let getValue = Option.preComputeGetValue dotnetType
             fun optionObj ->
                 let valueObj = getValue optionObj
-                valueInfo.GetPrimitiveValue valueObj
-        create dotnetType isOptional logicalType primitiveType getPrimitiveValue
+                valueInfo.ResolvePrimitiveValue valueObj
+        create dotnetType isOptional logicalType primitiveType resolvePrimitiveValue
 
 module private ListInfo =
-    let private create dotnetType isOptional elementInfo getValues =
+    let private create dotnetType isOptional elementInfo resolveValues =
         { ListInfo.DotnetType = dotnetType
           ListInfo.IsOptional = isOptional
           ListInfo.ElementInfo = elementInfo
-          ListInfo.GetValues = getValues }
+          ListInfo.ResolveValues = resolveValues }
 
     let ofArray1d (dotnetType: Type) =
         let isOptional = true
         let elementDotnetType = dotnetType.GetElementType()
         let elementInfo = ValueInfo.ofType elementDotnetType
-        let getValues (arrayObj: obj) =
+        let resolveValues (arrayObj: obj) =
             arrayObj :?> IList
-        create dotnetType isOptional elementInfo getValues
+        create dotnetType isOptional elementInfo resolveValues
 
     let ofNullable (dotnetType: Type) (listInfo: ListInfo) =
         let isOptional = true
         let elementInfo = listInfo.ElementInfo
-        let getValues =
+        let resolveValues =
             let getValue = Nullable.preComputeGetValue dotnetType
             fun nullableObj ->
                 let valueObj = getValue nullableObj
-                listInfo.GetValues valueObj
-        create dotnetType isOptional elementInfo getValues
+                listInfo.ResolveValues valueObj
+        create dotnetType isOptional elementInfo resolveValues
 
     let ofOption (dotnetType: Type) (listInfo: ListInfo) =
         let isOptional = true
         let elementInfo = listInfo.ElementInfo
-        let getValues =
+        let resolveValues =
             let getValue = Option.preComputeGetValue dotnetType
             fun optionObj ->
                 let valueObj = getValue optionObj
-                listInfo.GetValues valueObj
-        create dotnetType isOptional elementInfo getValues
+                listInfo.ResolveValues valueObj
+        create dotnetType isOptional elementInfo resolveValues
 
 module private FieldInfo =
     let private create index name valueInfo =
@@ -274,36 +273,36 @@ module private FieldInfo =
         create index name valueInfo
 
 module private RecordInfo =
-    let private create dotnetType isOptional fields getFieldValues =
+    let private create dotnetType isOptional fields resolveFieldValues =
         { RecordInfo.DotnetType = dotnetType
           RecordInfo.IsOptional = isOptional
           RecordInfo.Fields = fields
-          RecordInfo.GetFieldValues = getFieldValues }
+          RecordInfo.ResolveFieldValues = resolveFieldValues }
 
     let ofRecord dotnetType =
         let isOptional = false
         let fields =
             FSharpType.GetRecordFields(dotnetType)
             |> Array.mapi FieldInfo.ofField
-        let getFieldValues = FSharpValue.PreComputeRecordReader(dotnetType)
-        create dotnetType isOptional fields getFieldValues
+        let resolveFieldValues = FSharpValue.PreComputeRecordReader(dotnetType)
+        create dotnetType isOptional fields resolveFieldValues
 
     let ofNullable dotnetType (recordInfo: RecordInfo) =
         let isOptional = true
         let fields = recordInfo.Fields
-        let getFieldValues =
+        let resolveFieldValues =
             let getValue = Nullable.preComputeGetValue dotnetType
             fun nullableObj ->
                 let valueObj = getValue nullableObj
-                recordInfo.GetFieldValues valueObj
-        create dotnetType isOptional fields getFieldValues
+                recordInfo.ResolveFieldValues valueObj
+        create dotnetType isOptional fields resolveFieldValues
 
     let ofOption dotnetType (recordInfo: RecordInfo) =
         let isOptional = true
         let fields = recordInfo.Fields
-        let getFieldValues =
+        let resolveFieldValues =
             let getValue = Option.preComputeGetValue dotnetType
             fun optionObj ->
                 let valueObj = getValue optionObj
-                recordInfo.GetFieldValues valueObj
-        create dotnetType isOptional fields getFieldValues
+                recordInfo.ResolveFieldValues valueObj
+        create dotnetType isOptional fields resolveFieldValues

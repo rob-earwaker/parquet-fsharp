@@ -166,37 +166,36 @@ module private ValueShredder =
                 yield! RecordShredder.buildColumns recordShredder
         }
 
-let private shredAtomic (atomicShredder: AtomicShredder) (parentLevels: Levels) atomicValue =
+let private shredAtomic (atomicShredder: AtomicShredder) (parentLevels: Levels) value =
     let atomicInfo = atomicShredder.AtomicInfo
     let maxLevels = atomicShredder.MaxLevels
-    let primitiveValue = atomicInfo.ConvertValueToPrimitive atomicValue
+    let primitiveValue =
+        if isNull value
+        then null
+        else atomicInfo.GetPrimitiveValue value
     let levels =
-        if atomicInfo.IsOptional
-            && not (isNull primitiveValue)
+        if atomicInfo.IsOptional && not (isNull primitiveValue)
         then Levels.create parentLevels.Repetition maxLevels.Definition
         else parentLevels
     atomicShredder.AddValue(primitiveValue, levels)
 
-let private shredList (listShredder: ListShredder) (parentLevels: Levels) listValue =
+let private shredList (listShredder: ListShredder) (parentLevels: Levels) list =
     let listInfo = listShredder.ListInfo
     let listMaxLevels = listShredder.MaxLevels
     let elementShredder = listShredder.ElementShredder
     let elementMaxLevels = elementShredder.MaxLevels
-    // TODO: It's a bit weird that we have to extract the list from the value
-    // here and for the atomic, but not for the record. Are records just
-    // different or should we always have a '(Try)GetValue'-like function for all
-    // that unwraps the nullable/option cases.
-    let elementList = listInfo.GetValues listValue
+    let valueList =
+        if isNull list
+        then null
+        else listInfo.GetValues list
     let listLevels =
-        if listInfo.IsOptional
-            && not (isNull elementList)
+        if listInfo.IsOptional && not (isNull valueList)
         then Levels.create parentLevels.Repetition listMaxLevels.Definition
         else parentLevels
     // If the list is null or empty, leave the levels as they are and pass a
     // null value down to the element shredder. This ensures we write out levels
     // for any child values in the schema.
-    if isNull elementList
-        || elementList.Count = 0 then
+    if isNull valueList || valueList.Count = 0 then
         shredValue elementShredder listLevels null
     else
         // The first element inherits its repetition level from the parent list,
@@ -206,23 +205,29 @@ let private shredList (listShredder: ListShredder) (parentLevels: Levels) listVa
         let definitionLevel = listLevels.Definition + 1
         let firstElementLevels = Levels.create listLevels.Repetition definitionLevel
         let otherElementLevels = Levels.create elementMaxLevels.Repetition definitionLevel
-        shredValue elementShredder firstElementLevels elementList[0]
-        for index in [ 1 .. elementList.Count - 1 ] do
-            shredValue elementShredder otherElementLevels elementList[index]
+        shredValue elementShredder firstElementLevels valueList[0]
+        for index in [ 1 .. valueList.Count - 1 ] do
+            shredValue elementShredder otherElementLevels valueList[index]
 
-let private shredRecord (recordShredder: RecordShredder) (parentLevels: Levels) recordValue =
+let private shredRecord (recordShredder: RecordShredder) (parentLevels: Levels) record =
     let recordInfo = recordShredder.RecordInfo
     let maxLevels = recordShredder.MaxLevels
+    let fieldValues =
+        if isNull record
+        then null
+        else recordInfo.GetFieldValues record
     let levels =
-        if recordInfo.IsOptional
-            && not (isNull recordValue)
+        if recordInfo.IsOptional && not (isNull fieldValues)
         then Levels.create parentLevels.Repetition maxLevels.Definition
         else parentLevels
     // Shred all fields regardless of whether the record is null. This ensures
     // we write out levels for any child values in the schema.
     for fieldShredder in recordShredder.FieldShredders do
         let fieldInfo = fieldShredder.FieldInfo
-        let fieldValue = fieldInfo.GetValue recordValue
+        let fieldValue =
+            if isNull fieldValues
+            then null
+            else fieldValues[fieldInfo.Index]
         shredValue fieldShredder.ValueShredder levels fieldValue
 
 let private shredValue valueShredder parentLevels value =

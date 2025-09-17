@@ -1,4 +1,4 @@
-﻿namespace rec Parquet.FSharp.Schema
+﻿namespace rec Parquet.FSharp
 
 open Parquet.FSharp
 
@@ -18,6 +18,7 @@ type ValueType =
     | Int32
     | Float64
     | ByteArray
+    | Timestamp of TimestampType
     | String
     | Record of Record
     | List of List
@@ -57,6 +58,7 @@ module ValueType =
         | LogicalType.Bool -> ValueType.Bool
         | LogicalType.Int32 -> ValueType.Int32
         | LogicalType.Float64 -> ValueType.Float64
+        | LogicalType.Timestamp timestamp -> ValueType.Timestamp timestamp
         | LogicalType.String -> ValueType.String
 
     let ofListInfo listInfo =
@@ -103,6 +105,14 @@ module Value =
             | ValueType.ByteArray ->
                 let type' = Thrift.Type.BYTE_ARRAY
                 yield Thrift.SchemaElement.primitive type' repetitionType name
+            | ValueType.Timestamp timestamp ->
+                let unit =
+                    match timestamp.Unit with
+                    | TimeUnit.Milliseconds -> Thrift.TimeUnit.MILLIS
+                    | TimeUnit.Microseconds -> Thrift.TimeUnit.MICROS
+                    | TimeUnit.Nanoseconds -> Thrift.TimeUnit.NANOS
+                let logicalType = Thrift.LogicalType.TIMESTAMP timestamp.IsUtc unit
+                yield Thrift.SchemaElement.logical repetitionType name logicalType
             | ValueType.String ->
                 let logicalType = Thrift.LogicalType.STRING
                 yield Thrift.SchemaElement.logical repetitionType name logicalType

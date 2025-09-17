@@ -3,6 +3,7 @@
 type ColumnValues =
     | Bool of bool[]
     | Int32 of int[]
+    | Int64 of int64[]
     | Float64 of float[]
     | ByteArray of byte[][]
 

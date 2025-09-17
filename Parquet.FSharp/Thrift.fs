@@ -13,6 +13,17 @@ module LogicalType =
     let STRING = LogicalType(STRING = StringType())
     let LIST = LogicalType(LIST = ListType())
 
+    let TIMESTAMP isAdjustedToUtc unit =
+        LogicalType(
+            TIMESTAMP = TimestampType(
+                IsAdjustedToUTC = isAdjustedToUtc,
+                Unit = unit))
+
+module TimeUnit =
+    let MILLIS = TimeUnit(MILLIS = MilliSeconds())
+    let MICROS = TimeUnit(MICROS = MicroSeconds())
+    let NANOS = TimeUnit(NANOS = NanoSeconds())
+
 module SchemaElement =
     let root numChildren =
         SchemaElement(

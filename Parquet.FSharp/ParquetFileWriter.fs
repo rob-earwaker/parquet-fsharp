@@ -1,6 +1,5 @@
 ﻿namespace Parquet.FSharp
 
-open Parquet.FSharp.Schema
 open System
 open System.IO
 
@@ -80,6 +79,11 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                     let type' = Thrift.Type.INT32
                     let encoding = Thrift.Encoding.PLAIN
                     let bytes = Encoding.Int32.Plain.encode values
+                    type', encoding, bytes
+                | ColumnValues.Int64 values ->
+                    let type' = Thrift.Type.INT64
+                    let encoding = Thrift.Encoding.PLAIN
+                    let bytes = Encoding.Int64.Plain.encode values
                     type', encoding, bytes
                 | ColumnValues.Float64 values ->
                     let type' = Thrift.Type.DOUBLE

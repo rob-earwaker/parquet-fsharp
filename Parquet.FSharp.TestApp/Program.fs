@@ -3,11 +3,6 @@
 open Parquet.FSharp
 open System
 open System.IO
-open System.Text
-
-type Record1 = {
-    Field1: float
-    Field2: string }
 
 type Gps = {
     Latitude: float
@@ -37,6 +32,10 @@ module Random =
 
     let float () =
         Random.NextDouble() * 10.
+
+    let dateTimeOffset () =
+        let ticks = Random.NextInt64(DateTimeOffset.MaxValue.Ticks)
+        DateTimeOffset(ticks, TimeSpan.Zero)
 
     let string () =
         if Random.NextDouble() >= 0.75
@@ -71,15 +70,28 @@ module Random =
         then null
         else Array.init count (fun _ -> createItem ())
 
-    let record1 () =
-        { Record1.Field1 = float ()
-          Record1.Field2 = string () }
+    let gps () =
+        { Gps.Latitude = float ()
+          Gps.Longitude = float () }
+
+    let data () =
+        { Data.Value1 = float ()
+          Data.Value2 = float ()
+          Data.Value3 = float () }
+
+    let message () =
+        { Message.Time = dateTimeOffset ()
+          Message.Level = float ()
+          Message.Count = int ()
+          Message.Samples = array 5 int
+          Message.Gps = gps ()
+          Message.Values = array 3 data }
 
 [<EntryPoint>]
 let main _ =
-    let records = Array.init 20 (fun _ -> Random.record1 ())
+    let records = Array.init 20 (fun _ -> Random.message ())
     use stream = new MemoryStream()
-    use fileWriter = new ParquetStreamWriter<Record1>(stream)
+    use fileWriter = new ParquetStreamWriter<Message>(stream)
     fileWriter.WriteHeader()
     fileWriter.WriteRowGroup(records)
     fileWriter.WriteFooter()

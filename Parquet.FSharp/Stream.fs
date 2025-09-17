@@ -22,6 +22,10 @@ let writeInt32FixedWidth stream (value: int) byteWidth =
     let bytes = BitConverter.GetBytes(value)
     writeBytes stream bytes[0 .. byteWidth - 1]
 
+let writeInt64 stream (value: int64) =
+    let bytes = BitConverter.GetBytes(value)
+    writeBytes stream bytes
+
 let writeFloat64 stream (value: float) =
     let bytes = BitConverter.GetBytes(value)
     writeBytes stream bytes

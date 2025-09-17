@@ -15,11 +15,22 @@ type LogicalType =
     | Bool
     | Int32
     | Float64
+    | Timestamp of TimestampType
     | String
+
+type TimestampType = {
+    IsUtc: bool
+    Unit: TimeUnit }
+
+type TimeUnit =
+    | Milliseconds
+    | Microseconds
+    | Nanoseconds
 
 type PrimitiveType =
     | Bool
     | Int32
+    | Int64
     | Float64
     | ByteArray
 
@@ -85,6 +96,11 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
+    let (|DateTimeOffset|_|) dotnetType =
+        if dotnetType = typeof<DateTimeOffset>
+        then Option.Some ()
+        else Option.None
+
     let (|Nullable|_|) (dotnetType: Type) =
         if dotnetType.IsGenericType
             && dotnetType.GetGenericTypeDefinition() = typedefof<Nullable<_>>
@@ -140,6 +156,7 @@ module ValueInfo =
         | DotnetType.Bool -> ValueInfo.Atomic AtomicInfo.Bool
         | DotnetType.Int32 -> ValueInfo.Atomic AtomicInfo.Int32
         | DotnetType.Float64 -> ValueInfo.Atomic AtomicInfo.Float64
+        | DotnetType.DateTimeOffset -> ValueInfo.Atomic AtomicInfo.DateTimeOffset
         | DotnetType.String -> ValueInfo.Atomic AtomicInfo.String
         | DotnetType.Nullable -> ofNullable dotnetType
         | DotnetType.Option -> ofOption dotnetType
@@ -168,6 +185,19 @@ module private AtomicInfo =
     let Bool = ofPrimitive<bool> LogicalType.Bool PrimitiveType.Bool
     let Int32 = ofPrimitive<int> LogicalType.Int32 PrimitiveType.Int32
     let Float64 = ofPrimitive<float> LogicalType.Float64 PrimitiveType.Float64
+
+    let DateTimeOffset =
+        let dotnetType = typeof<DateTimeOffset>
+        let isOptional = false
+        let logicalType =
+            LogicalType.Timestamp {
+                IsUtc = true
+                Unit = TimeUnit.Milliseconds }
+        let primitiveType = PrimitiveType.Int64
+        let convertValueToPrimitive (dateTimeOffsetValue: obj) =
+            let dateTimeOffset = dateTimeOffsetValue :?> DateTimeOffset
+            box (dateTimeOffset.ToUnixTimeMilliseconds())
+        create dotnetType isOptional logicalType primitiveType convertValueToPrimitive
 
     let String =
         let dotnetType = typeof<string>

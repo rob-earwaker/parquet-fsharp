@@ -14,13 +14,13 @@ type Data = {
     Value3: float }
 
 type Message = {
-    Time: DateTimeOffset
+    (*Time: DateTimeOffset
     Source: string
-    Level: float
+    Level: float*)
     Count: int
-    Samples: int[]
+    (*Samples: int[]
     Gps: Gps
-    Values: Data[] }
+    Values: Data[]*) }
 
 module Random =
     let private Random = Random()
@@ -81,22 +81,28 @@ module Random =
           Data.Value3 = float () }
 
     let message () =
-        { Message.Time = dateTimeOffset ()
+        { (*Message.Time = dateTimeOffset ()
           Message.Source = string ()
-          Message.Level = float ()
+          Message.Level = float ()*)
           Message.Count = int ()
-          Message.Samples = array 5 int
+         (* Message.Samples = array 5 int
           Message.Gps = gps ()
-          Message.Values = array 3 data }
+          Message.Values = array 3 data*) }
 
 [<EntryPoint>]
 let main _ =
     let records = Array.init 20 (fun _ -> Random.message ())
-    use stream = new MemoryStream()
-    use fileWriter = new ParquetStreamWriter<Message>(stream)
-    fileWriter.WriteHeader()
-    fileWriter.WriteRowGroup(records)
-    fileWriter.WriteFooter()
     let filePath = @"..\..\..\..\data\data.parquet"
-    File.WriteAllBytes(filePath, stream.ToArray())
+    // Write
+    use writeStream = new MemoryStream()
+    use parquetWriter = new ParquetStreamWriter<Message>(writeStream)
+    parquetWriter.WriteHeader()
+    parquetWriter.WriteRowGroup(records)
+    parquetWriter.WriteFooter()
+    File.WriteAllBytes(filePath, writeStream.ToArray())
+    // Read
+    let fileContent = File.ReadAllBytes(filePath)
+    use readStream = new MemoryStream(fileContent)
+    let parquetReader = new ParquetStreamReader<Message>(readStream)
+    parquetReader.ReadMetaData()
     0

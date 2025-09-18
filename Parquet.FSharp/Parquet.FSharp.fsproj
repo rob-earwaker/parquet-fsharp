@@ -20,6 +20,7 @@
     <Compile Include="Stream.fs" />
     <Compile Include="Encoding.fs" />
     <Compile Include="ParquetStreamWriter.fs" />
+    <Compile Include="ParquetStreamReader.fs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -137,9 +137,9 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
         fileMetaData.Num_rows <- fileMetaData.Num_rows + rowGroup.Num_rows
 
     member this.WriteFooter() =
-        let metaDataBytes = Thrift.Serialization.serialize fileMetaData
-        Stream.writeBytes stream metaDataBytes
-        Stream.writeInt32 stream metaDataBytes.Length
+        let fileMetaDataBytes = Thrift.Serialization.serialize fileMetaData
+        Stream.writeBytes stream fileMetaDataBytes
+        Stream.writeInt32 stream fileMetaDataBytes.Length
         Stream.writeAscii stream magicNumber
 
     member this.Dispose() =

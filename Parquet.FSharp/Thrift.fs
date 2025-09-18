@@ -186,3 +186,12 @@ module Serialization =
         |> Async.AwaitTask
         |> Async.RunSynchronously
         transport.GetBuffer()
+
+    let deserialize<'Value when 'Value :> TBase and 'Value : (new : unit -> 'Value)> bytes =
+        use transport = new TMemoryBufferTransport(bytes, Thrift.TConfiguration())
+        use protocol = new TCompactProtocol(transport)
+        let value = new 'Value()
+        value.ReadAsync(protocol, CancellationToken.None)
+        |> Async.AwaitTask
+        |> Async.RunSynchronously
+        value

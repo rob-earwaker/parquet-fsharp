@@ -4,6 +4,9 @@ open System
 open System.IO
 open System.Text
 
+let seekBackwardsFromEnd (stream: Stream) (count: int) =
+    stream.Seek(-count, SeekOrigin.End) |> ignore
+
 let writeByte (stream: Stream) byte =
     stream.WriteByte(byte)
 
@@ -48,3 +51,16 @@ let rec writeUleb128 stream (value: uint32) =
         let nextByte = nextByte ||| 0b10000000uy
         writeByte stream nextByte
         writeUleb128 stream remainingValue
+
+let readBytes (stream: Stream) count =
+    let bytes = Array.zeroCreate<byte> count
+    stream.Read(bytes, 0, bytes.Length) |> ignore
+    bytes
+
+let readAscii stream count =
+    let bytes = readBytes stream count
+    Encoding.ASCII.GetString(bytes)
+
+let readInt32 stream =
+    let bytes = readBytes stream 4
+    BitConverter.ToInt32(bytes, 0)

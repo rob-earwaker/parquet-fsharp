@@ -14,8 +14,8 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
             Num_rows = 0,
             Row_groups = ResizeArray(),
             Created_by =
-                $"{Library.Name.Value} version {Library.Version.Value}"
-                + $" (build {Library.Revision.Value})")
+                $"{Library.Name} version {Library.Version}"
+                + $" (build {Library.Revision})")
 
     let columnPaths =
         let columnPaths = ResizeArray()

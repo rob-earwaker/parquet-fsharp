@@ -15,6 +15,7 @@ type Data = {
 
 type Message = {
     Time: DateTimeOffset
+    Source: string
     Level: float
     Count: int
     Samples: int[]
@@ -81,6 +82,7 @@ module Random =
 
     let message () =
         { Message.Time = dateTimeOffset ()
+          Message.Source = string ()
           Message.Level = float ()
           Message.Count = int ()
           Message.Samples = array 5 int

@@ -2,13 +2,13 @@
 
 open System.Reflection
 
-let private Assembly = lazy Assembly.GetExecutingAssembly()
+let private Assembly = Assembly.GetExecutingAssembly()
 
-let private InformationalVersion = lazy (
-    Assembly.Value
+let private InformationalVersion =
+    Assembly
         .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-        .InformationalVersion)
+        .InformationalVersion
 
-let Name = lazy Assembly.Value.GetName().Name
-let Version = lazy InformationalVersion.Value.Split('+')[0]
-let Revision = lazy InformationalVersion.Value.Split('+')[1]
+let Name = Assembly.GetName().Name
+let Version = InformationalVersion.Split('+')[0]
+let Revision = InformationalVersion.Split('+')[1]

@@ -19,7 +19,7 @@
     <Compile Include="Dremel.fs" />
     <Compile Include="Stream.fs" />
     <Compile Include="Encoding.fs" />
-    <Compile Include="ParquetFileWriter.fs" />
+    <Compile Include="ParquetStreamWriter.fs" />
   </ItemGroup>
 
   <ItemGroup>

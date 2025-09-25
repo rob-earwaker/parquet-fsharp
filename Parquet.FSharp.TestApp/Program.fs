@@ -95,7 +95,7 @@ let main _ =
     let filePath = @"..\..\..\..\data\data.parquet"
     // Write
     use writeStream = new MemoryStream()
-    use parquetWriter = new ParquetStreamWriter<Message>(writeStream)
+    let parquetWriter = ParquetStreamWriter<Message>(writeStream)
     parquetWriter.WriteHeader()
     parquetWriter.WriteRowGroup(records)
     parquetWriter.WriteFooter()
@@ -103,6 +103,7 @@ let main _ =
     // Read
     let fileContent = File.ReadAllBytes(filePath)
     use readStream = new MemoryStream(fileContent)
-    let parquetReader = new ParquetStreamReader<Message>(readStream)
+    let parquetReader = ParquetStreamReader<Message>(readStream)
     parquetReader.ReadMetaData()
+    parquetReader.ReadRowGroup(0)
     0

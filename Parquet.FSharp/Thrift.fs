@@ -1,6 +1,8 @@
 ﻿namespace Parquet.FSharp.Thrift
 
 open System
+open System.IO
+open System.Text
 open System.Threading
 open Thrift.Protocol
 open Thrift.Transport.Client
@@ -187,11 +189,13 @@ module Serialization =
         |> Async.RunSynchronously
         transport.GetBuffer()
 
-    let deserialize<'Value when 'Value :> TBase and 'Value : (new : unit -> 'Value)> bytes =
-        use transport = new TMemoryBufferTransport(bytes, Thrift.TConfiguration())
+    let deserializeFrom<'Value when 'Value :> TBase and 'Value : (new : unit -> 'Value)> (stream: Stream) =
+        let startPosition = stream.Position
+        use transport = new TStreamTransport(stream, null, Thrift.TConfiguration())
         use protocol = new TCompactProtocol(transport)
         let value = new 'Value()
         value.ReadAsync(protocol, CancellationToken.None)
         |> Async.AwaitTask
         |> Async.RunSynchronously
-        value
+        let bytesRead = stream.Position - startPosition
+        value, bytesRead

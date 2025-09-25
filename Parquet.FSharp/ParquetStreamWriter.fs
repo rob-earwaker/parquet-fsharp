@@ -45,7 +45,8 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 Columns = ResizeArray(),
                 Total_byte_size = 0,
                 Num_rows = records.Length,
-                File_offset = stream.Position)
+                File_offset = stream.Position,
+                Ordinal = int16 fileMetaData.Row_groups.Count)
         let columns = Dremel.shred records
         for columnPath, column in Array.zip columnPaths columns do
             let repetitionLevelEncoding, repetitionLevelBytes =
@@ -99,7 +100,7 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 repetitionLevelBytes.Length
                 + definitionLevelBytes.Length
                 + valueBytes.Length
-            let pageHeader =
+            let dataPageHeader =
                 Thrift.PageHeader(
                     Type = Thrift.PageType.DATA_PAGE,
                     Uncompressed_page_size = dataPageUncompressedSize,
@@ -109,9 +110,9 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                         Encoding = valueEncoding,
                         Definition_level_encoding = definitionLevelEncoding,
                         Repetition_level_encoding = repetitionLevelEncoding))
-            let pageHeaderBytes = Thrift.Serialization.serialize pageHeader
+            let dataPageHeaderBytes = Thrift.Serialization.serialize dataPageHeader
             let dataPageOffset = stream.Position
-            Stream.writeBytes stream pageHeaderBytes
+            Stream.writeBytes stream dataPageHeaderBytes
             Stream.writeBytes stream repetitionLevelBytes
             Stream.writeBytes stream definitionLevelBytes
             Stream.writeBytes stream valueBytes
@@ -133,6 +134,12 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                         Total_compressed_size  = columnTotalUncompressedSize,
                         Data_page_offset = dataPageOffset))
             rowGroup.Columns.Add(columnChunk)
+            rowGroup.Total_byte_size <-
+                rowGroup.Total_byte_size
+                + columnChunk.Meta_data.Total_uncompressed_size
+            rowGroup.Total_compressed_size <-
+                rowGroup.Total_compressed_size
+                + columnChunk.Meta_data.Total_compressed_size
         fileMetaData.Row_groups.Add(rowGroup)
         fileMetaData.Num_rows <- fileMetaData.Num_rows + rowGroup.Num_rows
 
@@ -141,9 +148,3 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
         Stream.writeBytes stream fileMetaDataBytes
         Stream.writeInt32 stream fileMetaDataBytes.Length
         Stream.writeAscii stream magicNumber
-
-    member this.Dispose() =
-        this.WriteFooter()
-
-    interface IDisposable with
-        member this.Dispose() = this.Dispose()

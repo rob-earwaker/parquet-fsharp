@@ -3,9 +3,13 @@
 open System
 open System.IO
 open System.Text
+open Thrift.Protocol
 
-let seekBackwardsFromEnd (stream: Stream) (count: int) =
+let seekBackwardsFromEnd (stream: Stream) count =
     stream.Seek(-count, SeekOrigin.End) |> ignore
+
+let seekForwardsFromStart (stream: Stream) count =
+    stream.Seek(count, SeekOrigin.Begin) |> ignore
 
 let writeByte (stream: Stream) byte =
     stream.WriteByte(byte)
@@ -64,3 +68,17 @@ let readAscii stream count =
 let readInt32 stream =
     let bytes = readBytes stream 4
     BitConverter.ToInt32(bytes, 0)
+
+let readThrift<'Value when 'Value :> TBase and 'Value : (new : unit -> 'Value)> (stream: Stream) maxSize =
+    // Jump through some weird hoops because there's no option in the thrift
+    // library to leave the stream open when reading from it. In some cases we
+    // don't know the size of the value, so we read more than we need and then
+    // figure out how many bytes were read so we can reset the stream position.
+    // Not sure there's a better way of doing this unless the thrift library is
+    // updated or the protocol is implemented in this library!
+    let startPosition = stream.Position
+    use temporaryStream = new MemoryStream(readBytes stream maxSize)
+    let value, bytesRead = Thrift.Serialization.deserializeFrom<'Value> temporaryStream
+    let endPosition = startPosition + bytesRead
+    seekForwardsFromStart stream endPosition
+    value

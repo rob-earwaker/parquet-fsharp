@@ -24,6 +24,9 @@ module Int32 =
                 Stream.writeInt32 stream value
             stream.ToArray()
 
+        let decode stream count =
+            Array.init count (fun _ -> Stream.readInt32 stream)
+
     module RunLengthBitPackingHybrid =
         let private writeRunLengthRun stream count value byteWidth =
             let header = uint32 count <<< 1

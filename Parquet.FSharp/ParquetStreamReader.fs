@@ -27,8 +27,11 @@ type ParquetStreamReader<'Record>(stream: Stream) =
     member this.ReadRowGroup(index) =
         let rowGroup = fileMetaData.Row_groups[index]
         Stream.seekForwardsFromStart stream rowGroup.File_offset
-        for schemaElement, column in Seq.zip columnSchemaElements rowGroup.Columns do
-            this.ReadColumn(schemaElement, column)
+        let columns =
+            Seq.zip columnSchemaElements rowGroup.Columns
+            |> Seq.map this.ReadColumn
+            |> Array.ofSeq
+        ()
 
     member private this.ReadColumn(schemaElement: Thrift.SchemaElement, column: Thrift.ColumnChunk) =
         let metaData = column.Meta_data
@@ -69,12 +72,10 @@ type ParquetStreamReader<'Record>(stream: Stream) =
                         |> ColumnValues.Int32
                     | _ -> failwith "unsupported"
                 | _ -> failwith "unsupported"
-            let column = {
-                Column.ValueCount = valueCount
-                Column.Values = values
-                Column.MaxRepetitionLevel = maxRepetitionLevel
-                Column.MaxDefinitionLevel = maxDefinitionLevel
-                Column.RepetitionLevels = repetitionLevels
-                Column.DefinitionLevels = definitionLevels }
-            printfn ""
+            { Column.ValueCount = valueCount
+              Column.Values = values
+              Column.MaxRepetitionLevel = maxRepetitionLevel
+              Column.MaxDefinitionLevel = maxDefinitionLevel
+              Column.RepetitionLevels = repetitionLevels
+              Column.DefinitionLevels = definitionLevels }
         | _ -> failwith $"unsupported page type '{pageHeader.Type}'"

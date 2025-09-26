@@ -16,6 +16,17 @@ module Bool =
             bitArray.CopyTo(bytes, 0)
             bytes
 
+        let decode stream count =
+            let byteCount =
+                if count % 8 = 0
+                then count / 8
+                else count / 8 + 1
+            let bytes = Stream.readBytes stream byteCount
+            let bitArray = BitArray(bytes)
+            let values = Array.zeroCreate<bool> bitArray.Count
+            bitArray.CopyTo(values, 0)
+            Array.truncate count values
+
 module Int32 =
     module Plain =
         let encode (values: int[]) =

@@ -31,7 +31,7 @@ type ParquetStreamReader<'Record>(stream: Stream) =
             Seq.zip columnSchemaElements rowGroup.Columns
             |> Seq.map this.ReadColumn
             |> Array.ofSeq
-        ()
+        Dremel.assemble<'Record> columns
 
     member private this.ReadColumn(schemaElement: Thrift.SchemaElement, column: Thrift.ColumnChunk) =
         let metaData = column.Meta_data
@@ -65,6 +65,12 @@ type ParquetStreamReader<'Record>(stream: Stream) =
                     |> Array.length
             let values =
                 match metaData.Type with
+                | Thrift.Type.BOOLEAN ->
+                    match dataPageHeader.Encoding with
+                    | Thrift.Encoding.PLAIN ->
+                        Encoding.Bool.Plain.decode stream encodedValueCount
+                        |> ColumnValues.Bool
+                    | _ -> failwith "unsupported"
                 | Thrift.Type.INT32 ->
                     match dataPageHeader.Encoding with
                     | Thrift.Encoding.PLAIN ->

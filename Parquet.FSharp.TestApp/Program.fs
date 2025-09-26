@@ -17,6 +17,7 @@ type Message = {
     (*Time: DateTimeOffset
     Source: string
     Level: float*)
+    Flag: bool
     Count: int
     (*Samples: int[]
     Gps: Gps
@@ -84,6 +85,7 @@ module Random =
         { (*Message.Time = dateTimeOffset ()
           Message.Source = string ()
           Message.Level = float ()*)
+          Message.Flag = bool ()
           Message.Count = int ()
          (* Message.Samples = array 5 int
           Message.Gps = gps ()
@@ -105,5 +107,5 @@ let main _ =
     use readStream = new MemoryStream(fileContent)
     let parquetReader = ParquetStreamReader<Message>(readStream)
     parquetReader.ReadMetaData()
-    parquetReader.ReadRowGroup(0)
+    let roundtrippedRecords = parquetReader.ReadRowGroup(0)
     0

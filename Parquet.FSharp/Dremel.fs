@@ -247,3 +247,7 @@ let shred (records: 'Record[]) =
     recordShredder
     |> RecordShredder.buildColumns
     |> Array.ofSeq
+
+let assemble<'Record> (columns: Column[]) =
+    
+    Array.empty<'Record>

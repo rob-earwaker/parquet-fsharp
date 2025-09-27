@@ -289,9 +289,6 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels: Levels, column: 
     let mutable nextLevelsIndex = 0
     let mutable nextValueArrayIndex = 0
 
-    member this.AtomicInfo = atomicInfo
-    member this.MaxLevels = maxLevels
-
     member this.SkipUndefinedValue() =
         if levelsRequired
         then nextLevelsIndex <- nextLevelsIndex + 1
@@ -363,12 +360,6 @@ type private ValueAssembler =
     | Atomic of AtomicAssembler
     | List of ListAssembler
     | Record of RecordAssembler
-    with
-    member this.MaxLevels =
-        match this with
-        | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.MaxLevels
-        | ValueAssembler.List listAssembler -> listAssembler.MaxLevels
-        | ValueAssembler.Record recordAssembler -> recordAssembler.MaxLevels
 
 module private AtomicAssembler =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxLevels (columns: Queue<Column>) =

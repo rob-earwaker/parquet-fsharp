@@ -465,17 +465,21 @@ let private assembleNextRecord (recordAssembler: RecordAssembler) =
         let assembledRecord = AssembledValue.create firstField.Levels record
         Option.Some assembledRecord
 
+let private skipUndefinedRecord (recordAssembler: RecordAssembler) =
+    for fieldAssembler in recordAssembler.FieldAssemblers do
+        skipUndefinedValue fieldAssembler.ValueAssembler
+
 let private assembleNextValue (valueAssembler: ValueAssembler) =
     match valueAssembler with
     | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.AssembleNextValue()
     | ValueAssembler.List listAssembler -> failwith "unsupported"
-    | ValueAssembler.Record recordAssembler -> failwith "unsupported"
+    | ValueAssembler.Record recordAssembler -> assembleNextRecord recordAssembler
 
 let private skipUndefinedValue (valueAssembler: ValueAssembler) =
     match valueAssembler with
     | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.SkipUndefinedValue()
     | ValueAssembler.List listAssembler -> failwith "unsupported"
-    | ValueAssembler.Record recordAssembler -> failwith "unsupported"
+    | ValueAssembler.Record recordAssembler -> skipUndefinedRecord recordAssembler
 
 let assemble<'Record> (columns: Column[]) =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>

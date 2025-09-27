@@ -69,6 +69,14 @@ let readInt32 stream =
     let bytes = readBytes stream 4
     BitConverter.ToInt32(bytes, 0)
 
+let readInt64 stream =
+    let bytes = readBytes stream 8
+    BitConverter.ToInt64(bytes, 0)
+
+let readFloat64 stream =
+    let bytes = readBytes stream 8
+    BitConverter.ToDouble(bytes, 0)
+
 let readThrift<'Value when 'Value :> TBase and 'Value : (new : unit -> 'Value)> (stream: Stream) maxSize =
     // Jump through some weird hoops because there's no option in the thrift
     // library to leave the stream open when reading from it. In some cases we

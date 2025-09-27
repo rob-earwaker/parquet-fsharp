@@ -1,5 +1,6 @@
 module Parquet.FSharp.Tests.RecordRoundtrip
 
+open FluentAssertions
 open FsCheck.Xunit
 open Parquet.FSharp
 open Swensen.Unquote
@@ -16,28 +17,397 @@ let testRecordRoundtrip<'Record when 'Record : equality> (records: 'Record[]) =
     let parquetReader = ParquetStreamReader<'Record>(stream)
     parquetReader.ReadMetaData()
     let roundtrippedRecords = parquetReader.ReadRowGroup(0)
-    test <@ roundtrippedRecords = records @>
+    let configureEquivalencyOptions (options: Equivalency.EquivalencyOptions<'Record>) =
+        options.AllowingInfiniteRecursion()
+            .WithStrictOrdering()
+            .WithStrictTyping()
+    roundtrippedRecords.Should()
+        .BeEquivalentTo(records, configureEquivalencyOptions)
+    |> ignore
 
 [<Property>]
-let ``record with bool field`` records =
-    testRecordRoundtrip<{| Field: bool |}> records
+let ``bool field`` records =
+    testRecordRoundtrip<{|
+        Field1: bool |}>
+        records
 
 [<Property>]
-let ``record with nullable bool field`` records =
-    testRecordRoundtrip<{| Field: Nullable<bool> |}> records
+let ``int32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: int |}>
+        records
 
 [<Property>]
-let ``record with bool option field`` records =
-    testRecordRoundtrip<{| Field: bool option |}> records
+let ``float64 field`` records =
+    testRecordRoundtrip<{|
+        Field1: float |}>
+        records
 
 [<Property>]
-let ``record with int field`` records =
-    testRecordRoundtrip<{| Field: int |}> records
+let ``date time offset field`` records =
+    testRecordRoundtrip<{|
+        Field1: DateTimeOffset |}>
+        records
 
 [<Property>]
-let ``record with nullable int field`` records =
-    testRecordRoundtrip<{| Field: Nullable<int> |}> records
+let ``string field`` records =
+    testRecordRoundtrip<{|
+        Field1: string |}>
+        records
 
 [<Property>]
-let ``record with int option field`` records =
-    testRecordRoundtrip<{| Field: int option |}> records
+let ``record field with bool field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: bool |} |}>
+        records
+
+[<Property>]
+let ``record field with int32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: int |} |}>
+        records
+
+[<Property>]
+let ``record field with float64 field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: float |} |}>
+        records
+
+[<Property>]
+let ``record field with date time offset field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: DateTimeOffset |} |}>
+        records
+
+[<Property>]
+let ``record field with string field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: string |} |}>
+        records
+
+[<Property>]
+let ``record field with record field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: {|
+                Field3: int |} |} |}>
+        records
+
+[<Property>]
+let ``record field with nullable bool field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: Nullable<bool> |} |}>
+        records
+
+[<Property>]
+let ``record field with nullable int32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: Nullable<int> |} |}>
+        records
+
+[<Property>]
+let ``record field with nullable float64 field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: Nullable<float> |} |}>
+        records
+
+[<Property>]
+let ``record field with nullable date time offset field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: Nullable<DateTimeOffset> |} |}>
+        records
+
+[<Property>]
+let ``record field with nullable record field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: Nullable<struct {|
+                Field3: int |}> |} |}>
+        records
+
+[<Property>]
+let ``record field with option bool field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: option<bool> |} |}>
+        records
+
+[<Property>]
+let ``record field with option int32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: option<int> |} |}>
+        records
+
+[<Property>]
+let ``record field with option float64 field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: option<float> |} |}>
+        records
+
+[<Property>]
+let ``record field with option date time offset field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: option<DateTimeOffset> |} |}>
+        records
+
+[<Property>]
+let ``record field with option record field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: option<{|
+                Field3: int |}> |} |}>
+        records
+
+[<Property>]
+let ``nullable bool field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<bool> |}>
+        records
+
+[<Property>]
+let ``nullable int32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<int> |}>
+        records
+
+[<Property>]
+let ``nullable float64 field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<float> |}>
+        records
+
+[<Property>]
+let ``nullable date time offset field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<DateTimeOffset> |}>
+        records
+
+[<Property>]
+let ``nullable record field with bool field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: bool |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with int32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: int |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with float64 field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: float |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with date time offset field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: DateTimeOffset |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with string field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: string |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with record field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: struct {|
+                Field3: int |} |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with nullable bool field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: Nullable<bool> |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with nullable int32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: Nullable<int> |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with nullable float64 field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: Nullable<float> |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with nullable date time offset field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: Nullable<DateTimeOffset> |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with nullable record field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: Nullable<struct {|
+                Field3: int |}> |}> |}>
+        records
+
+[<Property>]
+let ``option bool field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<bool> |}>
+        records
+
+[<Property>]
+let ``option int32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<int> |}>
+        records
+
+[<Property>]
+let ``option float64 field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<float> |}>
+        records
+
+[<Property>]
+let ``option date time offset field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<DateTimeOffset> |}>
+        records
+
+[<Property>]
+let ``option record field with bool field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: bool |}> |}>
+        records
+
+[<Property>]
+let ``option record field with int32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: int |}> |}>
+        records
+
+[<Property>]
+let ``option record field with float64 field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: float |}> |}>
+        records
+
+[<Property>]
+let ``option record field with date time offset field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: DateTimeOffset |}> |}>
+        records
+
+[<Property>]
+let ``option record field with string field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: string |}> |}>
+        records
+
+[<Property>]
+let ``option record field with record field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: {|
+                Field3: int |} |}> |}>
+        records
+
+[<Property>]
+let ``option record field with nullable bool field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: Nullable<bool> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with nullable int32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: Nullable<int> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with nullable float64 field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: Nullable<float> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with nullable date time offset field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: Nullable<DateTimeOffset> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with nullable record field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: Nullable<struct {|
+                Field3: int |}> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with option bool field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: option<bool> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with option int32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: option<int> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with option float64 field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: option<float> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with option date time offset field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: option<DateTimeOffset> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with option record field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: option<{|
+                Field3: int |}> |}> |}>
+        records

@@ -94,6 +94,9 @@ module Int64 =
                 Stream.writeInt64 stream value
             stream.ToArray()
 
+        let decode stream count =
+            Array.init count (fun _ -> Stream.readInt64 stream)
+
 module Float64 =
     module Plain =
         let encode (values: float[]) =
@@ -101,6 +104,9 @@ module Float64 =
             for value in values do
                 Stream.writeFloat64 stream value
             stream.ToArray()
+
+        let decode stream count =
+            Array.init count (fun _ -> Stream.readFloat64 stream)
 
 module ByteArray =
     module Plain =
@@ -110,3 +116,8 @@ module ByteArray =
                 Stream.writeInt32 stream value.Length
                 Stream.writeBytes stream value
             stream.ToArray()
+
+        let decode stream count =
+            Array.init count (fun _ ->
+                let size = Stream.readInt32 stream
+                Stream.readBytes stream size)

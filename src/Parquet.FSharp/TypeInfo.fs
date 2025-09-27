@@ -76,9 +76,7 @@ module private Nullable =
         let constructor = dotnetType.GetConstructor([| valueDotnetType |])
         fun (valueObj: obj) -> constructor.Invoke([| valueObj |])
 
-    let preComputeCreateNull (dotnetType: Type) =
-        let constructor = dotnetType.GetConstructor([||])
-        fun () -> constructor.Invoke([||])
+    let createNull = fun () -> null :> obj
 
 module private Option =
     let private getSomeCase dotnetType =
@@ -277,7 +275,7 @@ module private AtomicInfo =
             fun primitiveValueObj ->
                 let valueObj = valueInfo.FromPrimitiveValue primitiveValueObj
                 createValue valueObj
-        let createNullValue = Nullable.preComputeCreateNull dotnetType
+        let createNullValue = Nullable.createNull
         create dotnetType isOptional logicalType primitiveType
             resolvePrimitiveValue fromPrimitiveValue createNullValue
 
@@ -391,7 +389,7 @@ module private RecordInfo =
             fun (fieldValueObjs: obj[]) ->
                 let recordObj = recordInfo.CreateValue fieldValueObjs
                 createValue recordObj
-        let createNullValue = Nullable.preComputeCreateNull dotnetType
+        let createNullValue = Nullable.createNull
         create dotnetType isOptional fields
             resolveFieldValues createValue createNullValue
 

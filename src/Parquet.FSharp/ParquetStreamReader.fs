@@ -3,11 +3,16 @@
 open System
 open System.IO
 
+type private ColumnSchemaInfo = {
+    SchemaElement: Thrift.SchemaElement
+    MaxRepetitionLevel: int
+    MaxDefinitionLevel: int }
+
 type ParquetStreamReader<'Record>(stream: Stream) =
     let magicNumber = "PAR1"
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
     let mutable fileMetaData = null
-    let mutable columnSchemaElements = null
+    let mutable columnSchemaInfo = null
 
     member this.ReadMetaData() =
         Stream.seekBackwardsFromEnd stream 8
@@ -18,40 +23,70 @@ type ParquetStreamReader<'Record>(stream: Stream) =
         let fileMetaDataOffset = 8 + fileMetaDataSize
         Stream.seekBackwardsFromEnd stream fileMetaDataOffset
         fileMetaData <- Stream.readThrift<Thrift.FileMetaData> stream fileMetaDataSize
-        columnSchemaElements <-
-            fileMetaData.Schema
-            |> Array.ofSeq
-            |> Array.filter (fun schemaElement ->
-                schemaElement.Num_children = 0)
+        columnSchemaInfo <-
+            let columnSchemaInfo = ResizeArray()
+            let mutable nextIndex = 1
+            let rec processGroup numChildren maxRepetitionLevel maxDefinitionLevel =
+                for _ in [ 0 .. numChildren - 1 ] do
+                    let schemaElement = fileMetaData.Schema[nextIndex]
+                    nextIndex <- nextIndex + 1
+                    let maxRepetitionLevel =
+                        if schemaElement.Repetition_type = Thrift.FieldRepetitionType.REPEATED
+                        then maxRepetitionLevel + 1
+                        else maxRepetitionLevel
+                    let maxDefinitionLevel =
+                        if schemaElement.Repetition_type = Thrift.FieldRepetitionType.OPTIONAL
+                            || schemaElement.Repetition_type = Thrift.FieldRepetitionType.REPEATED
+                        then maxDefinitionLevel + 1
+                        else maxDefinitionLevel
+                    if schemaElement.__isset.num_children then
+                        processGroup schemaElement.Num_children maxRepetitionLevel maxDefinitionLevel
+                    else
+                        columnSchemaInfo.Add({
+                            ColumnSchemaInfo.SchemaElement = schemaElement
+                            ColumnSchemaInfo.MaxRepetitionLevel = maxRepetitionLevel
+                            ColumnSchemaInfo.MaxDefinitionLevel = maxDefinitionLevel })
+            let rootElement = fileMetaData.Schema[0]
+            let maxRepetitionLevel = 0
+            let maxDefinitionLevel = 0
+            processGroup rootElement.Num_children maxRepetitionLevel maxDefinitionLevel
+            Array.ofSeq columnSchemaInfo
 
     member this.ReadRowGroup(index) =
         let rowGroup = fileMetaData.Row_groups[index]
         Stream.seekForwardsFromStart stream rowGroup.File_offset
         let columns =
-            Seq.zip columnSchemaElements rowGroup.Columns
+            Seq.zip columnSchemaInfo rowGroup.Columns
             |> Seq.map this.ReadColumn
             |> Array.ofSeq
         Dremel.assemble<'Record> columns
 
-    member private this.ReadColumn(schemaElement: Thrift.SchemaElement, column: Thrift.ColumnChunk) =
+    member private this.ReadColumn(schemaInfo: ColumnSchemaInfo, column: Thrift.ColumnChunk) =
         let metaData = column.Meta_data
         let totalCompressedSize = int metaData.Total_compressed_size
         let pageHeader = Stream.readThrift<Thrift.PageHeader> stream totalCompressedSize
         match pageHeader.Type with
         | Thrift.PageType.DATA_PAGE ->
             let dataPageHeader = pageHeader.Data_page_header
-            // TODO: Assume these for now, but should be derived from the schema.
-            let maxRepetitionLevel = 0
-            let maxDefinitionLevel = 0
-            let repetitionLevels =
-                if maxRepetitionLevel = 0
-                then Option.None
-                else failwith "unsupported"
-            let definitionLevels =
-                if maxDefinitionLevel = 0
-                then Option.None
-                else failwith "unsupported"
             let valueCount = dataPageHeader.Num_values
+            let repetitionLevels =
+                if schemaInfo.MaxRepetitionLevel = 0
+                then Option.None
+                else
+                    match dataPageHeader.Repetition_level_encoding with
+                    | Thrift.Encoding.PLAIN ->
+                        Encoding.Int32.Plain.decode stream valueCount
+                        |> Option.Some
+                    | _ -> failwith "unsupported"
+            let definitionLevels =
+                if schemaInfo.MaxDefinitionLevel = 0
+                then Option.None
+                else
+                    match dataPageHeader.Definition_level_encoding with
+                    | Thrift.Encoding.PLAIN ->
+                        Encoding.Int32.Plain.decode stream valueCount
+                        |> Option.Some
+                    | _ -> failwith "unsupported"
             // Determine the number of values we should be decoding. NULL values
             // are not encoded, so we don't count any values where the
             // definition level is less than the maximum as this implies a NULL
@@ -61,7 +96,7 @@ type ParquetStreamReader<'Record>(stream: Stream) =
                 | Option.None -> valueCount
                 | Option.Some definitionLevels ->
                     definitionLevels
-                    |> Array.filter (fun level -> level = maxDefinitionLevel)
+                    |> Array.filter (fun level -> level = schemaInfo.MaxDefinitionLevel)
                     |> Array.length
             let values =
                 match metaData.Type with
@@ -80,8 +115,8 @@ type ParquetStreamReader<'Record>(stream: Stream) =
                 | _ -> failwith "unsupported"
             { Column.ValueCount = valueCount
               Column.Values = values
-              Column.MaxRepetitionLevel = maxRepetitionLevel
-              Column.MaxDefinitionLevel = maxDefinitionLevel
+              Column.MaxRepetitionLevel = schemaInfo.MaxRepetitionLevel
+              Column.MaxDefinitionLevel = schemaInfo.MaxDefinitionLevel
               Column.RepetitionLevels = repetitionLevels
               Column.DefinitionLevels = definitionLevels }
         | _ -> failwith $"unsupported page type '{pageHeader.Type}'"

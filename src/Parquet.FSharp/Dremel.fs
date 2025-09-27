@@ -23,11 +23,8 @@ module private Levels =
             Definition = levels.Definition + 1 }
 
 type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels: Levels) =
-    // Levels are required if the max level is greater than zero. Since repeated
-    // values result in an increment to both the repetition and definition
-    // levels, we can determine whether both levels are required by just
-    // checking whether the definition level is greater than zero.
-    let levelsRequired = maxLevels.Definition > 0
+    let repetitionLevelsRequired = maxLevels.Repetition > 0
+    let definitionLevelsRequired = maxLevels.Definition > 0
 
     let mutable valueCount = 0
     let primitiveValues = ResizeArray()
@@ -41,8 +38,9 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels: Levels) =
         valueCount <- valueCount + 1
         if not (isNull primitiveValue) then
             primitiveValues.Add(primitiveValue)
-        if levelsRequired then
+        if repetitionLevelsRequired then
             repetitionLevels.Add(levels.Repetition)
+        if definitionLevelsRequired then
             definitionLevels.Add(levels.Definition)
 
     member this.BuildColumn() =
@@ -64,11 +62,11 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels: Levels) =
                 let values = primitiveValues |> Seq.cast<byte[]> |> Array.ofSeq
                 ColumnValues.ByteArray values
         let repetitionLevels =
-            if levelsRequired
+            if repetitionLevelsRequired
             then Option.Some (Array.ofSeq repetitionLevels)
             else Option.None
         let definitionLevels =
-            if levelsRequired
+            if definitionLevelsRequired
             then Option.Some (Array.ofSeq definitionLevels)
             else Option.None
         { Column.ValueCount = valueCount
@@ -263,16 +261,13 @@ module private AssembledValue =
           AssembledValue.Value = value }
 
 type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels: Levels, column: Column) =
-    // Levels are required if the max level is greater than zero. Since repeated
-    // values result in an increment to both the repetition and definition
-    // levels, we can determine whether both levels are required by just
-    // checking whether the definition level is greater than zero.
-    let levelsRequired = maxLevels.Definition > 0
+    let repetitionLevelsRequired = maxLevels.Repetition > 0
+    let definitionLevelsRequired = maxLevels.Definition > 0
 
-    do if levelsRequired && column.RepetitionLevels.IsNone then
+    do if repetitionLevelsRequired && column.RepetitionLevels.IsNone then
         failwith "repetition levels are required but none exist in column data"
 
-    do if levelsRequired && column.DefinitionLevels.IsNone then
+    do if definitionLevelsRequired && column.DefinitionLevels.IsNone then
         failwith "definition levels are required but none exist in column data"
 
     let primitiveValues =
@@ -284,37 +279,32 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels: Levels, column: 
         | ColumnValues.ByteArray values -> values :> Array
 
     // NULL values are not written to the array, so keep track of the array
-    // index and the levels index separately. For optional values, these will be
+    // index and the value index separately. For optional values, these will be
     // different if there are any NULL values in the column.
-    let mutable nextLevelsIndex = 0
-    let mutable nextValueArrayIndex = 0
+    let mutable nextValueIndex = 0
+    let mutable nextArrayValueIndex = 0
 
     member this.SkipUndefinedValue() =
-        if levelsRequired
-        then nextLevelsIndex <- nextLevelsIndex + 1
-        else failwith "value is required and should not be UNDEFINED"
+        nextValueIndex <- nextValueIndex + 1
 
     member this.AssembleNextValue() =
-        // Determine whether we've reached the end of our column data
-        // differently based on whether levels are required (i.e. whether the
-        // column may contain NULL values). If NULL values are not possible then
-        // we won't be tracking the levels index, so check based on the array
-        // index. If NULL values are possible then reaching the end of the array
-        // does not necessarily mean we've reached the end of the column as
-        // there could be more NULL values, so check based on the levels index.
-        if not levelsRequired && nextValueArrayIndex = column.ValueCount
-            || levelsRequired && nextLevelsIndex = column.ValueCount
+        // Determine whether we've reached the end of our column data based on
+        // the value index. It's important not to use the array value index
+        // because for optional values reaching the end of the values array does
+        // not imply we've reached the end of the column as there could be more
+        // NULL values in the column.
+        if nextValueIndex = column.ValueCount
         then Option.None
         else
-            let levels =
-                if levelsRequired
-                then
-                    let repetitionLevel = column.RepetitionLevels.Value[nextLevelsIndex]
-                    let definitionLevel = column.DefinitionLevels.Value[nextLevelsIndex]
-                    nextLevelsIndex <- nextLevelsIndex + 1
-                    Levels.create repetitionLevel definitionLevel
-                else
-                    Levels.Default
+            let repetitionLevel =
+                if repetitionLevelsRequired
+                then column.RepetitionLevels.Value[nextValueIndex]
+                else 0
+            let definitionLevel =
+                if definitionLevelsRequired
+                then column.DefinitionLevels.Value[nextValueIndex]
+                else 0
+            let levels = Levels.create repetitionLevel definitionLevel
             let value =
                 // NULL values are not written to the values array as they are
                 // implied by a definition level that is lower than the maximum. A
@@ -336,9 +326,10 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels: Levels, column: 
                     // If the definition level equals the maximum definition level
                     // then this value is DEFINED and NOTNULL. Get the next
                     // primitive value and convert it to the correct type.
-                    let primitiveValue = primitiveValues.GetValue(nextValueArrayIndex)
-                    nextValueArrayIndex <- nextValueArrayIndex + 1
+                    let primitiveValue = primitiveValues.GetValue(nextArrayValueIndex)
+                    nextArrayValueIndex <- nextArrayValueIndex + 1
                     Option.Some (atomicInfo.FromPrimitiveValue primitiveValue)
+            nextValueIndex <- nextValueIndex + 1
             let assembledValue = AssembledValue.create levels value
             Option.Some assembledValue
 

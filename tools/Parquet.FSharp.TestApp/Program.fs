@@ -17,7 +17,7 @@ type Message = {
     (*Time: DateTimeOffset
     Source: string
     Level: float*)
-    Flag: bool
+    Flag: Nullable<bool>
     Count: int
     (*Samples: int[]
     Gps: Gps
@@ -85,7 +85,7 @@ module Random =
         { (*Message.Time = dateTimeOffset ()
           Message.Source = string ()
           Message.Level = float ()*)
-          Message.Flag = bool ()
+          Message.Flag = nullableBool ()
           Message.Count = int ()
          (* Message.Samples = array 5 int
           Message.Gps = gps ()

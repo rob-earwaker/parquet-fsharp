@@ -52,23 +52,17 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
             let repetitionLevelEncoding, repetitionLevelBytes =
                 match column.RepetitionLevels with
                 | Option.Some repetitionLevels ->
-                    let encoding = Thrift.Encoding.RLE
-                    let bytes =
-                        Encoding.Int32.RunLengthBitPackingHybrid.encode
-                            repetitionLevels
-                            column.MaxRepetitionLevel
+                    let encoding = Thrift.Encoding.PLAIN
+                    let bytes = Encoding.Int32.Plain.encode repetitionLevels
                     encoding, bytes
-                | Option.None -> Thrift.Encoding.RLE, [||]
+                | Option.None -> Thrift.Encoding.PLAIN, [||]
             let definitionLevelEncoding, definitionLevelBytes =
                 match column.DefinitionLevels with
                 | Option.Some definitionLevels ->
-                    let encoding = Thrift.Encoding.RLE
-                    let bytes =
-                        Encoding.Int32.RunLengthBitPackingHybrid.encode
-                            definitionLevels
-                            column.MaxDefinitionLevel
+                    let encoding = Thrift.Encoding.PLAIN
+                    let bytes = Encoding.Int32.Plain.encode definitionLevels
                     encoding, bytes
-                | Option.None -> Thrift.Encoding.RLE, [||]
+                | Option.None -> Thrift.Encoding.PLAIN, [||]
             let valueType, valueEncoding, valueBytes =
                 match column.Values with
                 | ColumnValues.Bool values ->

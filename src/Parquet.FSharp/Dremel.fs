@@ -253,6 +253,15 @@ let shred (records: 'Record[]) =
     |> RecordShredder.buildColumns
     |> Array.ofSeq
 
+type private AssembledValue = {
+    Levels: Levels
+    Value: obj option }
+
+module private AssembledValue =
+    let create levels value =
+        { AssembledValue.Levels = levels
+          AssembledValue.Value = value }
+
 type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels: Levels, column: Column) =
     // Levels are required if the max level is greater than zero. Since repeated
     // values result in an increment to both the repetition and definition
@@ -274,8 +283,11 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels: Levels, column: 
         | ColumnValues.Float64 values -> values :> Array
         | ColumnValues.ByteArray values -> values :> Array
 
+    // NULL values are not written to the array, so keep track of the array
+    // index and the levels index separately. For optional values, these will be
+    // different if there are any NULL values in the column.
     let mutable nextLevelsIndex = 0
-    let mutable nextValueIndex = 0
+    let mutable nextValueArrayIndex = 0
 
     member this.AtomicInfo = atomicInfo
     member this.MaxLevels = maxLevels
@@ -285,41 +297,53 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels: Levels, column: 
         then nextLevelsIndex <- nextLevelsIndex + 1
         else failwith "value is required and should not be UNDEFINED"
 
-    member this.ReadNextValue() =
-        let levels =
-            if levelsRequired
-            then
-                let repetitionLevel = column.RepetitionLevels.Value[nextLevelsIndex]
-                let definitionLevel = column.DefinitionLevels.Value[nextLevelsIndex]
-                nextLevelsIndex <- nextLevelsIndex + 1
-                Levels.create repetitionLevel definitionLevel
-            else
-                Levels.Default
-        let value =
-            // NULL values are not written to the values array as they are
-            // implied by a definition level that is lower than the maximum. A
-            // NULL value means that either this value is NULL or this value is
-            // UNDEFINED (due to one of its ancestors being NULL).
-            if levels.Definition < maxLevels.Definition
-            then
-                // If this value is optional and the definition level is one
-                // less than the maximum definition level then this value is
-                // DEFINED, but NULL.
-                if atomicInfo.IsOptional
-                    && levels.Definition = maxLevels.Definition - 1
-                then Option.Some (atomicInfo.CreateNullValue ())
-                // If the value is not optional, or if it is optional and the
-                // definition level is more than one less than the maximum
-                // definition level then this value is UNDEFINED.
-                else Option.None
-            else
-                // If the definition level equals the maximum definition level
-                // then this value is DEFINED and NOTNULL. Get the next
-                // primitive value and convert it to the correct type.
-                let primitiveValue = primitiveValues.GetValue(nextValueIndex)
-                nextValueIndex <- nextValueIndex + 1
-                Option.Some (atomicInfo.FromPrimitiveValue primitiveValue)
-        levels, value
+    member this.AssembleNextValue() =
+        // Determine whether we've reached the end of our column data
+        // differently based on whether levels are required (i.e. whether the
+        // column may contain NULL values). If NULL values are not possible then
+        // we won't be tracking the levels index, so check based on the array
+        // index. If NULL values are possible then reaching the end of the array
+        // does not necessarily mean we've reached the end of the column as
+        // there could be more NULL values, so check based on the levels index.
+        if not levelsRequired && nextValueArrayIndex = column.ValueCount
+            || levelsRequired && nextLevelsIndex = column.ValueCount
+        then Option.None
+        else
+            let levels =
+                if levelsRequired
+                then
+                    let repetitionLevel = column.RepetitionLevels.Value[nextLevelsIndex]
+                    let definitionLevel = column.DefinitionLevels.Value[nextLevelsIndex]
+                    nextLevelsIndex <- nextLevelsIndex + 1
+                    Levels.create repetitionLevel definitionLevel
+                else
+                    Levels.Default
+            let value =
+                // NULL values are not written to the values array as they are
+                // implied by a definition level that is lower than the maximum. A
+                // NULL value means that either this value is NULL or this value is
+                // UNDEFINED (due to one of its ancestors being NULL).
+                if levels.Definition < maxLevels.Definition
+                then
+                    // If this value is optional and the definition level is one
+                    // less than the maximum definition level then this value is
+                    // DEFINED, but NULL.
+                    if atomicInfo.IsOptional
+                        && levels.Definition = maxLevels.Definition - 1
+                    then Option.Some (atomicInfo.CreateNullValue ())
+                    // If the value is not optional, or if it is optional and the
+                    // definition level is more than one less than the maximum
+                    // definition level then this value is UNDEFINED.
+                    else Option.None
+                else
+                    // If the definition level equals the maximum definition level
+                    // then this value is DEFINED and NOTNULL. Get the next
+                    // primitive value and convert it to the correct type.
+                    let primitiveValue = primitiveValues.GetValue(nextValueArrayIndex)
+                    nextValueArrayIndex <- nextValueArrayIndex + 1
+                    Option.Some (atomicInfo.FromPrimitiveValue primitiveValue)
+            let assembledValue = AssembledValue.create levels value
+            Option.Some assembledValue
 
 type private ListAssembler = {
     ListInfo: ListInfo
@@ -408,62 +432,60 @@ let private assembleNextRecord (recordAssembler: RecordAssembler) =
     // NULL) then all field values will be UNDEFINED. Determine whether this is
     // the case from the first field value.
     let firstFieldAssembler = recordAssembler.FieldAssemblers[0]
-    let firstFieldValueAssembler = firstFieldAssembler.ValueAssembler
-    let firstFieldLevels, firstFieldValue = assembleNextValue firstFieldValueAssembler
-    match firstFieldValue with
-    // If the first field value is UNDEFINED then either the record is NULL or
-    // the record is UNDEFINED (due to one of its ancestors being NULL). In
-    // either case, the definition level of the first field should be less than
-    // the maximum definition level of the record.
-    | Option.None ->
+    match assembleNextValue firstFieldAssembler.ValueAssembler with
+    | Option.None -> Option.None
+    | Option.Some firstField ->
         let record =
-            // If the record is optional and the definition level of the first
-            // field value is one less than the maximum definition level of the
-            // record then the record is DEFINED, but NULL.
-            if recordInfo.IsOptional
-                && firstFieldLevels.Definition = recordMaxLevels.Definition - 1
-            then Option.Some (recordInfo.CreateNullValue ())
-            // If the record is not optional, or if it is optional and the
-            // definition level of the first field value is more than one less
-            // than the maximum definition level of the record then the record
-            // is UNDEFINED.
-            else Option.None
-        // If the first field is UNDEFINED then any remaining fields in the
-        // record should also be UNDEFINED. It is important to skip these
-        // UNDEFINED values, otherwise they will be considered part of the next
-        // record.
-        for fieldAssembler in recordAssembler.FieldAssemblers[1..] do
-            skipUndefinedValue fieldAssembler.ValueAssembler
-        // Return the NULL or UNDEFINED record along with the levels of the
-        // first field. It's important to pass the first field levels back up
-        // the chain so that ancestor values can be resolved correctly. In the
-        // case where the record is UNDEFINED, the definition level of the first
-        // field determines whether ancestors are NULL or UNDEFINED.
-        firstFieldLevels, record
-    // If the first field value is DEFINED then the record must also be DEFINED.
-    | Option.Some firstFieldValue ->
-        // Add the first field value to the array of field values.
-        fieldValues[0] <- firstFieldValue
-        // If the first field is DEFINED then any remaining fields in the record
-        // should also be DEFINED. Assemble their values and add to the array of
-        // field values.
-        for fieldAssembler in recordAssembler.FieldAssemblers[1..] do
-            let fieldInfo = fieldAssembler.FieldInfo
-            let _, fieldValue = assembleNextValue fieldAssembler.ValueAssembler
-            // Assume the field value is DEFINED.
-            fieldValues[fieldInfo.Index] <- fieldValue.Value
-        // Construct the record from the field values.
-        let record = recordInfo.CreateValue fieldValues
+            match firstField.Value with
+            // If the first field value is UNDEFINED then either the record is NULL
+            // or the record is UNDEFINED (due to one of its ancestors being NULL).
+            // In either case, the definition level of the first field should be
+            // less than the maximum definition level of the record.
+            | Option.None ->
+                // If the first field is UNDEFINED then any remaining fields in the
+                // record should also be UNDEFINED. It is important to skip these
+                // UNDEFINED values, otherwise they will be considered part of the next
+                // record.
+                for fieldAssembler in recordAssembler.FieldAssemblers[1..] do
+                    skipUndefinedValue fieldAssembler.ValueAssembler
+                // If the record is optional and the definition level of the first
+                // field value is one less than the maximum definition level of the
+                // record then the record is DEFINED, but NULL.
+                if recordInfo.IsOptional
+                    && firstField.Levels.Definition = recordMaxLevels.Definition - 1
+                then Option.Some (recordInfo.CreateNullValue ())
+                // If the record is not optional, or if it is optional and the
+                // definition level of the first field value is more than one less
+                // than the maximum definition level of the record then the record
+                // is UNDEFINED.
+                else Option.None
+            // If the first field value is DEFINED then the record must also be DEFINED.
+            | Option.Some firstFieldValue ->
+                // Add the first field value to the array of field values.
+                fieldValues[0] <- firstFieldValue
+                // If the first field is DEFINED then any remaining fields in the record
+                // should also be DEFINED. Assemble their values and add to the array of
+                // field values.
+                for fieldAssembler in recordAssembler.FieldAssemblers[1..] do
+                    let fieldInfo = fieldAssembler.FieldInfo
+                    let fieldValue = assembleNextValue fieldAssembler.ValueAssembler
+                    // Assume there is a next field value and that it is DEFINED.
+                    fieldValues[fieldInfo.Index] <- fieldValue.Value.Value.Value
+                // Construct the record from the field values.
+                Option.Some (recordInfo.CreateValue fieldValues)
         // Return the record along with the levels of the first field. It's
         // important to pass the first field levels back up the chain so that
-        // ancestor values can be resolved correctly. In the case where this
-        // record is a repeated value, the repetition level of the first field
-        // indicates the repetition level of the record.
-        firstFieldLevels, Option.Some record
+        // ancestor values can be resolved correctly. In the case where the
+        // record is UNDEFINED, the definition level of the first field
+        // determines whether ancestors are NULL or UNDEFINED. In the case where
+        // the record is a repeated value, the repetition level of the first
+        // field indicates the repetition level of the record.
+        let assembledRecord = AssembledValue.create firstField.Levels record
+        Option.Some assembledRecord
 
 let private assembleNextValue (valueAssembler: ValueAssembler) =
     match valueAssembler with
-    | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.ReadNextValue()
+    | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.AssembleNextValue()
     | ValueAssembler.List listAssembler -> failwith "unsupported"
     | ValueAssembler.Record recordAssembler -> failwith "unsupported"
 
@@ -479,7 +501,12 @@ let assemble<'Record> (columns: Column[]) =
     let columns = Queue(columns)
     let recordAssembler = RecordAssembler.forRecord recordInfo maxLevels columns
     let records = ResizeArray()
-    for _ in [ 1 .. 20 ] do
-        let _, record = assembleNextRecord recordAssembler
-        records.Add(record.Value :?> 'Record)
+    let mutable allRecordsAssembled = false
+    while not allRecordsAssembled do
+        match assembleNextRecord recordAssembler with
+        | Option.None -> allRecordsAssembled <- true
+        | Option.Some record ->
+            match record.Value with
+            | Option.None -> failwith "root record should always be defined"
+            | Option.Some record -> records.Add(record :?> 'Record)
     Array.ofSeq records

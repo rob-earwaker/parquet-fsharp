@@ -94,7 +94,7 @@ module Random =
 [<EntryPoint>]
 let main _ =
     let records = Array.init 20 (fun _ -> Random.message ())
-    let filePath = @"..\..\..\..\data\data.parquet"
+    let filePath = @"..\..\..\..\..\data\data.parquet"
     // Write
     use writeStream = new MemoryStream()
     let parquetWriter = ParquetStreamWriter<Message>(writeStream)

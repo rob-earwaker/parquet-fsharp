@@ -478,5 +478,8 @@ let assemble<'Record> (columns: Column[]) =
     let maxLevels = Levels.Default
     let columns = Queue(columns)
     let recordAssembler = RecordAssembler.forRecord recordInfo maxLevels columns
-    let _, firstRecord = assembleNextRecord recordAssembler
-    Array.empty<'Record>
+    let records = ResizeArray()
+    for _ in [ 1 .. 20 ] do
+        let _, record = assembleNextRecord recordAssembler
+        records.Add(record.Value :?> 'Record)
+    Array.ofSeq records

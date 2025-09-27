@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Parquet.FSharp\Parquet.FSharp.fsproj" />
+    <ProjectReference Include="..\..\src\Parquet.FSharp\Parquet.FSharp.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

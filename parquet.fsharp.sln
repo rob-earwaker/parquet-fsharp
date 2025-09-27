@@ -3,11 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35327.3
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Parquet.FSharp.TestApp", "Parquet.FSharp.TestApp\Parquet.FSharp.TestApp.fsproj", "{8B948025-4A43-41EA-9EA0-13E35B80DD89}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Parquet.FSharp.Thrift", "Parquet.FSharp.Thrift\Parquet.FSharp.Thrift.csproj", "{7E9BBC45-6F94-463D-A03B-6BD9170F6202}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Parquet.FSharp", "src\Parquet.FSharp\Parquet.FSharp.fsproj", "{C8E2E7B7-971F-75C1-A603-6D41FD02B47E}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Parquet.FSharp", "Parquet.FSharp\Parquet.FSharp.fsproj", "{95D448D6-A179-49A2-B8D3-82A48CAF8FFD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Parquet.FSharp.Thrift", "src\Parquet.FSharp.Thrift\Parquet.FSharp.Thrift.csproj", "{76E53291-F7B7-B1C4-9C34-DFE6953333BF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{4DA8050E-0810-4D9F-9B23-79497C037CC8}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Parquet.FSharp.TestApp", "tools\Parquet.FSharp.TestApp\Parquet.FSharp.TestApp.fsproj", "{AA012501-B355-0042-8758-81067AD0DCFB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,21 +19,26 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{8B948025-4A43-41EA-9EA0-13E35B80DD89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8B948025-4A43-41EA-9EA0-13E35B80DD89}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8B948025-4A43-41EA-9EA0-13E35B80DD89}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8B948025-4A43-41EA-9EA0-13E35B80DD89}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7E9BBC45-6F94-463D-A03B-6BD9170F6202}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7E9BBC45-6F94-463D-A03B-6BD9170F6202}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7E9BBC45-6F94-463D-A03B-6BD9170F6202}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7E9BBC45-6F94-463D-A03B-6BD9170F6202}.Release|Any CPU.Build.0 = Release|Any CPU
-		{95D448D6-A179-49A2-B8D3-82A48CAF8FFD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{95D448D6-A179-49A2-B8D3-82A48CAF8FFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{95D448D6-A179-49A2-B8D3-82A48CAF8FFD}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{95D448D6-A179-49A2-B8D3-82A48CAF8FFD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C8E2E7B7-971F-75C1-A603-6D41FD02B47E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C8E2E7B7-971F-75C1-A603-6D41FD02B47E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C8E2E7B7-971F-75C1-A603-6D41FD02B47E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C8E2E7B7-971F-75C1-A603-6D41FD02B47E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{76E53291-F7B7-B1C4-9C34-DFE6953333BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76E53291-F7B7-B1C4-9C34-DFE6953333BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76E53291-F7B7-B1C4-9C34-DFE6953333BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76E53291-F7B7-B1C4-9C34-DFE6953333BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AA012501-B355-0042-8758-81067AD0DCFB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA012501-B355-0042-8758-81067AD0DCFB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA012501-B355-0042-8758-81067AD0DCFB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA012501-B355-0042-8758-81067AD0DCFB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C8E2E7B7-971F-75C1-A603-6D41FD02B47E} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{76E53291-F7B7-B1C4-9C34-DFE6953333BF} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{AA012501-B355-0042-8758-81067AD0DCFB} = {4DA8050E-0810-4D9F-9B23-79497C037CC8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1D0B75CE-7DA0-462D-B6FE-F5A15BFF6803}

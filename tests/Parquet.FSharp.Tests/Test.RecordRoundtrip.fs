@@ -21,3 +21,23 @@ let testRecordRoundtrip<'Record when 'Record : equality> (records: 'Record[]) =
 [<Property>]
 let ``record with bool field`` records =
     testRecordRoundtrip<{| Field: bool |}> records
+
+//[<Property>]
+//let ``record with nullable bool field`` records =
+//    testRecordRoundtrip<{| Field: Nullable<bool> |}> records
+
+//[<Property>]
+//let ``record with bool option field`` records =
+//    testRecordRoundtrip<{| Field: bool option |}> records
+
+[<Property>]
+let ``record with int field`` records =
+    testRecordRoundtrip<{| Field: int |}> records
+
+//[<Property>]
+//let ``record with nullable int field`` records =
+//    testRecordRoundtrip<{| Field: Nullable<int> |}> records
+
+//[<Property>]
+//let ``record with int option field`` records =
+//    testRecordRoundtrip<{| Field: int option |}> records

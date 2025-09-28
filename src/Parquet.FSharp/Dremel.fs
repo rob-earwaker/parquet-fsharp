@@ -255,6 +255,7 @@ let shred (records: 'Record[]) =
 
 type private AssembledValue = {
     Levels: Levels
+    // TODO: Rename to Obj?
     Value: obj option }
 
 module private AssembledValue =
@@ -262,7 +263,36 @@ module private AssembledValue =
         { AssembledValue.Levels = levels
           AssembledValue.Value = value }
 
-type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels: Levels, column: Column) =
+[<AbstractClass>]
+type private ValueAssembler(maxLevels: Levels) =
+    let mutable peekedValue = Option.None
+
+    member this.MaxLevels = maxLevels
+
+    abstract member SkipUndefinedValue : unit -> unit
+    abstract member TryAssembleNextValue : unit -> AssembledValue option
+
+    member this.TryReadNextValue() =
+        let value =
+            match peekedValue with
+            | Option.Some peekedValue -> peekedValue
+            | Option.None -> this.TryPeekNextValue()
+        this.SkipPeekedValue()
+        value
+
+    member this.TryPeekNextValue() =
+        peekedValue <- Option.Some (this.TryAssembleNextValue())
+        peekedValue.Value
+
+    // TODO: Can probably do without this method if we change the way peek and read work slightly.
+    member this.SkipPeekedValue() =
+        peekedValue <- Option.None
+
+type private AtomicAssembler(
+    atomicInfo: AtomicInfo, maxLevels: Levels, column: Column) =
+
+    inherit ValueAssembler(maxLevels)
+
     let repetitionLevelsRequired = maxLevels.Repetition > 0
     let definitionLevelsRequired = maxLevels.Definition > 0
 
@@ -286,9 +316,10 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels: Levels, column: 
     let mutable nextValueIndex = 0
     let mutable nextArrayValueIndex = 0
 
-    let mutable peekedValue = Option.None
+    override this.SkipUndefinedValue() =
+        nextValueIndex <- nextValueIndex + 1
 
-    let assembleNextValue () =
+    override this.TryAssembleNextValue() =
         // Determine whether we've reached the end of our column data based on
         // the value index. It's important not to use the array value index
         // because for optional values reaching the end of the values array does
@@ -334,39 +365,22 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels: Levels, column: 
             let assembledValue = AssembledValue.create levels value
             Option.Some assembledValue
 
-    member this.MaxLevels = maxLevels
-
-    member this.PeekNextValue() =
-        peekedValue <- Option.Some (assembleNextValue ())
-        peekedValue.Value
-
-    member this.SkipPeekedValue() =
-        peekedValue <- Option.None
-
-    member this.ReadNextValue() =
-        let value =
-            match peekedValue with
-            | Option.Some peekedValue -> peekedValue
-            | Option.None -> this.PeekNextValue()
-        this.SkipPeekedValue()
-        value
-
-    member this.SkipUndefinedValue() =
-        nextValueIndex <- nextValueIndex + 1
-
 type private ListAssembler(
     listInfo: ListInfo, maxLevels: Levels, elementAssembler: ValueAssembler) =
 
-    let mutable peekedList = Option.None
+    inherit ValueAssembler(maxLevels)
 
-    let assembleNextList () =
+    override this.SkipUndefinedValue() =
+        elementAssembler.SkipUndefinedValue()
+
+    override this.TryAssembleNextValue() =
         let elementMaxLevels = elementAssembler.MaxLevels
         let elementValues = ResizeArray()
         // If the list is empty, NULL or UNDEFINED (due to one of its ancestors
         // being NULL) then there will be a single UNDEFINED element to indicate
         // it. Determine whether this is the case by reading the next element
         // value.
-        match elementAssembler.ReadNextValue() with
+        match elementAssembler.TryReadNextValue() with
         | Option.None -> Option.None
         | Option.Some nextElement ->
             let list =
@@ -407,7 +421,7 @@ type private ListAssembler(
                     let mutable allElementsFound = false
                     while not allElementsFound do
                         let nextElementValue =
-                            match elementAssembler.PeekNextValue() with
+                            match elementAssembler.TryPeekNextValue() with
                             | Option.None -> Option.None
                             | Option.Some nextElement ->
                                 if nextElement.Levels.Repetition < elementMaxLevels.Repetition
@@ -430,26 +444,6 @@ type private ListAssembler(
             let assembledList = AssembledValue.create nextElement.Levels list
             Option.Some assembledList
 
-    member this.MaxLevels = maxLevels
-
-    member this.PeekNextList() =
-        peekedList <- Option.Some (assembleNextList ())
-        peekedList.Value
-
-    member this.SkipPeekedList() =
-        peekedList <- Option.None
-
-    member this.ReadNextList() =
-        let value =
-            match peekedList with
-            | Option.Some peekedList -> peekedList
-            | Option.None -> this.PeekNextList()
-        this.SkipPeekedList()
-        value
-
-    member this.SkipUndefinedList() =
-        elementAssembler.SkipUndefinedValue()
-
 type private FieldAssembler = {
     // TODO: This is only used for the index value, so can probably remove and
     // inline this type completely
@@ -459,14 +453,18 @@ type private FieldAssembler = {
 type private RecordAssembler(
     recordInfo: RecordInfo, maxLevels: Levels, fieldAssemblers: FieldAssembler[]) =
 
-    let mutable peekedRecord = Option.None
+    inherit ValueAssembler(maxLevels)
 
-    let assembleNextRecord () =
+    override this.SkipUndefinedValue() =
+        for fieldAssembler in fieldAssemblers do
+            fieldAssembler.ValueAssembler.SkipUndefinedValue()
+
+    override this.TryAssembleNextValue() =
         let fieldValues = Array.zeroCreate<obj> fieldAssemblers.Length
         // If the record is NULL or UNDEFINED (due to one of its ancestors being
         // NULL) then all field values will be UNDEFINED. Determine whether this
         // is the case from the first field value.
-        match fieldAssemblers[0].ValueAssembler.ReadNextValue() with
+        match fieldAssemblers[0].ValueAssembler.TryReadNextValue() with
         | Option.None -> Option.None
         | Option.Some firstField ->
             let record =
@@ -504,7 +502,7 @@ type private RecordAssembler(
                     // and add to the array of field values.
                     for fieldAssembler in fieldAssemblers[1..] do
                         let fieldInfo = fieldAssembler.FieldInfo
-                        let fieldValue = fieldAssembler.ValueAssembler.ReadNextValue()
+                        let fieldValue = fieldAssembler.ValueAssembler.TryReadNextValue()
                         // Assume there is a next field value and that it is
                         // DEFINED.
                         fieldValues[fieldInfo.Index] <- fieldValue.Value.Value.Value
@@ -519,63 +517,6 @@ type private RecordAssembler(
             // first field indicates the repetition level of the record.
             let assembledRecord = AssembledValue.create firstField.Levels record
             Option.Some assembledRecord
-
-    member this.MaxLevels = maxLevels
-
-    member this.PeekNextRecord() =
-        peekedRecord <- Option.Some (assembleNextRecord ())
-        peekedRecord.Value
-
-    member this.SkipPeekedRecord() =
-        peekedRecord <- Option.None
-
-    member this.ReadNextRecord() =
-        let record =
-            match peekedRecord with
-            | Option.Some peekedRecord -> peekedRecord
-            | Option.None -> this.PeekNextRecord()
-        this.SkipPeekedRecord()
-        record
-
-    member this.SkipUndefinedRecord() =
-        for fieldAssembler in fieldAssemblers do
-            fieldAssembler.ValueAssembler.SkipUndefinedValue()
-
-// TODO: Just use interfaces/inheritance?!
-type private ValueAssembler =
-    | Atomic of AtomicAssembler
-    | List of ListAssembler
-    | Record of RecordAssembler
-    with
-    member this.MaxLevels =
-        match this with
-        | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.MaxLevels
-        | ValueAssembler.List listAssembler -> listAssembler.MaxLevels
-        | ValueAssembler.Record recordAssembler -> recordAssembler.MaxLevels
-
-    member this.PeekNextValue() =
-        match this with
-        | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.PeekNextValue()
-        | ValueAssembler.List listAssembler -> listAssembler.PeekNextList()
-        | ValueAssembler.Record recordAssembler -> recordAssembler.PeekNextRecord()
-
-    member this.SkipPeekedValue() =
-        match this with
-        | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.SkipPeekedValue()
-        | ValueAssembler.List listAssembler -> listAssembler.SkipPeekedList()
-        | ValueAssembler.Record recordAssembler -> recordAssembler.SkipPeekedRecord()
-
-    member this.ReadNextValue() =
-        match this with
-        | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.ReadNextValue()
-        | ValueAssembler.List listAssembler -> listAssembler.ReadNextList()
-        | ValueAssembler.Record recordAssembler -> recordAssembler.ReadNextRecord()
-
-    member this.SkipUndefinedValue() =
-        match this with
-        | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.SkipUndefinedValue()
-        | ValueAssembler.List listAssembler -> listAssembler.SkipUndefinedList()
-        | ValueAssembler.Record recordAssembler -> recordAssembler.SkipUndefinedRecord()
 
 module private AtomicAssembler =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxLevels (columns: Queue<Column>) =
@@ -619,13 +560,13 @@ module private ValueAssembler =
         match valueInfo with
         | ValueInfo.Atomic atomicInfo ->
             AtomicAssembler.forAtomic atomicInfo parentMaxLevels columns
-            |> ValueAssembler.Atomic
+            :> ValueAssembler
         | ValueInfo.List listInfo ->
             ListAssembler.forList listInfo parentMaxLevels columns
-            |> ValueAssembler.List
+            :> ValueAssembler
         | ValueInfo.Record recordInfo ->
             RecordAssembler.forRecord recordInfo parentMaxLevels columns
-            |> ValueAssembler.Record
+            :> ValueAssembler
 
 let assemble<'Record> (columns: Column[]) =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
@@ -638,7 +579,7 @@ let assemble<'Record> (columns: Column[]) =
     let records = ResizeArray()
     let mutable allRecordsAssembled = false
     while not allRecordsAssembled do
-        match recordAssembler.ReadNextRecord() with
+        match recordAssembler.TryReadNextValue() with
         | Option.None -> allRecordsAssembled <- true
         | Option.Some record ->
             match record.Value with

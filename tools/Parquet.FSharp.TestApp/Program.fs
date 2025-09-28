@@ -14,14 +14,14 @@ type Data = {
     Value3: float }
 
 type Message = {
-    (*Time: DateTimeOffset
+    Time: DateTimeOffset
     Source: string
-    Level: float*)
+    Level: float
     Flag: Nullable<bool>
     Count: int
-    (*Samples: int[]
+    Samples: int[]
     Gps: Gps
-    Values: Data[]*) }
+    (*Values: Data[]*) }
 
 module Random =
     let private Random = Random()
@@ -82,14 +82,14 @@ module Random =
           Data.Value3 = float () }
 
     let message () =
-        { (*Message.Time = dateTimeOffset ()
+        { Message.Time = dateTimeOffset ()
           Message.Source = string ()
-          Message.Level = float ()*)
+          Message.Level = float ()
           Message.Flag = nullableBool ()
           Message.Count = int ()
-         (* Message.Samples = array 5 int
+          Message.Samples = array 5 int
           Message.Gps = gps ()
-          Message.Values = array 3 data*) }
+          (*Message.Values = array 3 data*) }
 
 [<EntryPoint>]
 let main _ =

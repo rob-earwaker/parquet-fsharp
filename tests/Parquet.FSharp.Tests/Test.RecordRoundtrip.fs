@@ -3,7 +3,6 @@ module Parquet.FSharp.Tests.RecordRoundtrip
 open FluentAssertions
 open FsCheck.Xunit
 open Parquet.FSharp
-open Swensen.Unquote
 open System
 open System.IO
 
@@ -56,6 +55,112 @@ let ``string field`` records =
         records
 
 [<Property>]
+let ``array field with bool elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<bool> |}>
+        records
+
+[<Property>]
+let ``array field with int32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<int> |}>
+        records
+
+[<Property>]
+let ``array field with float64 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<float> |}>
+        records
+
+[<Property>]
+let ``array field with date time offset elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<DateTimeOffset> |}>
+        records
+
+[<Property>]
+let ``array field with string elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<string> |}>
+        records
+
+[<Property>]
+let ``array field with array elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<{|
+            Field2: array<int> |}> |}>
+        records
+
+[<Property>]
+let ``array field with record elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<{|
+            Field2: int |}> |}>
+        records
+
+[<Property>]
+let ``array field with nullable bool elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<Nullable<bool>> |}>
+        records
+
+[<Property>]
+let ``array field with nullable int32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<Nullable<int>> |}>
+        records
+
+[<Property>]
+let ``array field with nullable float64 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<Nullable<float>> |}>
+        records
+
+[<Property>]
+let ``array field with nullable date time offset elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<Nullable<DateTimeOffset>> |}>
+        records
+
+[<Property>]
+let ``array field with nullable record elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<Nullable<struct {|
+            Field2: int |}>> |}>
+        records
+
+[<Property>]
+let ``array field with option bool elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<option<bool>> |}>
+        records
+
+[<Property>]
+let ``array field with option int32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<option<int>> |}>
+        records
+
+[<Property>]
+let ``array field with option float64 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<option<float>> |}>
+        records
+
+[<Property>]
+let ``array field with option date time offset elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<option<DateTimeOffset>> |}>
+        records
+
+[<Property>]
+let ``array field with option record elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<option<{|
+            Field2: int |}>> |}>
+        records
+
+[<Property>]
 let ``record field with bool field`` records =
     testRecordRoundtrip<{|
         Field1: {|
@@ -88,6 +193,13 @@ let ``record field with string field`` records =
     testRecordRoundtrip<{|
         Field1: {|
             Field2: string |} |}>
+        records
+
+[<Property>]
+let ``record field with array field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: array<int> |} |}>
         records
 
 [<Property>]
@@ -230,6 +342,13 @@ let ``nullable record field with string field`` records =
         records
 
 [<Property>]
+let ``nullable record field with array field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: array<int> |}> |}>
+        records
+
+[<Property>]
 let ``nullable record field with record field`` records =
     testRecordRoundtrip<{|
         Field1: Nullable<struct {|
@@ -330,6 +449,13 @@ let ``option record field with string field`` records =
     testRecordRoundtrip<{|
         Field1: option<{|
             Field2: string |}> |}>
+        records
+
+[<Property>]
+let ``option record field with array field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: array<int> |}> |}>
         records
 
 [<Property>]

@@ -47,7 +47,9 @@ type ListInfo = {
     DotnetType: Type
     IsOptional: bool
     ElementInfo: ValueInfo
-    ResolveValues: obj -> IList }
+    ResolveValues: obj -> IList 
+    CreateValue: obj[] -> obj
+    CreateNullValue: unit -> obj }
 
 type FieldInfo = {
     Index: int
@@ -300,11 +302,14 @@ module private AtomicInfo =
             resolvePrimitiveValue fromPrimitiveValue createNullValue
 
 module private ListInfo =
-    let private create dotnetType isOptional elementInfo resolveValues =
+    let private create
+        dotnetType isOptional elementInfo resolveValues createValue createNullValue =
         { ListInfo.DotnetType = dotnetType
           ListInfo.IsOptional = isOptional
           ListInfo.ElementInfo = elementInfo
-          ListInfo.ResolveValues = resolveValues }
+          ListInfo.ResolveValues = resolveValues
+          ListInfo.CreateValue = createValue
+          ListInfo.CreateNullValue = createNullValue }
 
     let ofArray1d (dotnetType: Type) =
         let isOptional = true
@@ -314,7 +319,12 @@ module private ListInfo =
             // No need to check for null here. The cast will succeed for a null
             // array, we'll just get back a null list, which is what we want.
             arrayObj :?> IList
-        create dotnetType isOptional elementInfo resolveValues
+        let createValue (elementObjs: obj[]) =
+            let array = Array.CreateInstance(elementDotnetType, elementObjs.Length)
+            elementObjs.CopyTo(array, 0)
+            array :> obj
+        let createNullValue = fun () -> null
+        create dotnetType isOptional elementInfo resolveValues createValue createNullValue
 
     let ofNullable (dotnetType: Type) (listInfo: ListInfo) =
         let isOptional = true
@@ -326,7 +336,13 @@ module private ListInfo =
                 if hasValue nullableObj
                 then listInfo.ResolveValues (getValue nullableObj)
                 else null
-        create dotnetType isOptional elementInfo resolveValues
+        let createValue =
+            let createValue = Nullable.preComputeCreateValue dotnetType
+            fun elementObjs ->
+                let listObj = listInfo.CreateValue elementObjs
+                createValue listObj
+        let createNullValue = Nullable.createNull
+        create dotnetType isOptional elementInfo resolveValues createValue createNullValue
 
     let ofOption (dotnetType: Type) (listInfo: ListInfo) =
         let isOptional = true
@@ -338,7 +354,13 @@ module private ListInfo =
                 if isSome optionObj
                 then listInfo.ResolveValues (getValue optionObj)
                 else null
-        create dotnetType isOptional elementInfo resolveValues
+        let createValue =
+            let createSome = Option.preComputeCreateSome dotnetType
+            fun elementObjs ->
+                let listObj = listInfo.CreateValue elementObjs
+                createSome listObj
+        let createNullValue = Option.preComputeCreateNone dotnetType
+        create dotnetType isOptional elementInfo resolveValues createValue createNullValue
 
 module private FieldInfo =
     let private create index name valueInfo =

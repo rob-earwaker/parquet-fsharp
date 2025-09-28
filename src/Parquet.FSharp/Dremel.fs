@@ -225,7 +225,7 @@ let private shredRecord (recordShredder: RecordShredder) (parentLevels: Levels) 
         if recordInfo.IsOptional && not (isNull fieldValues)
         then Levels.create parentLevels.Repetition maxLevels.Definition
         else parentLevels
-    // Shred all fields regardless of whether the record is null. This ensures
+    // Shred all fields regardless of whether the record is NULL. This ensures
     // we write out levels for any child values in the schema.
     for fieldShredder in recordShredder.FieldShredders do
         let fieldInfo = fieldShredder.FieldInfo
@@ -288,9 +288,7 @@ type private ValueAssembler(maxLevels: Levels) =
     member this.SkipPeekedValue() =
         peekedValue <- Option.None
 
-type private AtomicAssembler(
-    atomicInfo: AtomicInfo, maxLevels: Levels, column: Column) =
-
+type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: Column) =
     inherit ValueAssembler(maxLevels)
 
     let repetitionLevelsRequired = maxLevels.Repetition > 0
@@ -365,9 +363,7 @@ type private AtomicAssembler(
             let assembledValue = AssembledValue.create levels value
             Option.Some assembledValue
 
-type private ListAssembler(
-    listInfo: ListInfo, maxLevels: Levels, elementAssembler: ValueAssembler) =
-
+type private ListAssembler(listInfo: ListInfo, maxLevels, elementAssembler: ValueAssembler) =
     inherit ValueAssembler(maxLevels)
 
     override this.SkipUndefinedValue() =
@@ -444,27 +440,19 @@ type private ListAssembler(
             let assembledList = AssembledValue.create nextElement.Levels list
             Option.Some assembledList
 
-type private FieldAssembler = {
-    // TODO: This is only used for the index value, so can probably remove and
-    // inline this type completely
-    FieldInfo: FieldInfo
-    ValueAssembler: ValueAssembler }
-
-type private RecordAssembler(
-    recordInfo: RecordInfo, maxLevels: Levels, fieldAssemblers: FieldAssembler[]) =
-
+type private RecordAssembler(recordInfo: RecordInfo, maxLevels, fieldAssemblers: ValueAssembler[]) =
     inherit ValueAssembler(maxLevels)
 
     override this.SkipUndefinedValue() =
         for fieldAssembler in fieldAssemblers do
-            fieldAssembler.ValueAssembler.SkipUndefinedValue()
+            fieldAssembler.SkipUndefinedValue()
 
     override this.TryAssembleNextValue() =
         let fieldValues = Array.zeroCreate<obj> fieldAssemblers.Length
         // If the record is NULL or UNDEFINED (due to one of its ancestors being
         // NULL) then all field values will be UNDEFINED. Determine whether this
         // is the case from the first field value.
-        match fieldAssemblers[0].ValueAssembler.TryReadNextValue() with
+        match fieldAssemblers[0].TryReadNextValue() with
         | Option.None -> Option.None
         | Option.Some firstField ->
             let record =
@@ -480,7 +468,7 @@ type private RecordAssembler(
                     // to skip these UNDEFINED values, otherwise they will be
                     // considered part of the next record.
                     for fieldAssembler in fieldAssemblers[1..] do
-                        fieldAssembler.ValueAssembler.SkipUndefinedValue()
+                        fieldAssembler.SkipUndefinedValue()
                     // If the record is optional and the definition level of the
                     // first field value is one less than the maximum definition
                     // level of the record then the record is DEFINED, but NULL.
@@ -500,12 +488,11 @@ type private RecordAssembler(
                     // If the first field is DEFINED then any remaining fields
                     // in the record should also be DEFINED. Read their values
                     // and add to the array of field values.
-                    for fieldAssembler in fieldAssemblers[1..] do
-                        let fieldInfo = fieldAssembler.FieldInfo
-                        let fieldValue = fieldAssembler.ValueAssembler.TryReadNextValue()
+                    for fieldIndex in [ 1 .. fieldAssemblers.Length - 1 ] do
+                        let fieldValue = fieldAssemblers[fieldIndex].TryReadNextValue()
                         // Assume there is a next field value and that it is
                         // DEFINED.
-                        fieldValues[fieldInfo.Index] <- fieldValue.Value.Value.Value
+                        fieldValues[fieldIndex] <- fieldValue.Value.Value.Value
                     // Construct the record from the field values.
                     Option.Some (recordInfo.CreateValue fieldValues)
             // Return the record along with the levels of the first field. It's
@@ -550,23 +537,18 @@ module private RecordAssembler =
         let fieldAssemblers =
             recordInfo.Fields
             |> Array.map (fun fieldInfo ->
-                let valueAssembler = ValueAssembler.forValue fieldInfo.ValueInfo maxLevels
-                { FieldAssembler.FieldInfo = fieldInfo
-                  FieldAssembler.ValueAssembler = valueAssembler columns })
+                ValueAssembler.forValue fieldInfo.ValueInfo maxLevels columns)
         RecordAssembler(recordInfo, maxLevels, fieldAssemblers)
 
 module private ValueAssembler =
     let forValue (valueInfo: ValueInfo) parentMaxLevels columns =
         match valueInfo with
         | ValueInfo.Atomic atomicInfo ->
-            AtomicAssembler.forAtomic atomicInfo parentMaxLevels columns
-            :> ValueAssembler
+            AtomicAssembler.forAtomic atomicInfo parentMaxLevels columns :> ValueAssembler
         | ValueInfo.List listInfo ->
-            ListAssembler.forList listInfo parentMaxLevels columns
-            :> ValueAssembler
+            ListAssembler.forList listInfo parentMaxLevels columns :> ValueAssembler
         | ValueInfo.Record recordInfo ->
-            RecordAssembler.forRecord recordInfo parentMaxLevels columns
-            :> ValueAssembler
+            RecordAssembler.forRecord recordInfo parentMaxLevels columns :> ValueAssembler
 
 let assemble<'Record> (columns: Column[]) =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>

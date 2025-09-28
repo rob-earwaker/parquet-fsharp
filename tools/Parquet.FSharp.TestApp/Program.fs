@@ -21,7 +21,7 @@ type Message = {
     Count: int
     Samples: int[]
     Gps: Gps
-    (*Values: Data[]*) }
+    Values: Data[] }
 
 module Random =
     let private Random = Random()
@@ -89,7 +89,7 @@ module Random =
           Message.Count = int ()
           Message.Samples = array 5 int
           Message.Gps = gps ()
-          (*Message.Values = array 3 data*) }
+          Message.Values = array 3 data }
 
 [<EntryPoint>]
 let main _ =

@@ -82,6 +82,8 @@ type private ListShredder = {
     ElementShredder: ValueShredder }
 
 type private FieldShredder = {
+    // TODO: This is only used for the index value, so can probably remove and
+    // inline this type completely
     FieldInfo: FieldInfo
     ValueShredder: ValueShredder }
 
@@ -286,85 +288,260 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels: Levels, column: 
 
     let mutable peekedValue = Option.None
 
+    let assembleNextValue () =
+        // Determine whether we've reached the end of our column data based on
+        // the value index. It's important not to use the array value index
+        // because for optional values reaching the end of the values array does
+        // not imply we've reached the end of the column as there could be more
+        // NULL values in the column.
+        if nextValueIndex = column.ValueCount
+        then Option.None
+        else
+            let repetitionLevel =
+                if repetitionLevelsRequired
+                then column.RepetitionLevels.Value[nextValueIndex]
+                else 0
+            let definitionLevel =
+                if definitionLevelsRequired
+                then column.DefinitionLevels.Value[nextValueIndex]
+                else 0
+            let levels = Levels.create repetitionLevel definitionLevel
+            let value =
+                // NULL values are not written to the values array as they are
+                // implied by a definition level that is lower than the maximum.
+                // A NULL value means that either this value is NULL or this
+                // value is UNDEFINED (due to one of its ancestors being NULL).
+                if levels.Definition < maxLevels.Definition
+                then
+                    // If this value is optional and the definition level is one
+                    // less than the maximum definition level then this value is
+                    // DEFINED, but NULL.
+                    if atomicInfo.IsOptional
+                        && levels.Definition = maxLevels.Definition - 1
+                    then Option.Some (atomicInfo.CreateNullValue ())
+                    // If the value is not optional, or if it is optional and
+                    // the definition level is more than one less than the
+                    // maximum definition level then this value is UNDEFINED.
+                    else Option.None
+                else
+                    // If the definition level equals the maximum definition
+                    // level then this value is DEFINED and NOTNULL. Get the
+                    // next primitive value and convert it to the correct type.
+                    let primitiveValue = primitiveValues.GetValue(nextArrayValueIndex)
+                    nextArrayValueIndex <- nextArrayValueIndex + 1
+                    Option.Some (atomicInfo.FromPrimitiveValue primitiveValue)
+            nextValueIndex <- nextValueIndex + 1
+            let assembledValue = AssembledValue.create levels value
+            Option.Some assembledValue
+
     member this.MaxLevels = maxLevels
 
-    member this.SkipUndefinedValue() =
-        nextValueIndex <- nextValueIndex + 1
-
     member this.PeekNextValue() =
-        let peekedValue' =
-            // Determine whether we've reached the end of our column data based on
-            // the value index. It's important not to use the array value index
-            // because for optional values reaching the end of the values array does
-            // not imply we've reached the end of the column as there could be more
-            // NULL values in the column.
-            if nextValueIndex = column.ValueCount
-            then Option.None
-            else
-                let repetitionLevel =
-                    if repetitionLevelsRequired
-                    then column.RepetitionLevels.Value[nextValueIndex]
-                    else 0
-                let definitionLevel =
-                    if definitionLevelsRequired
-                    then column.DefinitionLevels.Value[nextValueIndex]
-                    else 0
-                let levels = Levels.create repetitionLevel definitionLevel
-                let value =
-                    // NULL values are not written to the values array as they are
-                    // implied by a definition level that is lower than the maximum. A
-                    // NULL value means that either this value is NULL or this value is
-                    // UNDEFINED (due to one of its ancestors being NULL).
-                    if levels.Definition < maxLevels.Definition
-                    then
-                        // If this value is optional and the definition level is one
-                        // less than the maximum definition level then this value is
-                        // DEFINED, but NULL.
-                        if atomicInfo.IsOptional
-                            && levels.Definition = maxLevels.Definition - 1
-                        then Option.Some (atomicInfo.CreateNullValue ())
-                        // If the value is not optional, or if it is optional and the
-                        // definition level is more than one less than the maximum
-                        // definition level then this value is UNDEFINED.
-                        else Option.None
-                    else
-                        // If the definition level equals the maximum definition level
-                        // then this value is DEFINED and NOTNULL. Get the next
-                        // primitive value and convert it to the correct type.
-                        let primitiveValue = primitiveValues.GetValue(nextArrayValueIndex)
-                        nextArrayValueIndex <- nextArrayValueIndex + 1
-                        Option.Some (atomicInfo.FromPrimitiveValue primitiveValue)
-                nextValueIndex <- nextValueIndex + 1
-                let assembledValue = AssembledValue.create levels value
-                Option.Some assembledValue
-        peekedValue <- Option.Some peekedValue'
-        peekedValue'
+        peekedValue <- Option.Some (assembleNextValue ())
+        peekedValue.Value
 
     member this.SkipPeekedValue() =
         peekedValue <- Option.None
 
-    member this.AssembleNextValue() =
-        let peekedValue =
+    member this.ReadNextValue() =
+        let value =
             match peekedValue with
             | Option.Some peekedValue -> peekedValue
             | Option.None -> this.PeekNextValue()
         this.SkipPeekedValue()
-        peekedValue
+        value
 
-type private ListAssembler = {
-    ListInfo: ListInfo
-    MaxLevels: Levels
-    ElementAssembler: ValueAssembler }
+    member this.SkipUndefinedValue() =
+        nextValueIndex <- nextValueIndex + 1
+
+type private ListAssembler(
+    listInfo: ListInfo, maxLevels: Levels, elementAssembler: ValueAssembler) =
+
+    let mutable peekedList = Option.None
+
+    let assembleNextList () =
+        let elementMaxLevels = elementAssembler.MaxLevels
+        let elementValues = ResizeArray()
+        // If the list is empty, NULL or UNDEFINED (due to one of its ancestors
+        // being NULL) then there will be a single UNDEFINED element to indicate
+        // it. Determine whether this is the case by reading the next element
+        // value.
+        match elementAssembler.ReadNextValue() with
+        | Option.None -> Option.None
+        | Option.Some nextElement ->
+            let list =
+                match nextElement.Value with
+                // If the next element value is UNDEFINED then either the list
+                // is empty, the list is NULL or the list is UNDEFINED (due to
+                // one of its ancestors being NULL).
+                | Option.None ->
+                    // If the definition level of the next element is equal to
+                    // the maximum definition level of the list then the list is
+                    // DEFINED and empty.
+                    if nextElement.Levels.Definition = maxLevels.Definition
+                    then Option.Some (listInfo.CreateValue [||])
+                    // If the list is optional and the definition level of the
+                    // next element is one less than the maximum definition
+                    // level of the list then the list is DEFINED, but NULL.
+                    elif listInfo.IsOptional
+                        && nextElement.Levels.Definition = maxLevels.Definition - 1
+                    then Option.Some (listInfo.CreateNullValue ())
+                    // If the list is not optional, or if it is optional and the
+                    // definition level of the next element value is more than
+                    // one less than the maximum definition level of the list
+                    // then the list is UNDEFINED.
+                    else Option.None
+                // If the next element value is DEFINED then the list must also
+                // be DEFINED.
+                | Option.Some nextElementValue ->
+                    // Add the element to the list of element values.
+                    elementValues.Add(nextElementValue)
+                    // The end of the list is indicated by a repetition level
+                    // less than the max repetition level of the element values,
+                    // so keep reading element values until we find an element
+                    // where this is the case. This final element will form part
+                    // of another list so we don't want to include it in the
+                    // current list. For this reason we iterate by peeking the
+                    // next element and only skip it if the repetition level is
+                    // equal to the max repetition level of the element values.
+                    let mutable allElementsFound = false
+                    while not allElementsFound do
+                        let nextElementValue =
+                            match elementAssembler.PeekNextValue() with
+                            | Option.None -> Option.None
+                            | Option.Some nextElement ->
+                                if nextElement.Levels.Repetition < elementMaxLevels.Repetition
+                                then Option.None
+                                else
+                                    elementAssembler.SkipPeekedValue()
+                                    Option.Some nextElement.Value.Value
+                        match nextElementValue with
+                        | Option.None -> allElementsFound <- true
+                        | Option.Some nextElementValue -> elementValues.Add(nextElementValue)
+                    // Construct the list from the element values.
+                    Option.Some (listInfo.CreateValue (Array.ofSeq elementValues))
+            // Return the list along with the levels of the first element. It's
+            // important to pass the first element levels back up the chain so
+            // that ancestor values can be resolved correctly. In the case where
+            // the list is UNDEFINED, the definition level of the first element
+            // determines whether ancestors are NULL or UNDEFINED. In the case
+            // where the list itself is repeated, the repetition level of the
+            // first element indicates the repetition level of the list.
+            let assembledList = AssembledValue.create nextElement.Levels list
+            Option.Some assembledList
+
+    member this.MaxLevels = maxLevels
+
+    member this.PeekNextList() =
+        peekedList <- Option.Some (assembleNextList ())
+        peekedList.Value
+
+    member this.SkipPeekedList() =
+        peekedList <- Option.None
+
+    member this.ReadNextList() =
+        let value =
+            match peekedList with
+            | Option.Some peekedList -> peekedList
+            | Option.None -> this.PeekNextList()
+        this.SkipPeekedList()
+        value
+
+    member this.SkipUndefinedList() =
+        elementAssembler.SkipUndefinedValue()
 
 type private FieldAssembler = {
+    // TODO: This is only used for the index value, so can probably remove and
+    // inline this type completely
     FieldInfo: FieldInfo
     ValueAssembler: ValueAssembler }
 
-type private RecordAssembler = {
-    RecordInfo: RecordInfo
-    MaxLevels: Levels
-    FieldAssemblers: FieldAssembler[] }
+type private RecordAssembler(
+    recordInfo: RecordInfo, maxLevels: Levels, fieldAssemblers: FieldAssembler[]) =
 
+    let mutable peekedRecord = Option.None
+
+    let assembleNextRecord () =
+        let fieldValues = Array.zeroCreate<obj> fieldAssemblers.Length
+        // If the record is NULL or UNDEFINED (due to one of its ancestors being
+        // NULL) then all field values will be UNDEFINED. Determine whether this
+        // is the case from the first field value.
+        match fieldAssemblers[0].ValueAssembler.ReadNextValue() with
+        | Option.None -> Option.None
+        | Option.Some firstField ->
+            let record =
+                match firstField.Value with
+                // If the first field value is UNDEFINED then either the record
+                // is NULL or the record is UNDEFINED (due to one of its
+                // ancestors being NULL). In either case, the definition level
+                // of the first field will be less than the maximum definition
+                // level of the record.
+                | Option.None ->
+                    // If the first field is UNDEFINED then any remaining fields
+                    // in the record should also be UNDEFINED. It is important
+                    // to skip these UNDEFINED values, otherwise they will be
+                    // considered part of the next record.
+                    for fieldAssembler in fieldAssemblers[1..] do
+                        fieldAssembler.ValueAssembler.SkipUndefinedValue()
+                    // If the record is optional and the definition level of the
+                    // first field value is one less than the maximum definition
+                    // level of the record then the record is DEFINED, but NULL.
+                    if recordInfo.IsOptional
+                        && firstField.Levels.Definition = maxLevels.Definition - 1
+                    then Option.Some (recordInfo.CreateNullValue ())
+                    // If the record is not optional, or if it is optional and
+                    // the definition level of the first field value is more
+                    // than one less than the maximum definition level of the
+                    // record then the record is UNDEFINED.
+                    else Option.None
+                // If the first field value is DEFINED then the record must also
+                // be DEFINED.
+                | Option.Some firstFieldValue ->
+                    // Add the first field value to the array of field values.
+                    fieldValues[0] <- firstFieldValue
+                    // If the first field is DEFINED then any remaining fields
+                    // in the record should also be DEFINED. Read their values
+                    // and add to the array of field values.
+                    for fieldAssembler in fieldAssemblers[1..] do
+                        let fieldInfo = fieldAssembler.FieldInfo
+                        let fieldValue = fieldAssembler.ValueAssembler.ReadNextValue()
+                        // Assume there is a next field value and that it is
+                        // DEFINED.
+                        fieldValues[fieldInfo.Index] <- fieldValue.Value.Value.Value
+                    // Construct the record from the field values.
+                    Option.Some (recordInfo.CreateValue fieldValues)
+            // Return the record along with the levels of the first field. It's
+            // important to pass the first field levels back up the chain so
+            // that ancestor values can be resolved correctly. In the case where
+            // the record is UNDEFINED, the definition level of the first field
+            // determines whether ancestors are NULL or UNDEFINED. In the case
+            // where the record is a repeated value, the repetition level of the
+            // first field indicates the repetition level of the record.
+            let assembledRecord = AssembledValue.create firstField.Levels record
+            Option.Some assembledRecord
+
+    member this.MaxLevels = maxLevels
+
+    member this.PeekNextRecord() =
+        peekedRecord <- Option.Some (assembleNextRecord ())
+        peekedRecord.Value
+
+    member this.SkipPeekedRecord() =
+        peekedRecord <- Option.None
+
+    member this.ReadNextRecord() =
+        let record =
+            match peekedRecord with
+            | Option.Some peekedRecord -> peekedRecord
+            | Option.None -> this.PeekNextRecord()
+        this.SkipPeekedRecord()
+        record
+
+    member this.SkipUndefinedRecord() =
+        for fieldAssembler in fieldAssemblers do
+            fieldAssembler.ValueAssembler.SkipUndefinedValue()
+
+// TODO: Just use interfaces/inheritance?!
 type private ValueAssembler =
     | Atomic of AtomicAssembler
     | List of ListAssembler
@@ -375,6 +552,30 @@ type private ValueAssembler =
         | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.MaxLevels
         | ValueAssembler.List listAssembler -> listAssembler.MaxLevels
         | ValueAssembler.Record recordAssembler -> recordAssembler.MaxLevels
+
+    member this.PeekNextValue() =
+        match this with
+        | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.PeekNextValue()
+        | ValueAssembler.List listAssembler -> listAssembler.PeekNextList()
+        | ValueAssembler.Record recordAssembler -> recordAssembler.PeekNextRecord()
+
+    member this.SkipPeekedValue() =
+        match this with
+        | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.SkipPeekedValue()
+        | ValueAssembler.List listAssembler -> listAssembler.SkipPeekedList()
+        | ValueAssembler.Record recordAssembler -> recordAssembler.SkipPeekedRecord()
+
+    member this.ReadNextValue() =
+        match this with
+        | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.ReadNextValue()
+        | ValueAssembler.List listAssembler -> listAssembler.ReadNextList()
+        | ValueAssembler.Record recordAssembler -> recordAssembler.ReadNextRecord()
+
+    member this.SkipUndefinedValue() =
+        match this with
+        | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.SkipUndefinedValue()
+        | ValueAssembler.List listAssembler -> listAssembler.SkipUndefinedList()
+        | ValueAssembler.Record recordAssembler -> recordAssembler.SkipUndefinedRecord()
 
 module private AtomicAssembler =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxLevels (columns: Queue<Column>) =
@@ -397,9 +598,7 @@ module private ListAssembler =
         let elementMaxLevels = Levels.incrementForRepeated listMaxLevels
         let elementAssembler =
             ValueAssembler.forValue listInfo.ElementInfo elementMaxLevels columns
-        { ListAssembler.ListInfo = listInfo
-          ListAssembler.MaxLevels = listMaxLevels
-          ListAssembler.ElementAssembler = elementAssembler }
+        ListAssembler(listInfo, listMaxLevels, elementAssembler)
 
 module private RecordAssembler =
     let forRecord (recordInfo: RecordInfo) parentMaxLevels columns =
@@ -413,9 +612,7 @@ module private RecordAssembler =
                 let valueAssembler = ValueAssembler.forValue fieldInfo.ValueInfo maxLevels
                 { FieldAssembler.FieldInfo = fieldInfo
                   FieldAssembler.ValueAssembler = valueAssembler columns })
-        { RecordAssembler.RecordInfo = recordInfo
-          RecordAssembler.MaxLevels = maxLevels
-          RecordAssembler.FieldAssemblers = fieldAssemblers }
+        RecordAssembler(recordInfo, maxLevels, fieldAssemblers)
 
 module private ValueAssembler =
     let forValue (valueInfo: ValueInfo) parentMaxLevels columns =
@@ -430,174 +627,18 @@ module private ValueAssembler =
             RecordAssembler.forRecord recordInfo parentMaxLevels columns
             |> ValueAssembler.Record
 
-let private assembleNextList (listAssembler: ListAssembler) =
-    let listInfo = listAssembler.ListInfo
-    let listMaxLevels = listAssembler.MaxLevels
-    let elementAssembler = listAssembler.ElementAssembler
-    let elementMaxLevels = elementAssembler.MaxLevels
-    let elementValues = ResizeArray()
-    // If the list is NULL or UNDEFINED (due to one of its ancestors being NULL)
-    // then there will be a single UNDEFINED element to indicate it. Determine
-    // whether this is the case by assembling the next element value.
-    match assembleNextValue elementAssembler with
-    | Option.None -> Option.None
-    | Option.Some nextElement ->
-        let list =
-            match nextElement.Value with
-            // If the next element value is UNDEFINED then either the list is
-            // empty, the list is NULL or the list is UNDEFINED (due to one of
-            // its ancestors being NULL).
-            | Option.None ->
-                // If the definition level of the next element is equal to the
-                // maximum definition level of the list then the list is empty.
-                if nextElement.Levels.Definition = listMaxLevels.Definition
-                then Option.Some (listInfo.CreateValue [||])
-                // If the list is optional and the definition level of the next
-                // element is one less than the maximum definition level of the
-                // list then the list is DEFINED, but NULL.
-                elif listInfo.IsOptional
-                    && nextElement.Levels.Definition = listMaxLevels.Definition - 1
-                then Option.Some (listInfo.CreateNullValue ())
-                // If the list is not optional, or if it is optional and the
-                // definition level of the next element value is more than one
-                // less than the maximum definition level of the list then the
-                // list is UNDEFINED.
-                else Option.None
-            // If the next element value is DEFINED then the list must also be
-            // DEFINED.
-            | Option.Some nextElementValue ->
-                // Add the element to the list of element values.
-                elementValues.Add(nextElementValue)
-                // The end of the list is indicated by a repetition level less
-                // than the max repetition level of the element values, so keep
-                // reading element values until we find an element where this is
-                // the case. This final element will form part of another list
-                // so we don't want to include it in the current list. For this
-                // reason we iterate by peeking the next element and only skip
-                // it if the repetition level is equal to the max repetition
-                // level of the element values.
-                let mutable allElementsFound = false
-                while not allElementsFound do
-                    let nextElementValue =
-                        match peekNextValue elementAssembler with
-                        | Option.None -> Option.None
-                        | Option.Some nextElement ->
-                            if nextElement.Levels.Repetition < elementMaxLevels.Repetition
-                            then Option.None
-                            else
-                                skipPeekedValue elementAssembler
-                                Option.Some nextElement.Value.Value
-                    match nextElementValue with
-                    | Option.None -> allElementsFound <- true
-                    | Option.Some nextElementValue -> elementValues.Add(nextElementValue)
-                // Construct the list from the element values.
-                Option.Some (listInfo.CreateValue (Array.ofSeq elementValues))
-        // Return the list along with the levels of the first element. It's
-        // important to pass the first element levels back up the chain so that
-        // ancestor values can be resolved correctly. In the case where the
-        // list is UNDEFINED, the definition level of the first element
-        // determines whether ancestors are NULL or UNDEFINED. In the case where
-        // the list itself is repeated, the repetition level of the first
-        // element indicates the repetition level of the list.
-        let assembledList = AssembledValue.create nextElement.Levels list
-        Option.Some assembledList
-
-let private assembleNextRecord (recordAssembler: RecordAssembler) =
-    let recordInfo = recordAssembler.RecordInfo
-    let recordMaxLevels = recordAssembler.MaxLevels
-    let fieldValues = Array.zeroCreate<obj> recordAssembler.FieldAssemblers.Length
-    // If the record is NULL or UNDEFINED (due to one of its ancestors being
-    // NULL) then all field values will be UNDEFINED. Determine whether this is
-    // the case from the first field value.
-    let firstFieldAssembler = recordAssembler.FieldAssemblers[0]
-    match assembleNextValue firstFieldAssembler.ValueAssembler with
-    | Option.None -> Option.None
-    | Option.Some firstField ->
-        let record =
-            match firstField.Value with
-            // If the first field value is UNDEFINED then either the record is NULL
-            // or the record is UNDEFINED (due to one of its ancestors being NULL).
-            // In either case, the definition level of the first field will be
-            // less than the maximum definition level of the record.
-            | Option.None ->
-                // If the first field is UNDEFINED then any remaining fields in the
-                // record should also be UNDEFINED. It is important to skip these
-                // UNDEFINED values, otherwise they will be considered part of the next
-                // record.
-                for fieldAssembler in recordAssembler.FieldAssemblers[1..] do
-                    skipUndefinedValue fieldAssembler.ValueAssembler
-                // If the record is optional and the definition level of the first
-                // field value is one less than the maximum definition level of the
-                // record then the record is DEFINED, but NULL.
-                if recordInfo.IsOptional
-                    && firstField.Levels.Definition = recordMaxLevels.Definition - 1
-                then Option.Some (recordInfo.CreateNullValue ())
-                // If the record is not optional, or if it is optional and the
-                // definition level of the first field value is more than one less
-                // than the maximum definition level of the record then the record
-                // is UNDEFINED.
-                else Option.None
-            // If the first field value is DEFINED then the record must also be DEFINED.
-            | Option.Some firstFieldValue ->
-                // Add the first field value to the array of field values.
-                fieldValues[0] <- firstFieldValue
-                // If the first field is DEFINED then any remaining fields in the record
-                // should also be DEFINED. Assemble their values and add to the array of
-                // field values.
-                for fieldAssembler in recordAssembler.FieldAssemblers[1..] do
-                    let fieldInfo = fieldAssembler.FieldInfo
-                    let fieldValue = assembleNextValue fieldAssembler.ValueAssembler
-                    // Assume there is a next field value and that it is DEFINED.
-                    fieldValues[fieldInfo.Index] <- fieldValue.Value.Value.Value
-                // Construct the record from the field values.
-                Option.Some (recordInfo.CreateValue fieldValues)
-        // Return the record along with the levels of the first field. It's
-        // important to pass the first field levels back up the chain so that
-        // ancestor values can be resolved correctly. In the case where the
-        // record is UNDEFINED, the definition level of the first field
-        // determines whether ancestors are NULL or UNDEFINED. In the case where
-        // the record is a repeated value, the repetition level of the first
-        // field indicates the repetition level of the record.
-        let assembledRecord = AssembledValue.create firstField.Levels record
-        Option.Some assembledRecord
-
-let private skipUndefinedRecord (recordAssembler: RecordAssembler) =
-    for fieldAssembler in recordAssembler.FieldAssemblers do
-        skipUndefinedValue fieldAssembler.ValueAssembler
-
-let private assembleNextValue (valueAssembler: ValueAssembler) =
-    match valueAssembler with
-    | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.AssembleNextValue()
-    | ValueAssembler.List listAssembler -> assembleNextList listAssembler
-    | ValueAssembler.Record recordAssembler -> assembleNextRecord recordAssembler
-
-let private skipUndefinedValue (valueAssembler: ValueAssembler) =
-    match valueAssembler with
-    | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.SkipUndefinedValue()
-    | ValueAssembler.List listAssembler -> failwith "unsupported"
-    | ValueAssembler.Record recordAssembler -> skipUndefinedRecord recordAssembler
-
-let private peekNextValue (valueAssembler: ValueAssembler) =
-    match valueAssembler with
-    | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.PeekNextValue()
-    | ValueAssembler.List listAssembler -> failwith "unsupported"
-    | ValueAssembler.Record recordAssembler -> failwith "unsupported"
-
-let private skipPeekedValue (valueAssembler: ValueAssembler) =
-    match valueAssembler with
-    | ValueAssembler.Atomic atomicAssembler -> atomicAssembler.SkipPeekedValue()
-    | ValueAssembler.List listAssembler -> failwith "unsupported"
-    | ValueAssembler.Record recordAssembler -> failwith "unsupported"
-
 let assemble<'Record> (columns: Column[]) =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
     let maxLevels = Levels.Default
     let columns = Queue(columns)
+    // TODO: Can we construct this in such a way that the columns are passed in
+    // as a second step so that the actual assembly "algorithm" just has to be
+    // created once per record type?
     let recordAssembler = RecordAssembler.forRecord recordInfo maxLevels columns
     let records = ResizeArray()
     let mutable allRecordsAssembled = false
     while not allRecordsAssembled do
-        match assembleNextRecord recordAssembler with
+        match recordAssembler.ReadNextRecord() with
         | Option.None -> allRecordsAssembled <- true
         | Option.Some record ->
             match record.Value with

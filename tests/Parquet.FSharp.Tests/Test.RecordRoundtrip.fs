@@ -87,8 +87,7 @@ let ``array field with string elements`` records =
 [<Property>]
 let ``array field with array elements`` records =
     testRecordRoundtrip<{|
-        Field1: array<{|
-            Field2: array<int> |}> |}>
+        Field1: array<array<int>> |}>
         records
 
 [<Property>]

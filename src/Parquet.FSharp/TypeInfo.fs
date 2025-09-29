@@ -14,6 +14,7 @@ type ValueInfo =
 type LogicalType =
     | Bool
     | Int32
+    | Int64
     | Float64
     | Timestamp of TimestampType
     | String
@@ -120,6 +121,11 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
+    let (|Int64|_|) dotnetType =
+        if dotnetType = typeof<int64>
+        then Option.Some ()
+        else Option.None
+
     let (|Float64|_|) dotnetType =
         if dotnetType = typeof<float>
         then Option.Some ()
@@ -189,6 +195,7 @@ module ValueInfo =
         match dotnetType with
         | DotnetType.Bool -> ValueInfo.Atomic AtomicInfo.Bool
         | DotnetType.Int32 -> ValueInfo.Atomic AtomicInfo.Int32
+        | DotnetType.Int64 -> ValueInfo.Atomic AtomicInfo.Int64
         | DotnetType.Float64 -> ValueInfo.Atomic AtomicInfo.Float64
         | DotnetType.DateTimeOffset -> ValueInfo.Atomic AtomicInfo.DateTimeOffset
         | DotnetType.String -> ValueInfo.Atomic AtomicInfo.String
@@ -225,6 +232,7 @@ module private AtomicInfo =
 
     let Bool = ofPrimitive<bool> LogicalType.Bool PrimitiveType.Bool
     let Int32 = ofPrimitive<int> LogicalType.Int32 PrimitiveType.Int32
+    let Int64 = ofPrimitive<int64> LogicalType.Int64 PrimitiveType.Int64
     let Float64 = ofPrimitive<float> LogicalType.Float64 PrimitiveType.Float64
 
     let DateTimeOffset =

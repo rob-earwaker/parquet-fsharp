@@ -16,6 +16,7 @@ type Value = {
 type ValueType =
     | Bool
     | Int32
+    | Int64
     | Float64
     | ByteArray
     | Timestamp of TimestampType
@@ -57,6 +58,7 @@ module ValueType =
         match atomicInfo.LogicalType with
         | LogicalType.Bool -> ValueType.Bool
         | LogicalType.Int32 -> ValueType.Int32
+        | LogicalType.Int64 -> ValueType.Int64
         | LogicalType.Float64 -> ValueType.Float64
         | LogicalType.Timestamp timestamp -> ValueType.Timestamp timestamp
         | LogicalType.String -> ValueType.String
@@ -98,6 +100,9 @@ module Value =
                 yield Thrift.SchemaElement.primitive type' repetitionType name
             | ValueType.Int32 ->
                 let logicalType = Thrift.LogicalType.INT32
+                yield Thrift.SchemaElement.logical repetitionType name logicalType
+            | ValueType.Int64 ->
+                let logicalType = Thrift.LogicalType.INT64
                 yield Thrift.SchemaElement.logical repetitionType name logicalType
             | ValueType.Float64 ->
                 let type' = Thrift.Type.DOUBLE

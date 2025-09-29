@@ -2,7 +2,6 @@
 
 open System
 open System.IO
-open System.Text
 open System.Threading
 open Thrift.Protocol
 open Thrift.Transport.Client
@@ -12,6 +11,7 @@ module LogicalType =
         LogicalType(INTEGER = IntType(BitWidth = bitWidth, IsSigned = isSigned))
 
     let INT32 = INT 32y true
+    let INT64 = INT 64y true
     let STRING = LogicalType(STRING = StringType())
     let LIST = LogicalType(LIST = ListType())
 

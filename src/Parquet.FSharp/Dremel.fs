@@ -124,13 +124,7 @@ type private ListShredder(listInfo: ListInfo, maxLevels, elementShredder: ValueS
     override this.BuildColumns() =
         elementShredder.BuildColumns()
 
-type private FieldShredder = {
-    // TODO: This is only used for the index value, so can probably remove and
-    // inline this type completely
-    FieldInfo: FieldInfo
-    ValueShredder: ValueShredder }
-
-type private RecordShredder(recordInfo: RecordInfo, maxLevels, fieldShredders: FieldShredder[]) =
+type private RecordShredder(recordInfo: RecordInfo, maxLevels, fieldShredders: ValueShredder[]) =
     inherit ValueShredder(maxLevels)
 
     override this.ShredValue(parentLevels, value) =
@@ -144,27 +138,26 @@ type private RecordShredder(recordInfo: RecordInfo, maxLevels, fieldShredders: F
             else parentLevels
         // Shred all fields regardless of whether the record is NULL. This
         // ensures we write out levels for any child values in the schema.
-        for fieldShredder in fieldShredders do
-            let fieldInfo = fieldShredder.FieldInfo
+        for fieldIndex, fieldShredder in Array.indexed fieldShredders do
             let fieldValue =
                 if isNull fieldValues
                 then null
-                else fieldValues[fieldInfo.Index]
-            fieldShredder.ValueShredder.ShredValue(levels, fieldValue)
+                else fieldValues[fieldIndex]
+            fieldShredder.ShredValue(levels, fieldValue)
 
     override this.BuildColumns() =
         fieldShredders
-        |> Seq.collect _.ValueShredder.BuildColumns()
+        |> Seq.collect _.BuildColumns()
 
-module private AtomicShredder =
+module private ValueShredder =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxLevels =
         let maxLevels =
             if atomicInfo.IsOptional
             then Levels.incrementForOptional parentMaxLevels
             else parentMaxLevels
         AtomicShredder(atomicInfo, maxLevels)
+        :> ValueShredder
 
-module private ListShredder =
     let forList (listInfo: ListInfo) parentMaxLevels =
         let listMaxLevels =
             if listInfo.IsOptional
@@ -173,8 +166,8 @@ module private ListShredder =
         let elementMaxLevels = Levels.incrementForRepeated listMaxLevels
         let elementShredder = ValueShredder.forValue listInfo.ElementInfo elementMaxLevels
         ListShredder(listInfo, listMaxLevels, elementShredder)
+        :> ValueShredder
 
-module private RecordShredder =
     let forRecord (recordInfo: RecordInfo) parentMaxLevels =
         let maxLevels =
             if recordInfo.IsOptional
@@ -183,25 +176,20 @@ module private RecordShredder =
         let fieldShredders =
             recordInfo.Fields
             |> Array.map (fun fieldInfo ->
-                let valueShredder = ValueShredder.forValue fieldInfo.ValueInfo maxLevels
-                { FieldShredder.FieldInfo = fieldInfo
-                  FieldShredder.ValueShredder = valueShredder })
+                ValueShredder.forValue fieldInfo.ValueInfo maxLevels)
         RecordShredder(recordInfo, maxLevels, fieldShredders)
+        :> ValueShredder
 
-module private ValueShredder =
     let forValue (valueInfo: ValueInfo) parentMaxLevels =
         match valueInfo with
-        | ValueInfo.Atomic atomicInfo ->
-            AtomicShredder.forAtomic atomicInfo parentMaxLevels :> ValueShredder
-        | ValueInfo.List listInfo ->
-            ListShredder.forList listInfo parentMaxLevels :> ValueShredder
-        | ValueInfo.Record recordInfo ->
-            RecordShredder.forRecord recordInfo parentMaxLevels :> ValueShredder
+        | ValueInfo.Atomic atomicInfo -> ValueShredder.forAtomic atomicInfo parentMaxLevels
+        | ValueInfo.List listInfo -> ValueShredder.forList listInfo parentMaxLevels
+        | ValueInfo.Record recordInfo -> ValueShredder.forRecord recordInfo parentMaxLevels
 
 let shred (records: 'Record[]) =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
     let maxLevels = Levels.Default
-    let recordShredder = RecordShredder.forRecord recordInfo maxLevels
+    let recordShredder = ValueShredder.forRecord recordInfo maxLevels
     for record in records do
         let parentLevels = Levels.Default
         recordShredder.ShredValue(parentLevels, record)
@@ -458,7 +446,7 @@ type private RecordAssembler(recordInfo: RecordInfo, maxLevels, fieldAssemblers:
             let assembledRecord = AssembledValue.create firstField.Levels record
             Option.Some assembledRecord
 
-module private AtomicAssembler =
+module private ValueAssembler =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxLevels (columns: Queue<Column>) =
         let maxLevels =
             if atomicInfo.IsOptional
@@ -469,8 +457,8 @@ module private AtomicAssembler =
             then failwith "no column found for atomic value"
             else columns.Dequeue()
         AtomicAssembler(atomicInfo, maxLevels, column)
+        :> ValueAssembler
 
-module private ListAssembler =
     let forList (listInfo: ListInfo) parentMaxLevels columns =
         let listMaxLevels =
             if listInfo.IsOptional
@@ -480,8 +468,8 @@ module private ListAssembler =
         let elementAssembler =
             ValueAssembler.forValue listInfo.ElementInfo elementMaxLevels columns
         ListAssembler(listInfo, listMaxLevels, elementAssembler)
+        :> ValueAssembler
 
-module private RecordAssembler =
     let forRecord (recordInfo: RecordInfo) parentMaxLevels columns =
         let maxLevels =
             if recordInfo.IsOptional
@@ -492,25 +480,19 @@ module private RecordAssembler =
             |> Array.map (fun fieldInfo ->
                 ValueAssembler.forValue fieldInfo.ValueInfo maxLevels columns)
         RecordAssembler(recordInfo, maxLevels, fieldAssemblers)
+        :> ValueAssembler
 
-module private ValueAssembler =
     let forValue (valueInfo: ValueInfo) parentMaxLevels columns =
         match valueInfo with
-        | ValueInfo.Atomic atomicInfo ->
-            AtomicAssembler.forAtomic atomicInfo parentMaxLevels columns :> ValueAssembler
-        | ValueInfo.List listInfo ->
-            ListAssembler.forList listInfo parentMaxLevels columns :> ValueAssembler
-        | ValueInfo.Record recordInfo ->
-            RecordAssembler.forRecord recordInfo parentMaxLevels columns :> ValueAssembler
+        | ValueInfo.Atomic atomicInfo -> ValueAssembler.forAtomic atomicInfo parentMaxLevels columns
+        | ValueInfo.List listInfo -> ValueAssembler.forList listInfo parentMaxLevels columns
+        | ValueInfo.Record recordInfo -> ValueAssembler.forRecord recordInfo parentMaxLevels columns
 
 let assemble<'Record> (columns: Column[]) =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
     let maxLevels = Levels.Default
     let columns = Queue(columns)
-    // TODO: Can we construct this in such a way that the columns are passed in
-    // as a second step so that the actual assembly "algorithm" just has to be
-    // created once per record type?
-    let recordAssembler = RecordAssembler.forRecord recordInfo maxLevels columns
+    let recordAssembler = ValueAssembler.forRecord recordInfo maxLevels columns
     let records = ResizeArray()
     let mutable allRecordsAssembled = false
     while not allRecordsAssembled do

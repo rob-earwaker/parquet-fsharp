@@ -25,6 +25,8 @@ module private Levels =
 [<AbstractClass>]
 type private ValueShredder(maxLevels: Levels) =
     member this.MaxLevels = maxLevels
+    // TODO: revamp shredding - use options to be more explicit about null values
+    // use an explicit method to pass null values down to shredders.
     abstract member ShredValue : parentLevels:Levels * value:obj -> unit
     abstract member BuildColumns : unit -> Column seq
 

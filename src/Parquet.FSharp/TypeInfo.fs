@@ -48,8 +48,8 @@ type ListInfo = {
     DotnetType: Type
     IsOptional: bool
     ElementInfo: ValueInfo
-    ResolveValues: obj -> IList 
-    CreateValue: obj[] -> obj
+    ResolveValues: obj -> IList
+    CreateValue: IList -> obj
     CreateNullValue: unit -> obj }
 
 type FieldInfo = {
@@ -141,6 +141,23 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
+    let (|Array1d|_|) (dotnetType: Type) =
+        if dotnetType.IsArray
+            && dotnetType.GetArrayRank() = 1
+        then Option.Some ()
+        else Option.None
+
+    let (|List|_|) (dotnetType: Type) =
+        if dotnetType.IsGenericType
+            && dotnetType.GetGenericTypeDefinition() = typedefof<list<_>>
+        then Option.Some ()
+        else Option.None
+
+    let (|Record|_|) dotnetType =
+        if FSharpType.IsRecord(dotnetType)
+        then Option.Some ()
+        else Option.None
+
     let (|Nullable|_|) (dotnetType: Type) =
         if dotnetType.IsGenericType
             && dotnetType.GetGenericTypeDefinition() = typedefof<Nullable<_>>
@@ -150,17 +167,6 @@ module private DotnetType =
     let (|Option|_|) (dotnetType: Type) =
         if dotnetType.IsGenericType
             && dotnetType.GetGenericTypeDefinition() = typedefof<Option<_>>
-        then Option.Some ()
-        else Option.None
-
-    let (|Record|_|) dotnetType =
-        if FSharpType.IsRecord(dotnetType)
-        then Option.Some ()
-        else Option.None
-
-    let (|Array1d|_|) (dotnetType: Type) =
-        if dotnetType.IsArray
-            && dotnetType.GetArrayRank() = 1
         then Option.Some ()
         else Option.None
 
@@ -199,10 +205,11 @@ module ValueInfo =
         | DotnetType.Float64 -> ValueInfo.Atomic AtomicInfo.Float64
         | DotnetType.DateTimeOffset -> ValueInfo.Atomic AtomicInfo.DateTimeOffset
         | DotnetType.String -> ValueInfo.Atomic AtomicInfo.String
+        | DotnetType.Array1d -> ValueInfo.List (ListInfo.ofArray1d dotnetType)
+        | DotnetType.List -> ValueInfo.List (ListInfo.ofList dotnetType)
+        | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
         | DotnetType.Nullable -> ofNullable dotnetType
         | DotnetType.Option -> ofOption dotnetType
-        | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
-        | DotnetType.Array1d -> ValueInfo.List (ListInfo.ofArray1d dotnetType)
         | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
 
     let of'<'Value> =
@@ -327,11 +334,32 @@ module private ListInfo =
             // No need to check for null here. The cast will succeed for a null
             // array, we'll just get back a null list, which is what we want.
             arrayObj :?> IList
-        let createValue (elementObjs: obj[]) =
-            let array = Array.CreateInstance(elementDotnetType, elementObjs.Length)
+        let createValue (elementObjs: IList) =
+            let array = Array.CreateInstance(elementDotnetType, elementObjs.Count)
             elementObjs.CopyTo(array, 0)
             array :> obj
         let createNullValue = fun () -> null
+        create dotnetType isOptional elementInfo resolveValues createValue createNullValue
+
+    let ofList (dotnetType: Type) =
+        let isOptional = false
+        let elementDotnetType = dotnetType.GetGenericArguments()[0]
+        let elementInfo = ValueInfo.ofType elementDotnetType
+        let resolveValues (listObj: obj) =
+            let arrayList = ArrayList()
+            for element in listObj :?> IEnumerable do
+                arrayList.Add(element) |> ignore
+            arrayList :> IList
+        let createValue =
+            let Empty = dotnetType.GetProperty("Empty").GetValue(null)
+            let cons = dotnetType.GetMethod("Cons")
+            fun (elementList: IList) ->
+                let mutable list = Empty
+                for index in [ elementList.Count - 1 .. -1 .. 0 ] do
+                    list <- cons.Invoke(null, [| elementList[index]; list |])
+                list
+        let createNullValue () =
+            failwith $"type '{dotnetType.FullName}' is not optional"
         create dotnetType isOptional elementInfo resolveValues createValue createNullValue
 
     let ofNullable (dotnetType: Type) (listInfo: ListInfo) =
@@ -346,8 +374,8 @@ module private ListInfo =
                 else null
         let createValue =
             let createValue = Nullable.preComputeCreateValue dotnetType
-            fun elementObjs ->
-                let listObj = listInfo.CreateValue elementObjs
+            fun elementList ->
+                let listObj = listInfo.CreateValue elementList
                 createValue listObj
         let createNullValue = Nullable.createNull
         create dotnetType isOptional elementInfo resolveValues createValue createNullValue
@@ -364,8 +392,8 @@ module private ListInfo =
                 else null
         let createValue =
             let createSome = Option.preComputeCreateSome dotnetType
-            fun elementObjs ->
-                let listObj = listInfo.CreateValue elementObjs
+            fun elementList ->
+                let listObj = listInfo.CreateValue elementList
                 createSome listObj
         let createNullValue = Option.preComputeCreateNone dotnetType
         create dotnetType isOptional elementInfo resolveValues createValue createNullValue

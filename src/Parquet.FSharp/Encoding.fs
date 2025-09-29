@@ -39,19 +39,41 @@ module Int32 =
             Array.init count (fun _ -> Stream.readInt32 stream)
 
     module RunLengthBitPackingHybrid =
+        let private getBitWidth (maxValue: int) =
+            // Calculate fixed bit width based on max value. The maximum value
+            // {i} that can be stored in {n} bits is {2^n - 1}.
+            //   >> i <= 2^n - 1
+            //   >> i + 1 <= 2^n
+            //   >> log2(i + 1) <= n
+            //   >> ceil(log2(i + 1)) = n
+            // Therefore, the minimum bit width {n} required to store value {i}
+            // is {ceil(log2(i + 1))}.
+            int (Math.Ceiling(Math.Log(float maxValue + 1., 2)))
+
+        let private getByteWidth bitWidth =
+            // Round up bit width to nearest byte to get byte width of values.
+            if bitWidth % 8 = 0
+            then bitWidth / 8
+            else bitWidth / 8 + 1
+
         let private writeRunLengthRun stream count value byteWidth =
             let header = uint32 count <<< 1
             Stream.writeUleb128 stream header
             Stream.writeInt32FixedWidth stream value byteWidth
 
-        let private runLengthEncode bitWidth (values: int[]) =
-            // Round up bit width to nearest byte to get byte width of values.
-            let byteWidth =
-                if bitWidth % 8 = 0
-                then bitWidth / 8
-                else bitWidth / 8 + 1
+        let private runLengthEncode (values: int[]) maxValue =
+            let bitWidth = getBitWidth maxValue
+            let byteWidth = getByteWidth bitWidth
             use stream = new MemoryStream()
-            let mutable previousValue = values[0]
+            // Initialise the previous value. If there are values in the array
+            // then initialize to the first value. This prevents us detecting
+            // the first value as the end of a run and therefore prevents us
+            // writing an initial empty run. If there are no values in the array
+            // then initialize to zero so that after the loop terminates we will
+            // write an empty run with this default value. In practice it
+            // shouldn't matter what this default value is chosen to be as it
+            // will never be used when decoding.
+            let mutable previousValue = if values.Length > 0 then values[0] else 0
             let mutable count = 0
             for value in values do
                 if value = previousValue then
@@ -70,21 +92,41 @@ module Int32 =
             writeRunLengthRun stream count previousValue byteWidth
             stream.ToArray()
 
-        let encode values (maxValue: int) =
-            // Calculate fixed bit width based on max value. The maximum value
-            // {i} that can be stored in {n} bits is {2^n - 1}.
-            //   >> i <= 2^n - 1
-            //   >> i + 1 <= 2^n
-            //   >> log2(i + 1) <= n
-            //   >> ceil(log2(i + 1)) = n
-            // Therefore, the minimum bit width {n} required to store value {i}
-            // is {ceil(log2(i + 1))}.
-            let bitWidth = int (Math.Ceiling(Math.Log(float maxValue + 1., 2)))
-            let data = runLengthEncode bitWidth values
+        let encodeWithLength values maxValue =
+            let data = runLengthEncode values maxValue
             use stream = new MemoryStream()
             Stream.writeInt32 stream data.Length
             Stream.writeBytes stream data
             stream.ToArray()
+
+        let decode stream count maxValue =
+            let bitWidth = getBitWidth maxValue
+            let byteWidth = getByteWidth bitWidth
+            let values = ResizeArray()
+            while values.Count < count do
+                // Read the header value for the next run.
+                let header = Stream.readUleb128 stream
+                // The least significant bit indicates whether the run uses run
+                // length encoding or bit packing.
+                let isBitPacked = (header &&& 1u) = 1u
+                // The rest of the header value contains the number of values in
+                // the run. Extract this by right-shifting by one to remove the
+                // least significant bit.
+                let valueCount = int (header >>> 1)
+                if isBitPacked
+                then failwith "unsupported"
+                else
+                    let value = Stream.readInt32FixedWidth stream byteWidth
+                    values.AddRange(Seq.replicate valueCount value)
+            if values.Count > count then
+                failwith "count exceeded!"
+            Array.ofSeq values
+
+        let decodeWithLength stream count maxValue =
+            // The data length is not currently used. We use the value count to
+            // determine when we've finished decoding.
+            let dataLength = Stream.readInt32 stream
+            decode stream count maxValue
 
 module Int64 =
     module Plain =

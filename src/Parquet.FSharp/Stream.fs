@@ -56,6 +56,9 @@ let rec writeUleb128 stream (value: uint32) =
         writeByte stream nextByte
         writeUleb128 stream remainingValue
 
+let readByte (stream: Stream) =
+    byte (stream.ReadByte())
+
 let readBytes (stream: Stream) count =
     let bytes = Array.zeroCreate<byte> count
     stream.Read(bytes, 0, bytes.Length) |> ignore
@@ -69,6 +72,12 @@ let readInt32 stream =
     let bytes = readBytes stream 4
     BitConverter.ToInt32(bytes, 0)
 
+let readInt32FixedWidth stream byteWidth =
+    let bytes = readBytes stream byteWidth
+    let fullWidthBytes = Array.zeroCreate<byte> 4
+    bytes.CopyTo(fullWidthBytes, 0)
+    BitConverter.ToInt32(fullWidthBytes, 0)
+
 let readInt64 stream =
     let bytes = readBytes stream 8
     BitConverter.ToInt64(bytes, 0)
@@ -76,6 +85,27 @@ let readInt64 stream =
 let readFloat64 stream =
     let bytes = readBytes stream 8
     BitConverter.ToDouble(bytes, 0)
+
+let readUleb128 stream =
+    let rec readUleb128' stream shift =
+        let nextByte = readByte stream
+        // The least significant 7 bits of the byte contain the next part of the
+        // value. Read this by performing a bitwise AND with {0b01111111} and
+        // shift by the current shift level.
+        let value = uint32 (nextByte &&& 0b01111111uy) <<< shift
+        // The most significant bit of the byte indicates whether there are more
+        // bytes to come. If this bit is zero then we've reached the end of our
+        // value. If it's one then there are more bytes to come. Read the bit by
+        // performing a bitwise AND with {0b10000000}.
+        if (nextByte &&& 0b10000000uy) = 0b00000000uy
+        // There are no more bytes to come, so just return the current value.
+        then value
+        // There are more bytes to come. Increment the shift by seven and read
+        // the remainder of the value. We then perform a bitwise OR with the
+        // current value to combine them. The shift ensures these values don't
+        // overlap.
+        else readUleb128' stream (shift + 7) ||| value
+    readUleb128' stream 0
 
 let readThrift<'Value when 'Value :> TBase and 'Value : (new : unit -> 'Value)> (stream: Stream) maxSize =
     // Jump through some weird hoops because there's no option in the thrift

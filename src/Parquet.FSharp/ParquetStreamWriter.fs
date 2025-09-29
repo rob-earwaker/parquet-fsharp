@@ -1,12 +1,17 @@
 ﻿namespace Parquet.FSharp
 
-open System
 open System.IO
 
 type ParquetStreamWriter<'Record>(stream: Stream) =
     let magicNumber = "PAR1"
+
+    // TODO: These could be configurable.
+    let repetitionLevelEncoding = Thrift.Encoding.RLE
+    let definitionLevelEncoding = Thrift.Encoding.RLE
+
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
     let schema = Schema.ofRecordInfo recordInfo
+
     let fileMetaData =
         Thrift.FileMetaData(
             Version = 1,
@@ -49,20 +54,34 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 Ordinal = int16 fileMetaData.Row_groups.Count)
         let columns = Dremel.shred records
         for columnPath, column in Array.zip columnPaths columns do
-            let repetitionLevelEncoding, repetitionLevelBytes =
+            let repetitionLevelBytes =
                 match column.RepetitionLevels with
                 | Option.Some repetitionLevels ->
-                    let encoding = Thrift.Encoding.PLAIN
-                    let bytes = Encoding.Int32.Plain.encode repetitionLevels
-                    encoding, bytes
-                | Option.None -> Thrift.Encoding.PLAIN, [||]
-            let definitionLevelEncoding, definitionLevelBytes =
+                    match repetitionLevelEncoding with
+                    | Thrift.Encoding.PLAIN ->
+                        Encoding.Int32.Plain.encode repetitionLevels
+                    | Thrift.Encoding.RLE ->
+                        // Repetition levels encoded using the run length and
+                        // bit packing hybrid encoding must include the
+                        // prepended encoded data length.
+                        Encoding.Int32.RunLengthBitPackingHybrid.encodeWithLength
+                            repetitionLevels column.MaxRepetitionLevel
+                    | _ -> failwith "unsupported"
+                | Option.None -> [||]
+            let definitionLevelBytes =
                 match column.DefinitionLevels with
                 | Option.Some definitionLevels ->
-                    let encoding = Thrift.Encoding.PLAIN
-                    let bytes = Encoding.Int32.Plain.encode definitionLevels
-                    encoding, bytes
-                | Option.None -> Thrift.Encoding.PLAIN, [||]
+                    match definitionLevelEncoding with
+                    | Thrift.Encoding.PLAIN ->
+                        Encoding.Int32.Plain.encode definitionLevels
+                    | Thrift.Encoding.RLE ->
+                        // Definition levels encoded using the run length and
+                        // bit packing hybrid encoding must include the
+                        // prepended encoded data length.
+                        Encoding.Int32.RunLengthBitPackingHybrid.encodeWithLength
+                            definitionLevels column.MaxDefinitionLevel
+                    | _ -> failwith "unsupported"
+                | Option.None -> [||]
             let valueType, valueEncoding, valueBytes =
                 match column.Values with
                 | ColumnValues.Bool values ->

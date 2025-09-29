@@ -62,6 +62,8 @@ type ParquetStreamReader<'Record>(stream: Stream) =
         Dremel.assemble<'Record> columns
 
     member private this.ReadColumn(schemaInfo: ColumnSchemaInfo, column: Thrift.ColumnChunk) =
+        let maxRepetitionLevel = schemaInfo.MaxRepetitionLevel
+        let maxDefinitionLevel = schemaInfo.MaxDefinitionLevel
         let metaData = column.Meta_data
         let totalCompressedSize = int metaData.Total_compressed_size
         let pageHeader = Stream.readThrift<Thrift.PageHeader> stream totalCompressedSize
@@ -70,21 +72,29 @@ type ParquetStreamReader<'Record>(stream: Stream) =
             let dataPageHeader = pageHeader.Data_page_header
             let valueCount = dataPageHeader.Num_values
             let repetitionLevels =
-                if schemaInfo.MaxRepetitionLevel = 0
+                if maxRepetitionLevel = 0
                 then Option.None
                 else
                     match dataPageHeader.Repetition_level_encoding with
                     | Thrift.Encoding.PLAIN ->
                         Encoding.Int32.Plain.decode stream valueCount
                         |> Option.Some
+                    | Thrift.Encoding.RLE ->
+                        Encoding.Int32.RunLengthBitPackingHybrid.decodeWithLength
+                            stream valueCount maxRepetitionLevel
+                        |> Option.Some
                     | _ -> failwith "unsupported"
             let definitionLevels =
-                if schemaInfo.MaxDefinitionLevel = 0
+                if maxDefinitionLevel = 0
                 then Option.None
                 else
                     match dataPageHeader.Definition_level_encoding with
                     | Thrift.Encoding.PLAIN ->
                         Encoding.Int32.Plain.decode stream valueCount
+                        |> Option.Some
+                    | Thrift.Encoding.RLE ->
+                        Encoding.Int32.RunLengthBitPackingHybrid.decodeWithLength
+                            stream valueCount maxDefinitionLevel
                         |> Option.Some
                     | _ -> failwith "unsupported"
             // Determine the number of values we should be decoding. NULL values
@@ -133,8 +143,8 @@ type ParquetStreamReader<'Record>(stream: Stream) =
                 | _ -> failwith "unsupported"
             { Column.ValueCount = valueCount
               Column.Values = values
-              Column.MaxRepetitionLevel = schemaInfo.MaxRepetitionLevel
-              Column.MaxDefinitionLevel = schemaInfo.MaxDefinitionLevel
+              Column.MaxRepetitionLevel = maxRepetitionLevel
+              Column.MaxDefinitionLevel = maxDefinitionLevel
               Column.RepetitionLevels = repetitionLevels
               Column.DefinitionLevels = definitionLevels }
         | _ -> failwith $"unsupported page type '{pageHeader.Type}'"

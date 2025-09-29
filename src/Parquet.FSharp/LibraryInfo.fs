@@ -1,4 +1,4 @@
-﻿module Parquet.FSharp.Library
+﻿module Parquet.FSharp.LibraryInfo
 
 open System.Reflection
 

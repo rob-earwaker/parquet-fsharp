@@ -3,6 +3,7 @@
 open FSharp.Reflection
 open System
 open System.Collections
+open System.Collections.Generic
 open System.Reflection
 open System.Text
 
@@ -171,6 +172,18 @@ module private DotnetType =
         else Option.None
 
 module ValueInfo =
+    let private Cache = Dictionary<Type, ValueInfo>()
+
+    let private tryGetCached dotnetType =
+        lock Cache (fun () ->
+            match Cache.TryGetValue(dotnetType) with
+            | false, _ -> Option.None
+            | true, valueInfo -> Option.Some valueInfo)
+
+    let private addToCache dotnetType valueInfo =
+        lock Cache (fun () ->
+            Cache[dotnetType] <- valueInfo)
+
     let private ofNullable (dotnetType: Type) =
         let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
         match ValueInfo.ofType valueDotnetType with
@@ -198,19 +211,25 @@ module ValueInfo =
             ValueInfo.Record recordOptionInfo
 
     let ofType (dotnetType: Type) =
-        match dotnetType with
-        | DotnetType.Bool -> ValueInfo.Atomic AtomicInfo.Bool
-        | DotnetType.Int32 -> ValueInfo.Atomic AtomicInfo.Int32
-        | DotnetType.Int64 -> ValueInfo.Atomic AtomicInfo.Int64
-        | DotnetType.Float64 -> ValueInfo.Atomic AtomicInfo.Float64
-        | DotnetType.DateTimeOffset -> ValueInfo.Atomic AtomicInfo.DateTimeOffset
-        | DotnetType.String -> ValueInfo.Atomic AtomicInfo.String
-        | DotnetType.Array1d -> ValueInfo.List (ListInfo.ofArray1d dotnetType)
-        | DotnetType.List -> ValueInfo.List (ListInfo.ofList dotnetType)
-        | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
-        | DotnetType.Nullable -> ofNullable dotnetType
-        | DotnetType.Option -> ofOption dotnetType
-        | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
+        match tryGetCached dotnetType with
+        | Option.Some valueInfo -> valueInfo
+        | Option.None ->
+            let valueInfo =
+                match dotnetType with
+                | DotnetType.Bool -> ValueInfo.Atomic AtomicInfo.Bool
+                | DotnetType.Int32 -> ValueInfo.Atomic AtomicInfo.Int32
+                | DotnetType.Int64 -> ValueInfo.Atomic AtomicInfo.Int64
+                | DotnetType.Float64 -> ValueInfo.Atomic AtomicInfo.Float64
+                | DotnetType.DateTimeOffset -> ValueInfo.Atomic AtomicInfo.DateTimeOffset
+                | DotnetType.String -> ValueInfo.Atomic AtomicInfo.String
+                | DotnetType.Array1d -> ValueInfo.List (ListInfo.ofArray1d dotnetType)
+                | DotnetType.List -> ValueInfo.List (ListInfo.ofList dotnetType)
+                | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
+                | DotnetType.Nullable -> ofNullable dotnetType
+                | DotnetType.Option -> ofOption dotnetType
+                | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
+            addToCache dotnetType valueInfo
+            valueInfo
 
     let of'<'Value> =
         ofType typeof<'Value>

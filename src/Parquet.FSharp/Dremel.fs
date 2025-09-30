@@ -25,8 +25,7 @@ module private Levels =
 [<AbstractClass>]
 type private ValueShredder(maxLevels: Levels) =
     member this.MaxLevels = maxLevels
-    // TODO: revamp shredding - use options to be more explicit about null values
-    // use an explicit method to pass null values down to shredders.
+    abstract member AddNullValue : levels:Levels -> unit
     abstract member ShredValue : parentLevels:Levels * value:obj -> unit
     abstract member BuildColumns : unit -> Column seq
 
@@ -41,22 +40,44 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels) =
     let repetitionLevels = ResizeArray()
     let definitionLevels = ResizeArray()
 
-    override this.ShredValue(parentLevels, value) =
-        let primitiveValue =
-            if isNull value
-            then null
-            else atomicInfo.ResolvePrimitiveValue value
-        let levels =
-            if atomicInfo.IsOptional && not (isNull primitiveValue)
-            then Levels.create parentLevels.Repetition maxLevels.Definition
-            else parentLevels
+    let incrementValueCount () =
         valueCount <- valueCount + 1
-        if not (isNull primitiveValue) then
-            primitiveValues.Add(primitiveValue)
+
+    let addLevels (levels: Levels) =
         if repetitionLevelsRequired then
             repetitionLevels.Add(levels.Repetition)
         if definitionLevelsRequired then
             definitionLevels.Add(levels.Definition)
+
+    let addValue levels value =
+        let primitiveValue = atomicInfo.GetPrimitiveValue value
+        addLevels levels
+        primitiveValues.Add(primitiveValue)
+        incrementValueCount ()
+
+    override this.AddNullValue(levels) =
+        addLevels levels
+        incrementValueCount ()
+
+    override this.ShredValue(parentLevels, value) =
+        if atomicInfo.IsOptional
+        then
+            if atomicInfo.IsNullValue value
+            then
+                // Add a NULL value using the parent levels to indicate the last
+                // definition level at which a value was present.
+                this.AddNullValue(parentLevels)
+            else
+                // Add a value at the max definition level for this value. In
+                // practice this should be one more than the parent definition
+                // level.
+                let levels = Levels.create parentLevels.Repetition maxLevels.Definition
+                addValue levels value
+        else
+            // If the value is REQUIRED then the definition level will be the
+            // same as the parent, so just add the value using the parent
+            // levels.
+            addValue parentLevels value
 
     override this.BuildColumns() =
         let columnValues =
@@ -96,26 +117,21 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels) =
 type private ListShredder(listInfo: ListInfo, maxLevels, elementShredder: ValueShredder) =
     inherit ValueShredder(maxLevels)
 
-    override this.ShredValue(parentLevels, value) =
-        let elementMaxLevels = elementShredder.MaxLevels
-        let elementValues =
-            if isNull value
-            then null
-            else listInfo.ResolveValues value
-        let listLevels =
-            if listInfo.IsOptional && not (isNull elementValues)
-            then Levels.create parentLevels.Repetition maxLevels.Definition
-            else parentLevels
-        // If the element values list is null or empty, leave the levels as they
-        // are and pass a null value down to the element shredder. This ensures
-        // we write out levels for any child values in the schema.
-        if isNull elementValues || elementValues.Count = 0 then
-            elementShredder.ShredValue(listLevels, null)
+    let shredElements listLevels list =
+        let elementValues = listInfo.GetElementValues list
+        // If there are no element values then add a NULL element using the list
+        // levels. This indicates that the list is NOTNULL but there are no
+        // elements.
+        if elementValues.Count = 0
+        then elementShredder.AddNullValue(listLevels)
         else
-            // The first element inherits its repetition level from the parent
-            // list, whereas subsequent elements use the max repetition level of
-            // the element value. We also need to increment the definition level
-            // since we're now inside a non-null repeated field.
+            // The first element inherits its repetition level from the list,
+            // whereas subsequent elements use the max repetition level of the
+            // element value, which in practice should be one more than the
+            // repetition level of the list. We also need to increment the
+            // definition level since we're now inside a REPEATED field that is
+            // NOTNULL.
+            let elementMaxLevels = elementShredder.MaxLevels
             let definitionLevel = listLevels.Definition + 1
             let firstElementLevels = Levels.create listLevels.Repetition definitionLevel
             let otherElementLevels = Levels.create elementMaxLevels.Repetition definitionLevel
@@ -123,29 +139,57 @@ type private ListShredder(listInfo: ListInfo, maxLevels, elementShredder: ValueS
             for index in [ 1 .. elementValues.Count - 1 ] do
                 elementShredder.ShredValue(otherElementLevels, elementValues[index])
 
+    override this.AddNullValue(levels) =
+        elementShredder.AddNullValue(levels)
+
+    override this.ShredValue(parentLevels, list) =
+        if listInfo.IsOptional
+        then
+            if listInfo.IsNullValue list
+            then this.AddNullValue(parentLevels)
+            else
+                // If the list is OPTIONAL and NOTNULL then update the
+                // definition level to the max definition level of the list
+                // before shredding the elements.
+                let listLevels = Levels.create parentLevels.Repetition maxLevels.Definition
+                shredElements listLevels list
+        else
+            // If the list is REQUIRED then the definition level will be the
+            // same as the parent, so use the parent levels when shredding the
+            // elements.
+            shredElements parentLevels list
+
     override this.BuildColumns() =
         elementShredder.BuildColumns()
 
 type private RecordShredder(recordInfo: RecordInfo, maxLevels, fieldShredders: ValueShredder[]) =
     inherit ValueShredder(maxLevels)
 
-    override this.ShredValue(parentLevels, value) =
-        let fieldValues =
-            if isNull value
-            then null
-            else recordInfo.ResolveFieldValues value
-        let levels =
-            if recordInfo.IsOptional && not (isNull fieldValues)
-            then Levels.create parentLevels.Repetition maxLevels.Definition
-            else parentLevels
-        // Shred all fields regardless of whether the record is NULL. This
-        // ensures we write out levels for any child values in the schema.
-        for fieldIndex, fieldShredder in Array.indexed fieldShredders do
-            let fieldValue =
-                if isNull fieldValues
-                then null
-                else fieldValues[fieldIndex]
-            fieldShredder.ShredValue(levels, fieldValue)
+    let shredFields recordLevels record =
+        let fieldValues = recordInfo.GetFieldValues record
+        for fieldShredder, fieldValue in Array.zip fieldShredders fieldValues do
+            fieldShredder.ShredValue(recordLevels, fieldValue)
+
+    override this.AddNullValue(levels) =
+        for fieldShredder in fieldShredders do
+            fieldShredder.AddNullValue(levels)
+
+    override this.ShredValue(parentLevels, record) =
+        if recordInfo.IsOptional
+        then
+            if recordInfo.IsNullValue record
+            then this.AddNullValue(parentLevels)
+            else
+                // If the record is OPTIONAL and NOTNULL then update the
+                // definition level to the max definition level of the record
+                // before shredding the fields.
+                let recordLevels = Levels.create parentLevels.Repetition maxLevels.Definition
+                shredFields recordLevels record
+        else
+            // If the record is REQUIRED then the definition level will be the
+            // same as the parent, so use the parent levels when shredding the
+            // fields.
+            shredFields parentLevels record
 
     override this.BuildColumns() =
         fieldShredders
@@ -301,7 +345,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: Column) 
                     // next primitive value and convert it to the correct type.
                     let primitiveValue = primitiveValues.GetValue(nextArrayValueIndex)
                     nextArrayValueIndex <- nextArrayValueIndex + 1
-                    Option.Some (atomicInfo.FromPrimitiveValue primitiveValue)
+                    Option.Some (atomicInfo.CreateFromPrimitiveValue primitiveValue)
             nextValueIndex <- nextValueIndex + 1
             let assembledValue = AssembledValue.create levels value
             Option.Some assembledValue
@@ -332,7 +376,7 @@ type private ListAssembler(listInfo: ListInfo, maxLevels, elementAssembler: Valu
                     // the maximum definition level of the list then the list is
                     // DEFINED and empty.
                     if nextElement.Levels.Definition = maxLevels.Definition
-                    then Option.Some (listInfo.CreateValue [||])
+                    then Option.Some (listInfo.CreateFromElementValues [||])
                     // If the list is optional and the definition level of the
                     // next element is one less than the maximum definition
                     // level of the list then the list is DEFINED, but NULL.
@@ -372,7 +416,7 @@ type private ListAssembler(listInfo: ListInfo, maxLevels, elementAssembler: Valu
                         | Option.None -> allElementsFound <- true
                         | Option.Some nextElementValue -> elementValues.Add(nextElementValue)
                     // Construct the list from the element values.
-                    Option.Some (listInfo.CreateValue (Array.ofSeq elementValues))
+                    Option.Some (listInfo.CreateFromElementValues (Array.ofSeq elementValues))
             // Return the list along with the levels of the first element. It's
             // important to pass the first element levels back up the chain so
             // that ancestor values can be resolved correctly. In the case where
@@ -437,7 +481,7 @@ type private RecordAssembler(recordInfo: RecordInfo, maxLevels, fieldAssemblers:
                         // DEFINED.
                         fieldValues[fieldIndex] <- fieldValue.Value.Value.Value
                     // Construct the record from the field values.
-                    Option.Some (recordInfo.CreateValue fieldValues)
+                    Option.Some (recordInfo.CreateFromFieldValues fieldValues)
             // Return the record along with the levels of the first field. It's
             // important to pass the first field levels back up the chain so
             // that ancestor values can be resolved correctly. In the case where

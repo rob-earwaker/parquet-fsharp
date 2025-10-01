@@ -128,6 +128,12 @@ type ParquetStreamReader<'Record>(stream: Stream) =
                         Encoding.Int64.Plain.decode stream encodedValueCount
                         |> ColumnValues.Int64
                     | _ -> failwith "unsupported"
+                | Thrift.Type.FLOAT ->
+                    match dataPageHeader.Encoding with
+                    | Thrift.Encoding.PLAIN ->
+                        Encoding.Float32.Plain.decode stream encodedValueCount
+                        |> ColumnValues.Float32
+                    | _ -> failwith "unsupported"
                 | Thrift.Type.DOUBLE ->
                     match dataPageHeader.Encoding with
                     | Thrift.Encoding.PLAIN ->

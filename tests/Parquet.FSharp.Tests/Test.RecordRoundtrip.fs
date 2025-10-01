@@ -43,6 +43,12 @@ let ``int64 field`` records =
         records
 
 [<Property>]
+let ``float32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: float32 |}>
+        records
+
+[<Property>]
 let ``float64 field`` records =
     testRecordRoundtrip<{|
         Field1: float |}>
@@ -76,6 +82,12 @@ let ``array field with int32 elements`` records =
 let ``array field with int64 elements`` records =
     testRecordRoundtrip<{|
         Field1: array<int64> |}>
+        records
+
+[<Property>]
+let ``array field with float32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<float32> |}>
         records
 
 [<Property>]
@@ -134,6 +146,12 @@ let ``array field with nullable int64 elements`` records =
         records
 
 [<Property>]
+let ``array field with nullable float32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<Nullable<float32>> |}>
+        records
+
+[<Property>]
 let ``array field with nullable float64 elements`` records =
     testRecordRoundtrip<{|
         Field1: array<Nullable<float>> |}>
@@ -168,6 +186,12 @@ let ``array field with option int32 elements`` records =
 let ``array field with option int64 elements`` records =
     testRecordRoundtrip<{|
         Field1: array<option<int64>> |}>
+        records
+
+[<Property>]
+let ``array field with option float32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<option<float32>> |}>
         records
 
 [<Property>]
@@ -211,6 +235,12 @@ let ``list field with int32 elements`` records =
 let ``list field with int64 elements`` records =
     testRecordRoundtrip<{|
         Field1: list<int64> |}>
+        records
+
+[<Property>]
+let ``list field with float32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<float32> |}>
         records
 
 [<Property>]
@@ -269,6 +299,12 @@ let ``list field with nullable int64 elements`` records =
         records
 
 [<Property>]
+let ``list field with nullable float32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<Nullable<float32>> |}>
+        records
+
+[<Property>]
 let ``list field with nullable float64 elements`` records =
     testRecordRoundtrip<{|
         Field1: list<Nullable<float>> |}>
@@ -303,6 +339,12 @@ let ``list field with option int32 elements`` records =
 let ``list field with option int64 elements`` records =
     testRecordRoundtrip<{|
         Field1: list<option<int64>> |}>
+        records
+
+[<Property>]
+let ``list field with option float32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<option<float32>> |}>
         records
 
 [<Property>]
@@ -349,6 +391,13 @@ let ``record field with int64 field`` records =
     testRecordRoundtrip<{|
         Field1: {|
             Field2: int64 |} |}>
+        records
+
+[<Property>]
+let ``record field with float32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: float32 |} |}>
         records
 
 [<Property>]
@@ -416,6 +465,13 @@ let ``record field with nullable int64 field`` records =
         records
 
 [<Property>]
+let ``record field with nullable float32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: Nullable<float32> |} |}>
+        records
+
+[<Property>]
 let ``record field with nullable float64 field`` records =
     testRecordRoundtrip<{|
         Field1: {|
@@ -456,6 +512,13 @@ let ``record field with option int64 field`` records =
     testRecordRoundtrip<{|
         Field1: {|
             Field2: option<int64> |} |}>
+        records
+
+[<Property>]
+let ``record field with option float32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: option<float32> |} |}>
         records
 
 [<Property>]
@@ -506,6 +569,12 @@ let ``nullable int64 field`` records =
         records
 
 [<Property>]
+let ``nullable float32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<float32> |}>
+        records
+
+[<Property>]
 let ``nullable float64 field`` records =
     testRecordRoundtrip<{|
         Field1: Nullable<float> |}>
@@ -536,6 +605,13 @@ let ``nullable record field with int64 field`` records =
     testRecordRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: int64 |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with float32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: float32 |}> |}>
         records
 
 [<Property>]
@@ -596,6 +672,13 @@ let ``nullable record field with nullable int64 field`` records =
         records
 
 [<Property>]
+let ``nullable record field with nullable float32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: Nullable<float32> |}> |}>
+        records
+
+[<Property>]
 let ``nullable record field with nullable float64 field`` records =
     testRecordRoundtrip<{|
         Field1: Nullable<struct {|
@@ -636,6 +719,12 @@ let ``option int64 field`` records =
         records
 
 [<Property>]
+let ``option float32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<float32> |}>
+        records
+
+[<Property>]
 let ``option float64 field`` records =
     testRecordRoundtrip<{|
         Field1: option<float> |}>
@@ -663,6 +752,12 @@ let ``option list field with int32 elements`` records =
 let ``option list field with int64 elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<int64>> |}>
+        records
+
+[<Property>]
+let ``option list field with float32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<float32>> |}>
         records
 
 [<Property>]
@@ -721,6 +816,12 @@ let ``option list field with nullable int64 elements`` records =
         records
 
 [<Property>]
+let ``option list field with nullable float32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<Nullable<float32>>> |}>
+        records
+
+[<Property>]
 let ``option list field with nullable float64 elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<Nullable<float>>> |}>
@@ -755,6 +856,12 @@ let ``option list field with option int32 elements`` records =
 let ``option list field with option int64 elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<option<int64>>> |}>
+        records
+
+[<Property>]
+let ``option list field with option float32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<option<float32>>> |}>
         records
 
 [<Property>]
@@ -801,6 +908,13 @@ let ``option record field with int64 field`` records =
     testRecordRoundtrip<{|
         Field1: option<{|
             Field2: int64 |}> |}>
+        records
+
+[<Property>]
+let ``option record field with float32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: float32 |}> |}>
         records
 
 [<Property>]
@@ -868,6 +982,13 @@ let ``option record field with nullable int64 field`` records =
         records
 
 [<Property>]
+let ``option record field with nullable float32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: Nullable<float32> |}> |}>
+        records
+
+[<Property>]
 let ``option record field with nullable float64 field`` records =
     testRecordRoundtrip<{|
         Field1: option<{|
@@ -908,6 +1029,13 @@ let ``option record field with option int64 field`` records =
     testRecordRoundtrip<{|
         Field1: option<{|
             Field2: option<int64> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with option float32 field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: option<float32> |}> |}>
         records
 
 [<Property>]

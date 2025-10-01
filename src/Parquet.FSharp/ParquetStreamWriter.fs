@@ -111,6 +111,11 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 let encoding = Thrift.Encoding.PLAIN
                 let bytes = Encoding.Int64.Plain.encode values
                 type', encoding, bytes
+            | ColumnValues.Float32 values ->
+                let type' = Thrift.Type.FLOAT
+                let encoding = Thrift.Encoding.PLAIN
+                let bytes = Encoding.Float32.Plain.encode values
+                type', encoding, bytes
             | ColumnValues.Float64 values ->
                 let type' = Thrift.Type.DOUBLE
                 let encoding = Thrift.Encoding.PLAIN

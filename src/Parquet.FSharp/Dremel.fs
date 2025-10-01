@@ -91,6 +91,9 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels) =
             | PrimitiveType.Int64 ->
                 let values = primitiveValues |> Seq.cast<int64> |> Array.ofSeq
                 ColumnValues.Int64 values
+            | PrimitiveType.Float32 ->
+                let values = primitiveValues |> Seq.cast<float32> |> Array.ofSeq
+                ColumnValues.Float32 values
             | PrimitiveType.Float64 ->
                 let values = primitiveValues |> Seq.cast<float> |> Array.ofSeq
                 ColumnValues.Float64 values
@@ -292,6 +295,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: Column) 
         | ColumnValues.Bool values -> values :> Array
         | ColumnValues.Int32 values -> values :> Array
         | ColumnValues.Int64 values -> values :> Array
+        | ColumnValues.Float32 values -> values :> Array
         | ColumnValues.Float64 values -> values :> Array
         | ColumnValues.ByteArray values -> values :> Array
 

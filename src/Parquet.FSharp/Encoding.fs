@@ -139,6 +139,17 @@ module Int64 =
         let decode stream count =
             Array.init count (fun _ -> Stream.readInt64 stream)
 
+module Float32 =
+    module Plain =
+        let encode (values: float32[]) =
+            use stream = new MemoryStream()
+            for value in values do
+                Stream.writeFloat32 stream value
+            stream.ToArray()
+
+        let decode stream count =
+            Array.init count (fun _ -> Stream.readFloat32 stream)
+
 module Float64 =
     module Plain =
         let encode (values: float[]) =

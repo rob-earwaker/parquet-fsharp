@@ -33,6 +33,10 @@ let writeInt64 stream (value: int64) =
     let bytes = BitConverter.GetBytes(value)
     writeBytes stream bytes
 
+let writeFloat32 stream (value: float32) =
+    let bytes = BitConverter.GetBytes(value)
+    writeBytes stream bytes
+
 let writeFloat64 stream (value: float) =
     let bytes = BitConverter.GetBytes(value)
     writeBytes stream bytes
@@ -81,6 +85,10 @@ let readInt32FixedWidth stream byteWidth =
 let readInt64 stream =
     let bytes = readBytes stream 8
     BitConverter.ToInt64(bytes, 0)
+
+let readFloat32 stream =
+    let bytes = readBytes stream 4
+    BitConverter.ToSingle(bytes, 0)
 
 let readFloat64 stream =
     let bytes = readBytes stream 8

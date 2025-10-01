@@ -14,6 +14,7 @@ type Data = {
     Value3: float }
 
 type Message = {
+    Id: Guid
     Time: DateTimeOffset
     Source: string
     Level: float
@@ -38,6 +39,9 @@ module Random =
     let dateTimeOffset () =
         let ticks = Random.NextInt64(DateTimeOffset.MaxValue.Ticks)
         DateTimeOffset(ticks, TimeSpan.Zero)
+
+    let guid () =
+        Guid.NewGuid()
 
     let string () =
         if Random.NextDouble() >= 0.75
@@ -82,7 +86,8 @@ module Random =
           Data.Value3 = float () }
 
     let message () =
-        { Message.Time = dateTimeOffset ()
+        { Message.Id = guid ()
+          Message.Time = dateTimeOffset ()
           Message.Source = string ()
           Message.Level = float ()
           Message.Flag = nullableBool ()
@@ -93,7 +98,7 @@ module Random =
 
 [<EntryPoint>]
 let main _ =
-    let records = Array.init 1_000_000 (fun _ -> Random.message ())
+    let records = Array.init 1_000 (fun _ -> Random.message ())
     let filePath = @"..\..\..\..\..\data\data.parquet"
     // Write
     use writeStream = new MemoryStream()

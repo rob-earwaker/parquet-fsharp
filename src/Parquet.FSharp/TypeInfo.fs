@@ -20,6 +20,7 @@ type LogicalType =
     | Float64
     | Timestamp of TimestampType
     | String
+    | Uuid
 
 type TimestampType = {
     IsUtc: bool
@@ -37,6 +38,7 @@ type PrimitiveType =
     | Float32
     | Float64
     | ByteArray
+    | FixedLengthByteArray
 
 type AtomicInfo = {
     DotnetType: Type
@@ -145,6 +147,11 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
+    let (|Guid|_|) dotnetType =
+        if dotnetType = typeof<Guid>
+        then Option.Some ()
+        else Option.None
+
     let (|DateTimeOffset|_|) dotnetType =
         if dotnetType = typeof<DateTimeOffset>
         then Option.Some ()
@@ -231,6 +238,7 @@ module ValueInfo =
                 | DotnetType.Float64 -> ValueInfo.Atomic AtomicInfo.Float64
                 | DotnetType.DateTimeOffset -> ValueInfo.Atomic AtomicInfo.DateTimeOffset
                 | DotnetType.String -> ValueInfo.Atomic AtomicInfo.String
+                | DotnetType.Guid -> ValueInfo.Atomic AtomicInfo.Guid
                 | DotnetType.Array1d -> ValueInfo.List (ListInfo.ofArray1d dotnetType)
                 | DotnetType.List -> ValueInfo.List (ListInfo.ofList dotnetType)
                 | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
@@ -306,6 +314,36 @@ module private AtomicInfo =
             let bytes = primitiveValueObj :?> byte[]
             Encoding.UTF8.GetString(bytes) :> obj
         let createNullValue = fun () -> null
+        create dotnetType isOptional logicalType primitiveType
+            isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
+
+    let Guid =
+        let dotnetType = typeof<Guid>
+        let isOptional = false
+        let logicalType = LogicalType.Uuid
+        let primitiveType = PrimitiveType.FixedLengthByteArray
+        let isNullValue = fun _ -> false
+        let getPrimitiveValue (valueObj: obj) =
+            let value = valueObj :?> Guid
+            let littleEndianBytes = value.ToByteArray()
+            let bigEndianBytes =
+                Array.concat [|
+                    Array.rev littleEndianBytes[0..3]
+                    Array.rev littleEndianBytes[4..5]
+                    Array.rev littleEndianBytes[6..7]
+                    littleEndianBytes[8..15] |]
+            bigEndianBytes :> obj
+        let createFromPrimitiveValue (primitiveValueObj: obj) =
+            let bigEndianBytes = primitiveValueObj :?> byte[]
+            let littleEndianBytes =
+                Array.concat [|
+                    Array.rev bigEndianBytes[0..3]
+                    Array.rev bigEndianBytes[4..5]
+                    Array.rev bigEndianBytes[6..7]
+                    bigEndianBytes[8..15] |]
+            System.Guid(littleEndianBytes) :> obj
+        let createNullValue () =
+            failwith $"type '{dotnetType.FullName}' is not optional"
         create dotnetType isOptional logicalType primitiveType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 

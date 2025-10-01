@@ -22,6 +22,7 @@ type ValueType =
     | ByteArray
     | Timestamp of TimestampType
     | String
+    | Uuid
     | Record of Record
     | List of List
 
@@ -64,6 +65,7 @@ module ValueType =
         | LogicalType.Float64 -> ValueType.Float64
         | LogicalType.Timestamp timestamp -> ValueType.Timestamp timestamp
         | LogicalType.String -> ValueType.String
+        | LogicalType.Uuid -> ValueType.Uuid
 
     let ofListInfo listInfo =
         let list = List.ofListInfo listInfo
@@ -125,6 +127,9 @@ module Value =
                 yield Thrift.SchemaElement.logical repetitionType name logicalType
             | ValueType.String ->
                 let logicalType = Thrift.LogicalType.STRING
+                yield Thrift.SchemaElement.logical repetitionType name logicalType
+            | ValueType.Uuid ->
+                let logicalType = Thrift.LogicalType.UUID
                 yield Thrift.SchemaElement.logical repetitionType name logicalType
             | ValueType.Record recordType ->
                 let numFields = recordType.Fields.Length

@@ -126,6 +126,11 @@ type ParquetStreamWriter<'Record>(stream: Stream) =
                 let encoding = Thrift.Encoding.PLAIN
                 let bytes = Encoding.ByteArray.Plain.encode values
                 type', encoding, bytes
+            | ColumnValues.FixedLengthByteArray values ->
+                let type' = Thrift.Type.FIXED_LEN_BYTE_ARRAY
+                let encoding = Thrift.Encoding.PLAIN
+                let bytes = Encoding.FixedLengthByteArray.Plain.encode values
+                type', encoding, bytes
         let dataPageUncompressedSize =
             repetitionLevelBytes.Length
             + definitionLevelBytes.Length

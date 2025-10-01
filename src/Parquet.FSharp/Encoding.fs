@@ -174,3 +174,15 @@ module ByteArray =
             Array.init count (fun _ ->
                 let size = Stream.readInt32 stream
                 Stream.readBytes stream size)
+
+module FixedLengthByteArray =
+    module Plain =
+        let encode (values: byte[][]) =
+            use stream = new MemoryStream()
+            for value in values do
+                Stream.writeBytes stream value
+            stream.ToArray()
+
+        let decode stream count size =
+            Array.init count (fun _ ->
+                Stream.readBytes stream size)

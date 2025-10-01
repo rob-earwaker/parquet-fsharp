@@ -146,6 +146,13 @@ type ParquetStreamReader<'Record>(stream: Stream) =
                         Encoding.ByteArray.Plain.decode stream encodedValueCount
                         |> ColumnValues.ByteArray
                     | _ -> failwith "unsupported"
+                | Thrift.Type.FIXED_LEN_BYTE_ARRAY ->
+                    match dataPageHeader.Encoding with
+                    | Thrift.Encoding.PLAIN ->
+                        let size = schemaInfo.SchemaElement.Type_length
+                        Encoding.FixedLengthByteArray.Plain.decode stream encodedValueCount size
+                        |> ColumnValues.FixedLengthByteArray
+                    | _ -> failwith "unsupported"
                 | _ -> failwith "unsupported"
             { Column.ValueCount = valueCount
               Column.Values = values

@@ -13,6 +13,7 @@ module LogicalType =
     let INT32 = INT 32y true
     let INT64 = INT 64y true
     let STRING = LogicalType(STRING = StringType())
+    let UUID = LogicalType(UUID = UUIDType())
     let LIST = LogicalType(LIST = ListType())
 
     let TIMESTAMP isAdjustedToUtc unit =

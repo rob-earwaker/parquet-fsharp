@@ -100,6 +100,9 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels) =
             | PrimitiveType.ByteArray ->
                 let values = primitiveValues |> Seq.cast<byte[]> |> Array.ofSeq
                 ColumnValues.ByteArray values
+            | PrimitiveType.FixedLengthByteArray ->
+                let values = primitiveValues |> Seq.cast<byte[]> |> Array.ofSeq
+                ColumnValues.FixedLengthByteArray values
         let repetitionLevels =
             if repetitionLevelsRequired
             then Option.Some (Array.ofSeq repetitionLevels)
@@ -298,6 +301,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: Column) 
         | ColumnValues.Float32 values -> values :> Array
         | ColumnValues.Float64 values -> values :> Array
         | ColumnValues.ByteArray values -> values :> Array
+        | ColumnValues.FixedLengthByteArray values -> values :> Array
 
     // NULL values are not written to the array, so keep track of the array
     // index and the value index separately. For optional values, these will be

@@ -67,6 +67,12 @@ let ``string field`` records =
         records
 
 [<Property>]
+let ``guid field`` records =
+    testRecordRoundtrip<{|
+        Field1: Guid |}>
+        records
+
+[<Property>]
 let ``array field with bool elements`` records =
     testRecordRoundtrip<{|
         Field1: array<bool> |}>
@@ -106,6 +112,12 @@ let ``array field with date time offset elements`` records =
 let ``array field with string elements`` records =
     testRecordRoundtrip<{|
         Field1: array<string> |}>
+        records
+
+[<Property>]
+let ``array field with guid elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<Guid> |}>
         records
 
 [<Property>]
@@ -164,6 +176,12 @@ let ``array field with nullable date time offset elements`` records =
         records
 
 [<Property>]
+let ``array field with nullable guid elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<Nullable<Guid>> |}>
+        records
+
+[<Property>]
 let ``array field with nullable record elements`` records =
     testRecordRoundtrip<{|
         Field1: array<Nullable<struct {|
@@ -204,6 +222,12 @@ let ``array field with option float64 elements`` records =
 let ``array field with option date time offset elements`` records =
     testRecordRoundtrip<{|
         Field1: array<option<DateTimeOffset>> |}>
+        records
+
+[<Property>]
+let ``array field with option guid elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<option<Guid>> |}>
         records
 
 [<Property>]
@@ -262,6 +286,12 @@ let ``list field with string elements`` records =
         records
 
 [<Property>]
+let ``list field with guid elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<Guid> |}>
+        records
+
+[<Property>]
 let ``list field with array elements`` records =
     testRecordRoundtrip<{|
         Field1: list<array<int>> |}>
@@ -317,6 +347,12 @@ let ``list field with nullable date time offset elements`` records =
         records
 
 [<Property>]
+let ``list field with nullable guid elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<Nullable<Guid>> |}>
+        records
+
+[<Property>]
 let ``list field with nullable record elements`` records =
     testRecordRoundtrip<{|
         Field1: list<Nullable<struct {|
@@ -357,6 +393,12 @@ let ``list field with option float64 elements`` records =
 let ``list field with option date time offset elements`` records =
     testRecordRoundtrip<{|
         Field1: list<option<DateTimeOffset>> |}>
+        records
+
+[<Property>]
+let ``list field with option guid elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<option<Guid>> |}>
         records
 
 [<Property>]
@@ -419,6 +461,13 @@ let ``record field with string field`` records =
     testRecordRoundtrip<{|
         Field1: {|
             Field2: string |} |}>
+        records
+
+[<Property>]
+let ``record field with guid field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: Guid |} |}>
         records
 
 [<Property>]
@@ -486,6 +535,13 @@ let ``record field with nullable date time offset field`` records =
         records
 
 [<Property>]
+let ``record field with nullable guid field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: Nullable<Guid> |} |}>
+        records
+
+[<Property>]
 let ``record field with nullable record field`` records =
     testRecordRoundtrip<{|
         Field1: {|
@@ -533,6 +589,13 @@ let ``record field with option date time offset field`` records =
     testRecordRoundtrip<{|
         Field1: {|
             Field2: option<DateTimeOffset> |} |}>
+        records
+
+[<Property>]
+let ``record field with option guid field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: option<Guid> |} |}>
         records
 
 [<Property>]
@@ -587,6 +650,12 @@ let ``nullable date time offset field`` records =
         records
 
 [<Property>]
+let ``nullable guid field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<Guid> |}>
+        records
+
+[<Property>]
 let ``nullable record field with bool field`` records =
     testRecordRoundtrip<{|
         Field1: Nullable<struct {|
@@ -633,6 +702,13 @@ let ``nullable record field with string field`` records =
     testRecordRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: string |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with guid field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: Guid |}> |}>
         records
 
 [<Property>]
@@ -693,6 +769,13 @@ let ``nullable record field with nullable date time offset field`` records =
         records
 
 [<Property>]
+let ``nullable record field with nullable guid field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: Nullable<Guid> |}> |}>
+        records
+
+[<Property>]
 let ``nullable record field with nullable record field`` records =
     testRecordRoundtrip<{|
         Field1: Nullable<struct {|
@@ -737,6 +820,12 @@ let ``option date time offset field`` records =
         records
 
 [<Property>]
+let ``option guid field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<Guid> |}>
+        records
+
+[<Property>]
 let ``option list field with bool elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<bool>> |}>
@@ -776,6 +865,12 @@ let ``option list field with date time offset elements`` records =
 let ``option list field with string elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<string>> |}>
+        records
+
+[<Property>]
+let ``option list field with guid elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<Guid>> |}>
         records
 
 [<Property>]
@@ -834,6 +929,12 @@ let ``option list field with nullable date time offset elements`` records =
         records
 
 [<Property>]
+let ``option list field with nullable guid elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<Nullable<Guid>>> |}>
+        records
+
+[<Property>]
 let ``option list field with nullable record elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<Nullable<struct {|
@@ -874,6 +975,12 @@ let ``option list field with option float64 elements`` records =
 let ``option list field with option date time offset elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<option<DateTimeOffset>>> |}>
+        records
+
+[<Property>]
+let ``option list field with option guid elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<option<Guid>>> |}>
         records
 
 [<Property>]
@@ -936,6 +1043,13 @@ let ``option record field with string field`` records =
     testRecordRoundtrip<{|
         Field1: option<{|
             Field2: string |}> |}>
+        records
+
+[<Property>]
+let ``option record field with guid field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: Guid |}> |}>
         records
 
 [<Property>]
@@ -1003,6 +1117,13 @@ let ``option record field with nullable date time offset field`` records =
         records
 
 [<Property>]
+let ``option record field with nullable guid field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: Nullable<Guid> |}> |}>
+        records
+
+[<Property>]
 let ``option record field with nullable record field`` records =
     testRecordRoundtrip<{|
         Field1: option<{|
@@ -1050,6 +1171,13 @@ let ``option record field with option date time offset field`` records =
     testRecordRoundtrip<{|
         Field1: option<{|
             Field2: option<DateTimeOffset> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with option guid field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: option<Guid> |}> |}>
         records
 
 [<Property>]

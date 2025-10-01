@@ -7,6 +7,7 @@ type ColumnValues =
     | Float32 of float32[]
     | Float64 of float[]
     | ByteArray of byte[][]
+    | FixedLengthByteArray of byte[][]
 
 type Column = {
     ValueCount: int

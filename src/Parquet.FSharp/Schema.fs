@@ -17,6 +17,8 @@ type ValueType =
     | Bool
     | Int32
     | Int64
+    | UInt32
+    | UInt64
     | Float32
     | Float64
     | ByteArray
@@ -61,6 +63,8 @@ module ValueType =
         | LogicalType.Bool -> ValueType.Bool
         | LogicalType.Int32 -> ValueType.Int32
         | LogicalType.Int64 -> ValueType.Int64
+        | LogicalType.UInt32 -> ValueType.UInt32
+        | LogicalType.UInt64 -> ValueType.UInt64
         | LogicalType.Float32 -> ValueType.Float32
         | LogicalType.Float64 -> ValueType.Float64
         | LogicalType.Timestamp timestamp -> ValueType.Timestamp timestamp
@@ -107,6 +111,12 @@ module Value =
                 yield Thrift.SchemaElement.logical repetitionType name logicalType
             | ValueType.Int64 ->
                 let logicalType = Thrift.LogicalType.INT64
+                yield Thrift.SchemaElement.logical repetitionType name logicalType
+            | ValueType.UInt32 ->
+                let logicalType = Thrift.LogicalType.UINT32
+                yield Thrift.SchemaElement.logical repetitionType name logicalType
+            | ValueType.UInt64 ->
+                let logicalType = Thrift.LogicalType.UINT64
                 yield Thrift.SchemaElement.logical repetitionType name logicalType
             | ValueType.Float32 ->
                 let type' = Thrift.Type.FLOAT

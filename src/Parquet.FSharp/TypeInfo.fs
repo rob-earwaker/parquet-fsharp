@@ -16,6 +16,8 @@ type LogicalType =
     | Bool
     | Int32
     | Int64
+    | UInt32
+    | UInt64
     | Float32
     | Float64
     | Timestamp of TimestampType
@@ -132,6 +134,16 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
+    let (|UInt32|_|) dotnetType =
+        if dotnetType = typeof<uint>
+        then Option.Some ()
+        else Option.None
+
+    let (|UInt64|_|) dotnetType =
+        if dotnetType = typeof<uint64>
+        then Option.Some ()
+        else Option.None
+
     let (|Float32|_|) dotnetType =
         if dotnetType = typeof<float32>
         then Option.Some ()
@@ -234,6 +246,8 @@ module ValueInfo =
                 | DotnetType.Bool -> ValueInfo.Atomic AtomicInfo.Bool
                 | DotnetType.Int32 -> ValueInfo.Atomic AtomicInfo.Int32
                 | DotnetType.Int64 -> ValueInfo.Atomic AtomicInfo.Int64
+                | DotnetType.UInt32 -> ValueInfo.Atomic AtomicInfo.UInt32
+                | DotnetType.UInt64 -> ValueInfo.Atomic AtomicInfo.UInt64
                 | DotnetType.Float32 -> ValueInfo.Atomic AtomicInfo.Float32
                 | DotnetType.Float64 -> ValueInfo.Atomic AtomicInfo.Float64
                 | DotnetType.DateTimeOffset -> ValueInfo.Atomic AtomicInfo.DateTimeOffset
@@ -280,6 +294,36 @@ module private AtomicInfo =
     let Int64 = ofPrimitive<int64> LogicalType.Int64 PrimitiveType.Int64
     let Float32 = ofPrimitive<float32> LogicalType.Float32 PrimitiveType.Float32
     let Float64 = ofPrimitive<float> LogicalType.Float64 PrimitiveType.Float64
+
+    let UInt32 =
+        let dotnetType = typeof<uint>
+        let isOptional = false
+        let logicalType = LogicalType.UInt32
+        let primitiveType = PrimitiveType.Int32
+        let isNullValue = fun _ -> false
+        let getPrimitiveValue (valueObj: obj) =
+            int (valueObj :?> uint) :> obj
+        let createFromPrimitiveValue (primitiveValueObj: obj) =
+            uint (primitiveValueObj :?> int) :> obj
+        let createNullValue () =
+            failwith $"type '{dotnetType.FullName}' is not optional"
+        create dotnetType isOptional logicalType primitiveType
+            isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
+
+    let UInt64 =
+        let dotnetType = typeof<uint64>
+        let isOptional = false
+        let logicalType = LogicalType.UInt64
+        let primitiveType = PrimitiveType.Int64
+        let isNullValue = fun _ -> false
+        let getPrimitiveValue (valueObj: obj) =
+            int64 (valueObj :?> uint64) :> obj
+        let createFromPrimitiveValue (primitiveValueObj: obj) =
+            uint64 (primitiveValueObj :?> int64) :> obj
+        let createNullValue () =
+            failwith $"type '{dotnetType.FullName}' is not optional"
+        create dotnetType isOptional logicalType primitiveType
+            isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
     let DateTimeOffset =
         let dotnetType = typeof<DateTimeOffset>

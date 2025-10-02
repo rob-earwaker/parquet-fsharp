@@ -12,6 +12,8 @@ module LogicalType =
 
     let INT32 = INT 32y true
     let INT64 = INT 64y true
+    let UINT32 = INT 32y false
+    let UINT64 = INT 64y false
     let STRING = LogicalType(STRING = StringType())
     let UUID = LogicalType(UUID = UUIDType())
     let LIST = LogicalType(LIST = ListType())

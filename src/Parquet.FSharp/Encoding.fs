@@ -4,23 +4,24 @@ open System
 open System.Collections
 open System.IO
 
+/// For a given bit count, calculate the corresponding byte count by rounding up
+/// to the nearest byte.
+let private getByteCount bitCount =
+    if bitCount % 8 = 0
+    then bitCount / 8
+    else bitCount / 8 + 1
+
 module Bool =
     module Plain =
         let encode (values: bool[]) =
             let bitArray = BitArray(values)
-            let byteCount =
-                if bitArray.Length % 8 = 0
-                then bitArray.Length / 8
-                else bitArray.Length / 8 + 1
+            let byteCount = getByteCount bitArray.Length
             let bytes = Array.zeroCreate<byte> byteCount
             bitArray.CopyTo(bytes, 0)
             bytes
 
         let decode stream count =
-            let byteCount =
-                if count % 8 = 0
-                then count / 8
-                else count / 8 + 1
+            let byteCount = getByteCount count
             let bytes = Stream.readBytes stream byteCount
             let bitArray = BitArray(bytes)
             let values = Array.zeroCreate<bool> bitArray.Count
@@ -50,12 +51,6 @@ module Int32 =
             // is {ceil(log2(i + 1))}.
             int (Math.Ceiling(Math.Log(float maxValue + 1., 2)))
 
-        let private getByteWidth bitWidth =
-            // Round up bit width to nearest byte to get byte width of values.
-            if bitWidth % 8 = 0
-            then bitWidth / 8
-            else bitWidth / 8 + 1
-
         let private writeRunLengthRun stream count value byteWidth =
             let header = uint32 count <<< 1
             Stream.writeUleb128 stream header
@@ -63,7 +58,7 @@ module Int32 =
 
         let private runLengthEncode (values: int[]) maxValue =
             let bitWidth = getBitWidth maxValue
-            let byteWidth = getByteWidth bitWidth
+            let byteWidth = getByteCount bitWidth
             use stream = new MemoryStream()
             // Initialise the previous value. If there are values in the array
             // then initialize to the first value. This prevents us detecting
@@ -101,7 +96,7 @@ module Int32 =
 
         let decode stream count maxValue =
             let bitWidth = getBitWidth maxValue
-            let byteWidth = getByteWidth bitWidth
+            let byteWidth = getByteCount bitWidth
             let values = ResizeArray()
             while values.Count < count do
                 // Read the header value for the next run.

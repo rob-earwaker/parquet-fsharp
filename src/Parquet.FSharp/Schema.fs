@@ -21,6 +21,7 @@ type ValueType =
     | UInt64
     | Float32
     | Float64
+    | Decimal of DecimalType
     | ByteArray
     | Timestamp of TimestampType
     | String
@@ -67,6 +68,7 @@ module ValueType =
         | LogicalType.UInt64 -> ValueType.UInt64
         | LogicalType.Float32 -> ValueType.Float32
         | LogicalType.Float64 -> ValueType.Float64
+        | LogicalType.Decimal decimal -> ValueType.Decimal decimal
         | LogicalType.Timestamp timestamp -> ValueType.Timestamp timestamp
         | LogicalType.String -> ValueType.String
         | LogicalType.Uuid -> ValueType.Uuid
@@ -124,6 +126,9 @@ module Value =
             | ValueType.Float64 ->
                 let type' = Thrift.Type.DOUBLE
                 yield Thrift.SchemaElement.primitive type' repetitionType name
+            | ValueType.Decimal decimal ->
+                let logicalType = Thrift.LogicalType.DECIMAL decimal.Scale decimal.Precision
+                yield Thrift.SchemaElement.logical repetitionType name logicalType
             | ValueType.ByteArray ->
                 let type' = Thrift.Type.BYTE_ARRAY
                 yield Thrift.SchemaElement.primitive type' repetitionType name

@@ -20,9 +20,14 @@ type LogicalType =
     | UInt64
     | Float32
     | Float64
+    | Decimal of DecimalType
     | Timestamp of TimestampType
     | String
     | Uuid
+
+type DecimalType = {
+    Precision: int
+    Scale: int }
 
 type TimestampType = {
     IsUtc: bool
@@ -154,6 +159,11 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
+    let (|Decimal|_|) dotnetType =
+        if dotnetType = typeof<decimal>
+        then Option.Some ()
+        else Option.None
+
     let (|String|_|) dotnetType =
         if dotnetType = typeof<string>
         then Option.Some ()
@@ -250,6 +260,7 @@ module ValueInfo =
                 | DotnetType.UInt64 -> ValueInfo.Atomic AtomicInfo.UInt64
                 | DotnetType.Float32 -> ValueInfo.Atomic AtomicInfo.Float32
                 | DotnetType.Float64 -> ValueInfo.Atomic AtomicInfo.Float64
+                | DotnetType.Decimal -> ValueInfo.Atomic AtomicInfo.Decimal
                 | DotnetType.DateTimeOffset -> ValueInfo.Atomic AtomicInfo.DateTimeOffset
                 | DotnetType.String -> ValueInfo.Atomic AtomicInfo.String
                 | DotnetType.Guid -> ValueInfo.Atomic AtomicInfo.Guid
@@ -320,6 +331,64 @@ module private AtomicInfo =
             int64 (valueObj :?> uint64) :> obj
         let createFromPrimitiveValue (primitiveValueObj: obj) =
             uint64 (primitiveValueObj :?> int64) :> obj
+        let createNullValue () =
+            failwith $"type '{dotnetType.FullName}' is not optional"
+        create dotnetType isOptional logicalType primitiveType
+            isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
+
+    let Decimal =
+        let dotnetType = typeof<decimal>
+        let isOptional = false
+        // To allow accurate representation of all possible {decimal} values we
+        // need to determine the maximum precision and scale. The maximum scale
+        // is determined by looking at the smallest value that is greater than
+        // zero, which is 1E-28. This value has 28 digits to the right of the
+        // decimal place, so a scale of 28 is sufficient to represent all
+        // {decimal} values and the precision must be at least 28. The maximum
+        // precision is determined by looking at the maximum possible value,
+        // which is ~7.9228E28. This value has 29 digits to the left of the
+        // decimal place so an additional 29 digits of precision are required to
+        // represent all {decimal} values. This gives a total precision of 57,
+        // consisting of 29 digits to the right of the decimal place and 28
+        // digits to the left.
+        let logicalType = LogicalType.Decimal { Precision = 57; Scale = 28 }
+        let primitiveType = PrimitiveType.FixedLengthByteArray
+        let isNullValue = fun _ -> false
+        let getPrimitiveValue (valueObj: obj) =
+            let value = valueObj :?> decimal
+            // Get the decimal value's scale. The last element of the array
+            // returned by the {GetBits} method contains the scale in bits
+            // 16-23. Extract these bits by shifting and then using a bitwise
+            // AND operation.
+            let scale = System.Decimal.GetBits(value)[3] >>> 16 &&& 0b01111111
+            // The unscaled integer value is the decimal value multiplied by
+            // 10^maxScale = 10^28. We don't want to lose precision by using
+            // floating point arithmetic, so we need to calculate this scale
+            // factor using bigints. Unfortunately, there is no operator defined
+            // for multiplying decimal and bigint values so we can't apply this
+            // bigint scale factor to the decimal value unless we first convert
+            // it to a bigint. Since the decimal value may contain a fractional
+            // component, converting it straight to a bigint would result in
+            // truncating the value. To solve this problem we do the scaling in
+            // two steps. The first step shifts the decimal value such that
+            // there is no fractional component using the scale determined
+            // above. The second step converts the shifted decimal value to a
+            // bigint and applies the remaining scale.
+            let shiftedValue = value * decimal (10I ** scale)
+            let unscaledValue = bigint shiftedValue * 10I ** (28 - scale)
+            // Get the binary representation of the unscaled value. The
+            // {GetBytes} method returns the bytes in little-endian format but
+            // the Parquet format specifies that they must be big-endian so
+            // reverse the returned byte array.
+            let valueBytes = unscaledValue.ToByteArray() |> Array.rev
+            // Based on the two's compliment representation, negative numbers
+            // should have all pad bits set to one and positive numbers (and
+            // zero) should have all pad bits set to zero.
+            let padByte = if unscaledValue.Sign < 0 then 0b11111111uy else 0b00000000uy
+            let paddingBytes = Array.create (24 - valueBytes.Length) padByte
+            Array.append paddingBytes valueBytes :> obj
+        let createFromPrimitiveValue (primitiveValueObj: obj) =
+            failwith "not implemented!"
         let createNullValue () =
             failwith $"type '{dotnetType.FullName}' is not optional"
         create dotnetType isOptional logicalType primitiveType

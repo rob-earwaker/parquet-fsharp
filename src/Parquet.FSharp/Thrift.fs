@@ -18,6 +18,12 @@ module LogicalType =
     let UUID = LogicalType(UUID = UUIDType())
     let LIST = LogicalType(LIST = ListType())
 
+    let DECIMAL scale precision =
+        LogicalType(
+            DECIMAL = DecimalType(
+                Scale = scale,
+                Precision = precision))
+
     let TIMESTAMP isAdjustedToUtc unit =
         LogicalType(
             TIMESTAMP = TimestampType(

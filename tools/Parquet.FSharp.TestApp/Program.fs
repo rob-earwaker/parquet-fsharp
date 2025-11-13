@@ -22,7 +22,8 @@ type Message = {
     Count: int
     Samples: int[]
     Gps: Gps
-    Values: Data[] }
+    Values: Data[]
+    Money: decimal }
 
 module Random =
     let private Random = Random()
@@ -35,6 +36,9 @@ module Random =
 
     let float () =
         Random.NextDouble() * 10.
+
+    let decimal () =
+        decimal (Random.NextDouble() * 10. ** Random.Next(0, 16))
 
     let dateTimeOffset () =
         let ticks = Random.NextInt64(DateTimeOffset.MaxValue.Ticks)
@@ -94,7 +98,8 @@ module Random =
           Message.Count = int ()
           Message.Samples = array 5 int
           Message.Gps = gps ()
-          Message.Values = array 3 data }
+          Message.Values = array 3 data
+          Message.Money = decimal () }
 
 [<EntryPoint>]
 let main _ =

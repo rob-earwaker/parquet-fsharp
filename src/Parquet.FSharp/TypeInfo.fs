@@ -388,7 +388,21 @@ module private AtomicInfo =
             let paddingBytes = Array.create (24 - valueBytes.Length) padByte
             Array.append paddingBytes valueBytes :> obj
         let createFromPrimitiveValue (primitiveValueObj: obj) =
-            failwith "not implemented!"
+            let bytes = primitiveValueObj :?> byte[]
+            // Convert the binary representation of the unscaled value to an
+            // integer. The binary value is big-endian but the {bigint}
+            // constructor expects it to be little-endian, so reverse the array.
+            let unscaledValue = bigint (Array.rev bytes)
+            // Divide the unscaled value by the scale factor and capture the
+            // resulting integral and fractional values. These are integer
+            // representations of the values to the left and right of the
+            // decimal place respectively.
+            let scaleDivisor = 10I ** 28
+            let integralValue, fractionalValue = bigint.DivRem(unscaledValue, scaleDivisor)
+            // We can safely convert both the integral and fractional values to
+            // {decimal} values because we know the numbers of digits in each
+            // are supported by the {decimal} type.
+            decimal integralValue + decimal fractionalValue / decimal scaleDivisor :> obj
         let createNullValue () =
             failwith $"type '{dotnetType.FullName}' is not optional"
         create dotnetType isOptional logicalType primitiveType

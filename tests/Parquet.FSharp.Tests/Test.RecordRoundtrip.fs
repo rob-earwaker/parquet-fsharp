@@ -67,6 +67,12 @@ let ``float64 field`` records =
         records
 
 [<Property>]
+let ``decimal field`` records =
+    testRecordRoundtrip<{|
+        Field1: decimal |}>
+        records
+
+[<Property>]
 let ``date time offset field`` records =
     testRecordRoundtrip<{|
         Field1: DateTimeOffset |}>
@@ -124,6 +130,12 @@ let ``array field with float32 elements`` records =
 let ``array field with float64 elements`` records =
     testRecordRoundtrip<{|
         Field1: array<float> |}>
+        records
+
+[<Property>]
+let ``array field with decimal elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<decimal> |}>
         records
 
 [<Property>]
@@ -206,6 +218,12 @@ let ``array field with nullable float64 elements`` records =
         records
 
 [<Property>]
+let ``array field with nullable decimal elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<Nullable<decimal>> |}>
+        records
+
+[<Property>]
 let ``array field with nullable date time offset elements`` records =
     testRecordRoundtrip<{|
         Field1: array<Nullable<DateTimeOffset>> |}>
@@ -264,6 +282,12 @@ let ``array field with option float32 elements`` records =
 let ``array field with option float64 elements`` records =
     testRecordRoundtrip<{|
         Field1: array<option<float>> |}>
+        records
+
+[<Property>]
+let ``array field with option decimal elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<option<decimal>> |}>
         records
 
 [<Property>]
@@ -331,6 +355,12 @@ let ``list field with float32 elements`` records =
 let ``list field with float64 elements`` records =
     testRecordRoundtrip<{|
         Field1: list<float> |}>
+        records
+
+[<Property>]
+let ``list field with decimal elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<decimal> |}>
         records
 
 [<Property>]
@@ -413,6 +443,12 @@ let ``list field with nullable float64 elements`` records =
         records
 
 [<Property>]
+let ``list field with nullable decimal elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<Nullable<decimal>> |}>
+        records
+
+[<Property>]
 let ``list field with nullable date time offset elements`` records =
     testRecordRoundtrip<{|
         Field1: list<Nullable<DateTimeOffset>> |}>
@@ -471,6 +507,12 @@ let ``list field with option float32 elements`` records =
 let ``list field with option float64 elements`` records =
     testRecordRoundtrip<{|
         Field1: list<option<float>> |}>
+        records
+
+[<Property>]
+let ``list field with option decimal elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<option<decimal>> |}>
         records
 
 [<Property>]
@@ -545,6 +587,13 @@ let ``record field with float64 field`` records =
     testRecordRoundtrip<{|
         Field1: {|
             Field2: float |} |}>
+        records
+
+[<Property>]
+let ``record field with decimal field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: decimal |} |}>
         records
 
 [<Property>]
@@ -640,6 +689,13 @@ let ``record field with nullable float64 field`` records =
         records
 
 [<Property>]
+let ``record field with nullable decimal field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: Nullable<decimal> |} |}>
+        records
+
+[<Property>]
 let ``record field with nullable date time offset field`` records =
     testRecordRoundtrip<{|
         Field1: {|
@@ -708,6 +764,13 @@ let ``record field with option float64 field`` records =
     testRecordRoundtrip<{|
         Field1: {|
             Field2: option<float> |} |}>
+        records
+
+[<Property>]
+let ``record field with option decimal field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: option<decimal> |} |}>
         records
 
 [<Property>]
@@ -782,6 +845,12 @@ let ``nullable float64 field`` records =
         records
 
 [<Property>]
+let ``nullable decimal field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<decimal> |}>
+        records
+
+[<Property>]
 let ``nullable date time offset field`` records =
     testRecordRoundtrip<{|
         Field1: Nullable<DateTimeOffset> |}>
@@ -840,6 +909,13 @@ let ``nullable record field with float64 field`` records =
     testRecordRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: float |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with decimal field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: decimal |}> |}>
         records
 
 [<Property>]
@@ -928,6 +1004,13 @@ let ``nullable record field with nullable float64 field`` records =
         records
 
 [<Property>]
+let ``nullable record field with nullable decimal field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: Nullable<decimal> |}> |}>
+        records
+
+[<Property>]
 let ``nullable record field with nullable date time offset field`` records =
     testRecordRoundtrip<{|
         Field1: Nullable<struct {|
@@ -992,6 +1075,12 @@ let ``option float64 field`` records =
         records
 
 [<Property>]
+let ``option decimal field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<decimal> |}>
+        records
+
+[<Property>]
 let ``option date time offset field`` records =
     testRecordRoundtrip<{|
         Field1: option<DateTimeOffset> |}>
@@ -1043,6 +1132,12 @@ let ``option list field with float32 elements`` records =
 let ``option list field with float64 elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<float>> |}>
+        records
+
+[<Property>]
+let ``option list field with decimal elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<decimal>> |}>
         records
 
 [<Property>]
@@ -1125,6 +1220,12 @@ let ``option list field with nullable float64 elements`` records =
         records
 
 [<Property>]
+let ``option list field with nullable decimal elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<Nullable<decimal>>> |}>
+        records
+
+[<Property>]
 let ``option list field with nullable date time offset elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<Nullable<DateTimeOffset>>> |}>
@@ -1183,6 +1284,12 @@ let ``option list field with option float32 elements`` records =
 let ``option list field with option float64 elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<option<float>>> |}>
+        records
+
+[<Property>]
+let ``option list field with option decimal elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<option<decimal>>> |}>
         records
 
 [<Property>]
@@ -1257,6 +1364,13 @@ let ``option record field with float64 field`` records =
     testRecordRoundtrip<{|
         Field1: option<{|
             Field2: float |}> |}>
+        records
+
+[<Property>]
+let ``option record field with decimal field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: decimal |}> |}>
         records
 
 [<Property>]
@@ -1352,6 +1466,13 @@ let ``option record field with nullable float64 field`` records =
         records
 
 [<Property>]
+let ``option record field with nullable decimal field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: Nullable<decimal> |}> |}>
+        records
+
+[<Property>]
 let ``option record field with nullable date time offset field`` records =
     testRecordRoundtrip<{|
         Field1: option<{|
@@ -1420,6 +1541,13 @@ let ``option record field with option float64 field`` records =
     testRecordRoundtrip<{|
         Field1: option<{|
             Field2: option<float> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with option decimal field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: option<decimal> |}> |}>
         records
 
 [<Property>]

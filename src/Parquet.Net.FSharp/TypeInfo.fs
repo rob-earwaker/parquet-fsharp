@@ -628,7 +628,12 @@ module private RecordInfo =
           RecordInfo.CreateNullValue = createNullValue }
 
     let ofRecord dotnetType =
-        let isOptional = false
+        // TODO: F# records are not nullable by default, however Parquet.Net
+        // does not support struct fields that aren't nullable and a nullable
+        // struct field class can't easily be created since some of the relevant
+        // properties are internal. For now, treat all records as optional, even
+        // though in practice they will never be null.
+        let isOptional = true
         let fields =
             FSharpType.GetRecordFields(dotnetType)
             |> Array.mapi FieldInfo.ofField

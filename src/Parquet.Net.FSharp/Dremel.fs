@@ -227,6 +227,9 @@ module private ValueShredder =
 
 let shred (records: 'Record seq) =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
+    // TODO: The root record is never optional, so update the record info
+    // in case this is a nullable record type.
+    let recordInfo = { recordInfo with IsOptional = false }
     let maxLevels = Levels.Default
     let recordShredder = ValueShredder.forRecord recordInfo maxLevels
     for record in records do
@@ -521,6 +524,9 @@ module private ValueAssembler =
 
 let assemble<'Record> (columns: Column[]) =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
+    // TODO: The root record is never optional, so update the record info
+    // in case this is a nullable record type.
+    let recordInfo = { recordInfo with IsOptional = false }
     let maxLevels = Levels.Default
     let columns = Queue(columns)
     let recordAssembler = ValueAssembler.forRecord recordInfo maxLevels columns

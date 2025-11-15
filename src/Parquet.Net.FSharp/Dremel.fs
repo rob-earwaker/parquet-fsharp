@@ -26,7 +26,7 @@ module private Levels =
 [<AbstractClass>]
 type private ValueShredder(maxLevels: Levels) =
     member this.MaxLevels = maxLevels
-    abstract member AddNullValue : levels:Levels -> unit
+    abstract member AddNull : levels:Levels -> unit
     abstract member ShredValue : parentLevels:Levels * value:obj -> unit
     abstract member BuildColumns : unit -> Column seq
 
@@ -37,7 +37,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels) =
     let definitionLevelsRequired = maxLevels.Definition > 0
 
     let mutable valueCount = 0
-    let primitiveValues = ResizeArray()
+    let dataValues = ResizeArray()
     let repetitionLevels = ResizeArray()
     let definitionLevels = ResizeArray()
 
@@ -51,23 +51,23 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels) =
             definitionLevels.Add(levels.Definition)
 
     let addValue levels value =
-        let primitiveValue = atomicInfo.GetPrimitiveValue value
+        let dataValue = atomicInfo.GetDataValue value
         addLevels levels
-        primitiveValues.Add(primitiveValue)
+        dataValues.Add(dataValue)
         incrementValueCount ()
 
-    override this.AddNullValue(levels) =
+    override this.AddNull(levels) =
         addLevels levels
         incrementValueCount ()
 
     override this.ShredValue(parentLevels, value) =
         if atomicInfo.IsOptional
         then
-            if atomicInfo.IsNullValue value
+            if atomicInfo.IsNull value
             then
                 // Add a NULL value using the parent levels to indicate the last
                 // definition level at which a value was present.
-                this.AddNullValue(parentLevels)
+                this.AddNull(parentLevels)
             else
                 // Add a value at the max definition level for this value. In
                 // practice this should be one more than the parent definition
@@ -81,9 +81,9 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels) =
             addValue parentLevels value
 
     override this.BuildColumns() =
-        let columnValues = Array.CreateInstance(atomicInfo.ParquetNetSupportedType, primitiveValues.Count)
+        let columnValues = Array.CreateInstance(atomicInfo.DataDotnetType, dataValues.Count)
         for index in [ 0 .. columnValues.Length - 1 ] do
-            columnValues.SetValue(primitiveValues[index], index)
+            columnValues.SetValue(dataValues[index], index)
         let repetitionLevels =
             if repetitionLevelsRequired
             then Option.Some (Array.ofSeq repetitionLevels)
@@ -110,7 +110,7 @@ type private ListShredder(listInfo: ListInfo, maxLevels, elementShredder: ValueS
         // levels. This indicates that the list is NOTNULL but there are no
         // elements.
         if elementValues.Count = 0
-        then elementShredder.AddNullValue(listLevels)
+        then elementShredder.AddNull(listLevels)
         else
             // The first element inherits its repetition level from the list,
             // whereas subsequent elements use the max repetition level of the
@@ -126,14 +126,14 @@ type private ListShredder(listInfo: ListInfo, maxLevels, elementShredder: ValueS
             for index in [ 1 .. elementValues.Count - 1 ] do
                 elementShredder.ShredValue(otherElementLevels, elementValues[index])
 
-    override this.AddNullValue(levels) =
-        elementShredder.AddNullValue(levels)
+    override this.AddNull(levels) =
+        elementShredder.AddNull(levels)
 
     override this.ShredValue(parentLevels, list) =
         if listInfo.IsOptional
         then
             if listInfo.IsNullValue list
-            then this.AddNullValue(parentLevels)
+            then this.AddNull(parentLevels)
             else
                 // If the list is OPTIONAL and NOTNULL then update the
                 // definition level to the max definition level of the list
@@ -157,15 +157,15 @@ type private RecordShredder(recordInfo: RecordInfo, maxLevels, fieldShredders: V
         for fieldShredder, fieldValue in Array.zip fieldShredders fieldValues do
             fieldShredder.ShredValue(recordLevels, fieldValue)
 
-    override this.AddNullValue(levels) =
+    override this.AddNull(levels) =
         for fieldShredder in fieldShredders do
-            fieldShredder.AddNullValue(levels)
+            fieldShredder.AddNull(levels)
 
     override this.ShredValue(parentLevels, record) =
         if recordInfo.IsOptional
         then
             if recordInfo.IsNullValue record
-            then this.AddNullValue(parentLevels)
+            then this.AddNull(parentLevels)
             else
                 // If the record is OPTIONAL and NOTNULL then update the
                 // definition level to the max definition level of the record
@@ -277,19 +277,19 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: Column) 
     do if definitionLevelsRequired && column.DefinitionLevels.IsNone then
         failwith "definition levels are required but none exist in column data"
 
-    // NULL values are not written to the array, so keep track of the array
+    // NULL values are not written to the data array, so keep track of the data
     // index and the value index separately. For optional values, these will be
     // different if there are any NULL values in the column.
     let mutable nextValueIndex = 0
-    let mutable nextArrayValueIndex = 0
+    let mutable nextDataValueIndex = 0
 
     override this.SkipUndefinedValue() =
         nextValueIndex <- nextValueIndex + 1
 
     override this.TryAssembleNextValue() =
         // Determine whether we've reached the end of our column data based on
-        // the value index. It's important not to use the array value index
-        // because for optional values reaching the end of the values array does
+        // the value index. It's important not to use the data value index
+        // because for optional values reaching the end of the data array does
         // not imply we've reached the end of the column as there could be more
         // NULL values in the column.
         if nextValueIndex = column.ValueCount
@@ -305,7 +305,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: Column) 
                 else 0
             let levels = Levels.create repetitionLevel definitionLevel
             let value =
-                // NULL values are not written to the values array as they are
+                // NULL values are not written to the data array as they are
                 // implied by a definition level that is lower than the maximum.
                 // A NULL value means that either this value is NULL or this
                 // value is UNDEFINED (due to one of its ancestors being NULL).
@@ -316,7 +316,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: Column) 
                     // DEFINED, but NULL.
                     if atomicInfo.IsOptional
                         && levels.Definition = maxLevels.Definition - 1
-                    then Option.Some (atomicInfo.CreateNullValue ())
+                    then Option.Some (atomicInfo.CreateNull ())
                     // If the value is not optional, or if it is optional and
                     // the definition level is more than one less than the
                     // maximum definition level then this value is UNDEFINED.
@@ -324,10 +324,10 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: Column) 
                 else
                     // If the definition level equals the maximum definition
                     // level then this value is DEFINED and NOTNULL. Get the
-                    // next primitive value and convert it to the correct type.
-                    let primitiveValue = column.Values.GetValue(nextArrayValueIndex)
-                    nextArrayValueIndex <- nextArrayValueIndex + 1
-                    Option.Some (atomicInfo.CreateFromPrimitiveValue primitiveValue)
+                    // next data value and convert it to the correct type.
+                    let dataValue = column.Values.GetValue(nextDataValueIndex)
+                    nextDataValueIndex <- nextDataValueIndex + 1
+                    Option.Some (atomicInfo.CreateFromDataValue dataValue)
             nextValueIndex <- nextValueIndex + 1
             let assembledValue = AssembledValue.create levels value
             Option.Some assembledValue

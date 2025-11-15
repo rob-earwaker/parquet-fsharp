@@ -14,17 +14,17 @@ type Data = {
     Value3: Nullable<int> }
 
 type Message = {
-    Id: Guid
+    (*Id: Guid
     Time: DateTime
     Timestamp: DateTimeOffset
     Source: string
     Level: float
     Flag: Nullable<bool>
-    Count: int
-    Samples: int[]
-    Gps: Gps
+    Count: int*)
+    Samples: int list
+    (*Gps: Gps
     Values: Data[]
-    Money: decimal }
+    Money: decimal*) }
 
 module Random =
     let private Random = Random()
@@ -90,6 +90,9 @@ module Random =
         then null
         else Array.init count (fun _ -> createItem ())
 
+    let list count (createItem: unit -> 'Item) =
+        List.init count (fun _ -> createItem ())
+
     let gps () =
         { Gps.Latitude = float ()
           Gps.Longitude = float () }
@@ -100,24 +103,28 @@ module Random =
           Data.Value3 = nullableInt () }
 
     let message () =
-        { Message.Id = guid ()
+        { (*Message.Id = guid ()
           Message.Time = dateTime ()
           Message.Timestamp = dateTimeOffset ()
           Message.Source = string ()
           Message.Level = float ()
           Message.Flag = nullableBool ()
-          Message.Count = int ()
-          Message.Samples = array 5 int
-          Message.Gps = gps ()
+          Message.Count = int ()*)
+          Message.Samples = list 5 int
+          (*Message.Gps = gps ()
           Message.Values = array 3 data
-          Message.Money = decimal () }
+          Message.Money = decimal ()*) }
 
 [<EntryPoint>]
 let main _ =
-    let records = Array.init 1_000 (fun _ -> Random.message ())
+    let records = Array.init 10 (fun _ -> Random.message ())
     let filePath = @"..\..\..\..\..\data\data.parquet"
     // Write
     use writeStream = new MemoryStream()
     ParquetSerializer.Serialize(records, writeStream)
     File.WriteAllBytes(filePath, writeStream.ToArray())
+    // Read
+    let fileContent = File.ReadAllBytes(filePath)
+    use readStream = new MemoryStream(fileContent)
+    let roundtrippedRecords = ParquetSerializer.Deserialize<Message>(readStream)
     0

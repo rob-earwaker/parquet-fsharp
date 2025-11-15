@@ -27,17 +27,17 @@ type ValueInfo =
 type AtomicInfo = {
     DotnetType: Type
     IsOptional: bool
-    // TODO: Naming?
-    ParquetNetSupportedType: Type
-    IsNullValue: obj -> bool
-    GetPrimitiveValue: obj -> obj
-    CreateFromPrimitiveValue: obj -> obj
-    CreateNullValue: unit -> obj }
+    DataDotnetType: Type
+    IsNull: obj -> bool
+    GetDataValue: obj -> obj
+    CreateFromDataValue: obj -> obj
+    CreateNull: unit -> obj }
 
 type ListInfo = {
     DotnetType: Type
     IsOptional: bool
     ElementInfo: ValueInfo
+    // TODO: Rename these like for Atomic?
     IsNullValue: obj -> bool
     GetElementValues: obj -> IList
     CreateFromElementValues: IList -> obj
@@ -52,6 +52,7 @@ type RecordInfo = {
     DotnetType: Type
     IsOptional: bool
     Fields: FieldInfo[]
+    // TODO: Rename these like for Atomic?
     IsNullValue: obj -> bool
     GetFieldValues: obj -> obj[]
     CreateFromFieldValues: obj[] -> obj
@@ -261,104 +262,103 @@ module ValueInfo =
 
 module private AtomicInfo =
     let private create
-        dotnetType isOptional parquetNetSupportedType
-        isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue =
+        dotnetType isOptional dataDotnetType
+        isNull getDataValue createFromDataValue createNull =
         { AtomicInfo.DotnetType = dotnetType
           AtomicInfo.IsOptional = isOptional
-          AtomicInfo.ParquetNetSupportedType = parquetNetSupportedType
-          AtomicInfo.IsNullValue = isNullValue
-          AtomicInfo.GetPrimitiveValue = getPrimitiveValue
-          AtomicInfo.CreateFromPrimitiveValue = createFromPrimitiveValue
-          AtomicInfo.CreateNullValue = createNullValue }
+          AtomicInfo.DataDotnetType = dataDotnetType
+          AtomicInfo.IsNull = isNull
+          AtomicInfo.GetDataValue = getDataValue
+          AtomicInfo.CreateFromDataValue = createFromDataValue
+          AtomicInfo.CreateNull = createNull }
 
-    // TODO: Rename to something other than primitive, related to supported type.
-    let private ofPrimitive<'Value> =
+    let private ofDataType<'Value> =
         let dotnetType = typeof<'Value>
         let isOptional = false
-        let parquetNetSupportedType = dotnetType
-        let isNullValue = fun _ -> false
-        let getPrimitiveValue = id
-        let createFromPrimitiveValue = id
-        let createNullValue () =
+        let dataDotnetType = dotnetType
+        let isNull = fun _ -> false
+        let getDataValue = id
+        let createFromDataValue = id
+        let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional parquetNetSupportedType
-            isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
+        create dotnetType isOptional dataDotnetType
+            isNull getDataValue createFromDataValue createNull
 
-    let Bool = ofPrimitive<bool>
-    let Int32 = ofPrimitive<int>
-    let Int64 = ofPrimitive<int64>
-    let UInt32 = ofPrimitive<uint32>
-    let UInt64 = ofPrimitive<uint64>
-    let Float32 = ofPrimitive<float32>
-    let Float64 = ofPrimitive<float>
-    let Decimal = ofPrimitive<decimal>
-    let DateTime = ofPrimitive<DateTime>
-    let Guid = ofPrimitive<Guid>
+    let Bool = ofDataType<bool>
+    let Int32 = ofDataType<int>
+    let Int64 = ofDataType<int64>
+    let UInt32 = ofDataType<uint32>
+    let UInt64 = ofDataType<uint64>
+    let Float32 = ofDataType<float32>
+    let Float64 = ofDataType<float>
+    let Decimal = ofDataType<decimal>
+    let DateTime = ofDataType<DateTime>
+    let Guid = ofDataType<Guid>
 
     let DateTimeOffset =
         let dotnetType = typeof<DateTimeOffset>
         let isOptional = false
-        let parquetNetSupportedType = typeof<DateTime>
-        let isNullValue = fun _ -> false
-        let getPrimitiveValue (valueObj: obj) =
+        let dataDotnetType = typeof<DateTime>
+        let isNull = fun _ -> false
+        let getDataValue (valueObj: obj) =
             let dateTimeOffset = valueObj :?> DateTimeOffset
             dateTimeOffset.UtcDateTime :> obj
-        let createFromPrimitiveValue (primitiveValueObj: obj) =
-            let dateTime = primitiveValueObj :?> DateTime
+        let createFromDataValue (dataValueObj: obj) =
+            let dateTime = dataValueObj :?> DateTime
             System.DateTimeOffset(dateTime.ToUniversalTime()) :> obj
-        let createNullValue () =
+        let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional parquetNetSupportedType
-            isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
+        create dotnetType isOptional dataDotnetType
+            isNull getDataValue createFromDataValue createNull
 
     let String =
         let dotnetType = typeof<string>
         let isOptional = true
-        let parquetNetSupportedType = dotnetType
-        let isNullValue = isNull
-        let getPrimitiveValue = id
-        let createFromPrimitiveValue = id
+        let dataDotnetType = dotnetType
+        let isNull = isNull
+        let getDataValue = id
+        let createFromDataValue = id
         // TODO: A lot of this is the same as for the non-nullable types above,
         // but we need to know how to create a null value for the record assembly.
-        let createNullValue = fun () -> null
-        create dotnetType isOptional parquetNetSupportedType
-            isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
+        let createNull = fun () -> null
+        create dotnetType isOptional dataDotnetType
+            isNull getDataValue createFromDataValue createNull
 
     let ofNullable (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
-        let parquetNetSupportedType = valueInfo.ParquetNetSupportedType
-        let isNullValue = Nullable.isNull'
-        let getPrimitiveValue =
+        let dataDotnetType = valueInfo.DataDotnetType
+        let isNull = Nullable.isNull'
+        let getDataValue =
             let getValue = Nullable.preComputeGetValue dotnetType
-            fun nullableObj ->
-                let valueObj = getValue nullableObj
-                valueInfo.GetPrimitiveValue valueObj
-        let createFromPrimitiveValue =
+            fun nullableValueObj ->
+                let valueObj = getValue nullableValueObj
+                valueInfo.GetDataValue valueObj
+        let createFromDataValue =
             let createValue = Nullable.preComputeCreateValue dotnetType
-            fun primitiveValueObj ->
-                let valueObj = valueInfo.CreateFromPrimitiveValue primitiveValueObj
+            fun dataValueObj ->
+                let valueObj = valueInfo.CreateFromDataValue dataValueObj
                 createValue valueObj
-        let createNullValue = Nullable.createNull
-        create dotnetType isOptional parquetNetSupportedType
-            isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
+        let createNull = Nullable.createNull
+        create dotnetType isOptional dataDotnetType
+            isNull getDataValue createFromDataValue createNull
 
     let ofOption (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
-        let parquetNetSupportedType = valueInfo.ParquetNetSupportedType
-        let isNullValue = Option.preComputeIsNone dotnetType
-        let getPrimitiveValue =
+        let dataDotnetType = valueInfo.DataDotnetType
+        let isNull = Option.preComputeIsNone dotnetType
+        let getDataValue =
             let getValue = Option.preComputeGetValue dotnetType
-            fun optionObj ->
-                let valueObj = getValue optionObj
-                valueInfo.GetPrimitiveValue valueObj
-        let createFromPrimitiveValue =
+            fun optionValueObj ->
+                let valueObj = getValue optionValueObj
+                valueInfo.GetDataValue valueObj
+        let createFromDataValue =
             let createSome = Option.preComputeCreateSome dotnetType
-            fun primitiveValueObj ->
-                let valueObj = valueInfo.CreateFromPrimitiveValue primitiveValueObj
+            fun dataValueObj ->
+                let valueObj = valueInfo.CreateFromDataValue dataValueObj
                 createSome valueObj
-        let createNullValue = Option.preComputeCreateNone dotnetType
-        create dotnetType isOptional parquetNetSupportedType
-            isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
+        let createNull = Option.preComputeCreateNone dotnetType
+        create dotnetType isOptional dataDotnetType
+            isNull getDataValue createFromDataValue createNull
 
 module private ListInfo =
     let private create

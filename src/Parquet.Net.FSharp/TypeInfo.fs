@@ -388,7 +388,12 @@ module private ListInfo =
             isNullValue getElementValues createFromElementValues createNullValue
 
     let ofList (dotnetType: Type) =
-        let isOptional = false
+        // TODO: F# lists are not nullable by default, however Parquet.Net
+        // does not support list fields that aren't nullable and a nullable
+        // list field class can't easily be created since some of the relevant
+        // properties are internal. For now, treat all lists as optional, even
+        // though in practice they will never be null.
+        let isOptional = true
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementInfo = ValueInfo.ofType elementDotnetType
         let isNullValue = fun _ -> false

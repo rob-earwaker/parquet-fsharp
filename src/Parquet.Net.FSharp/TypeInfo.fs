@@ -37,11 +37,10 @@ type ListInfo = {
     DotnetType: Type
     IsOptional: bool
     ElementInfo: ValueInfo
-    // TODO: Rename these like for Atomic?
-    IsNullValue: obj -> bool
+    IsNull: obj -> bool
     GetElementValues: obj -> IList
     CreateFromElementValues: IList -> obj
-    CreateNullValue: unit -> obj }
+    CreateNull: unit -> obj }
 
 type FieldInfo = {
     Index: int
@@ -52,11 +51,10 @@ type RecordInfo = {
     DotnetType: Type
     IsOptional: bool
     Fields: FieldInfo[]
-    // TODO: Rename these like for Atomic?
-    IsNullValue: obj -> bool
+    IsNull: obj -> bool
     GetFieldValues: obj -> obj[]
     CreateFromFieldValues: obj[] -> obj
-    CreateNullValue: unit -> obj }
+    CreateNull: unit -> obj }
 
 module private Nullable =
     let preComputeGetValue (dotnetType: Type) =
@@ -363,29 +361,29 @@ module private AtomicInfo =
 module private ListInfo =
     let private create
         dotnetType isOptional elementInfo
-        isNullValue getElementValues createFromElementValues createNullValue =
+        isNull getElementValues createFromElementValues createNull =
         { ListInfo.DotnetType = dotnetType
           ListInfo.IsOptional = isOptional
           ListInfo.ElementInfo = elementInfo
-          ListInfo.IsNullValue = isNullValue
+          ListInfo.IsNull = isNull
           ListInfo.GetElementValues = getElementValues
           ListInfo.CreateFromElementValues = createFromElementValues
-          ListInfo.CreateNullValue = createNullValue }
+          ListInfo.CreateNull = createNull }
 
     let ofArray1d (dotnetType: Type) =
         let isOptional = true
         let elementDotnetType = dotnetType.GetElementType()
         let elementInfo = ValueInfo.ofType elementDotnetType
-        let isNullValue = isNull
+        let isNull = isNull
         let getElementValues (arrayObj: obj) =
             arrayObj :?> IList
         let createFromElementValues (elementValues: IList) =
             let array = Array.CreateInstance(elementDotnetType, elementValues.Count)
             elementValues.CopyTo(array, 0)
             array :> obj
-        let createNullValue = fun () -> null
+        let createNull = fun () -> null
         create dotnetType isOptional elementInfo
-            isNullValue getElementValues createFromElementValues createNullValue
+            isNull getElementValues createFromElementValues createNull
 
     let ofList (dotnetType: Type) =
         // TODO: F# lists are not nullable by default, however Parquet.Net
@@ -396,7 +394,7 @@ module private ListInfo =
         let isOptional = true
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementInfo = ValueInfo.ofType elementDotnetType
-        let isNullValue = fun _ -> false
+        let isNull = fun _ -> false
         let getElementValues (listObj: obj) =
             let arrayList = ArrayList()
             for element in listObj :?> IEnumerable do
@@ -410,15 +408,15 @@ module private ListInfo =
                 for index in [ elementValues.Count - 1 .. -1 .. 0 ] do
                     list <- cons.Invoke(null, [| elementValues[index]; list |])
                 list
-        let createNullValue () =
+        let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
         create dotnetType isOptional elementInfo
-            isNullValue getElementValues createFromElementValues createNullValue
+            isNull getElementValues createFromElementValues createNull
 
     let ofNullable (dotnetType: Type) (listInfo: ListInfo) =
         let isOptional = true
         let elementInfo = listInfo.ElementInfo
-        let isNullValue = Nullable.isNull'
+        let isNull = Nullable.isNull'
         let getElementValues =
             let getValue = Nullable.preComputeGetValue dotnetType
             fun nullableObj ->
@@ -429,14 +427,14 @@ module private ListInfo =
             fun elementValues ->
                 let listObj = listInfo.CreateFromElementValues elementValues
                 createValue listObj
-        let createNullValue = Nullable.createNull
+        let createNull = Nullable.createNull
         create dotnetType isOptional elementInfo
-            isNullValue getElementValues createFromElementValues createNullValue
+            isNull getElementValues createFromElementValues createNull
 
     let ofOption (dotnetType: Type) (listInfo: ListInfo) =
         let isOptional = true
         let elementInfo = listInfo.ElementInfo
-        let isNullValue = Option.preComputeIsNone dotnetType
+        let isNull = Option.preComputeIsNone dotnetType
         let getElementValues =
             let getValue = Option.preComputeGetValue dotnetType
             fun optionObj ->
@@ -447,9 +445,9 @@ module private ListInfo =
             fun elementValues ->
                 let listObj = listInfo.CreateFromElementValues elementValues
                 createSome listObj
-        let createNullValue = Option.preComputeCreateNone dotnetType
+        let createNull = Option.preComputeCreateNone dotnetType
         create dotnetType isOptional elementInfo
-            isNullValue getElementValues createFromElementValues createNullValue
+            isNull getElementValues createFromElementValues createNull
 
 module private FieldInfo =
     let private create index name valueInfo =
@@ -465,14 +463,14 @@ module private FieldInfo =
 module private RecordInfo =
     let private create
         dotnetType isOptional fields
-        isNullValue getFieldValues createFromFieldValues createNullValue =
+        isNull getFieldValues createFromFieldValues createNull =
         { RecordInfo.DotnetType = dotnetType
           RecordInfo.IsOptional = isOptional
           RecordInfo.Fields = fields
-          RecordInfo.IsNullValue = isNullValue
+          RecordInfo.IsNull = isNull
           RecordInfo.GetFieldValues = getFieldValues
           RecordInfo.CreateFromFieldValues = createFromFieldValues
-          RecordInfo.CreateNullValue = createNullValue }
+          RecordInfo.CreateNull = createNull }
 
     let ofRecord dotnetType =
         // TODO: F# records are not nullable by default, however Parquet.Net
@@ -484,18 +482,18 @@ module private RecordInfo =
         let fields =
             FSharpType.GetRecordFields(dotnetType)
             |> Array.mapi FieldInfo.ofField
-        let isNullValue = fun _ -> false
+        let isNull = fun _ -> false
         let getFieldValues = FSharpValue.PreComputeRecordReader(dotnetType)
         let createFromFieldValues = FSharpValue.PreComputeRecordConstructor(dotnetType)
-        let createNullValue () =
+        let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
         create dotnetType isOptional fields
-            isNullValue getFieldValues createFromFieldValues createNullValue
+            isNull getFieldValues createFromFieldValues createNull
 
     let ofNullable dotnetType (recordInfo: RecordInfo) =
         let isOptional = true
         let fields = recordInfo.Fields
-        let isNullValue = Nullable.isNull'
+        let isNull = Nullable.isNull'
         let getFieldValues =
             let getValue = Nullable.preComputeGetValue dotnetType
             fun nullableObj ->
@@ -506,14 +504,14 @@ module private RecordInfo =
             fun (fieldValues: obj[]) ->
                 let record = recordInfo.CreateFromFieldValues fieldValues
                 createValue record
-        let createNullValue = Nullable.createNull
+        let createNull = Nullable.createNull
         create dotnetType isOptional fields
-            isNullValue getFieldValues createFromFieldValues createNullValue
+            isNull getFieldValues createFromFieldValues createNull
 
     let ofOption dotnetType (recordInfo: RecordInfo) =
         let isOptional = true
         let fields = recordInfo.Fields
-        let isNullValue = Option.preComputeIsNone dotnetType
+        let isNull = Option.preComputeIsNone dotnetType
         let getFieldValues =
             let getValue = Option.preComputeGetValue dotnetType
             fun optionObj ->
@@ -524,6 +522,6 @@ module private RecordInfo =
             fun (fieldValues: obj[]) ->
                 let record = recordInfo.CreateFromFieldValues fieldValues
                 createSome record
-        let createNullValue = Option.preComputeCreateNone dotnetType
+        let createNull = Option.preComputeCreateNone dotnetType
         create dotnetType isOptional fields
-            isNullValue getFieldValues createFromFieldValues createNullValue
+            isNull getFieldValues createFromFieldValues createNull

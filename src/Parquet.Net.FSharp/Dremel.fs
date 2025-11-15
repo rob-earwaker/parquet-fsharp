@@ -132,7 +132,7 @@ type private ListShredder(listInfo: ListInfo, maxLevels, elementShredder: ValueS
     override this.ShredValue(parentLevels, list) =
         if listInfo.IsOptional
         then
-            if listInfo.IsNullValue list
+            if listInfo.IsNull list
             then this.AddNull(parentLevels)
             else
                 // If the list is OPTIONAL and NOTNULL then update the
@@ -164,7 +164,7 @@ type private RecordShredder(recordInfo: RecordInfo, maxLevels, fieldShredders: V
     override this.ShredValue(parentLevels, record) =
         if recordInfo.IsOptional
         then
-            if recordInfo.IsNullValue record
+            if recordInfo.IsNull record
             then this.AddNull(parentLevels)
             else
                 // If the record is OPTIONAL and NOTNULL then update the
@@ -364,7 +364,7 @@ type private ListAssembler(listInfo: ListInfo, maxLevels, elementAssembler: Valu
                     // level of the list then the list is DEFINED, but NULL.
                     elif listInfo.IsOptional
                         && nextElement.Levels.Definition = maxLevels.Definition - 1
-                    then Option.Some (listInfo.CreateNullValue ())
+                    then Option.Some (listInfo.CreateNull ())
                     // If the list is not optional, or if it is optional and the
                     // definition level of the next element value is more than
                     // one less than the maximum definition level of the list
@@ -443,7 +443,7 @@ type private RecordAssembler(recordInfo: RecordInfo, maxLevels, fieldAssemblers:
                     // level of the record then the record is DEFINED, but NULL.
                     if recordInfo.IsOptional
                         && firstField.Levels.Definition = maxLevels.Definition - 1
-                    then Option.Some (recordInfo.CreateNullValue ())
+                    then Option.Some (recordInfo.CreateNull ())
                     // If the record is not optional, or if it is optional and
                     // the definition level of the first field value is more
                     // than one less than the maximum definition level of the

@@ -9,10 +9,8 @@ module private rec Schema =
     let private getValueSchema fieldName valueInfo =
         match valueInfo with
         | ValueInfo.Atomic atomicInfo ->
-            // TODO: The dotnet type is not guaranteed to be a type supported by
-            // Parquet.Net. We probably want to change the primitive type
-            // definition to mean a type supported by Parquet.Net.
-            DataField(fieldName, atomicInfo.DotnetType) :> Field
+            let dataType = atomicInfo.ParquetNetSupportedType
+            DataField(fieldName, dataType, atomicInfo.IsOptional) :> Field
         | ValueInfo.List listInfo ->
             let element = getValueSchema ListField.ElementName listInfo.ElementInfo
             ListField(fieldName, element) :> Field

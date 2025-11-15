@@ -81,15 +81,9 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels) =
             addValue parentLevels value
 
     override this.BuildColumns() =
-        let columnValues =
-            match atomicInfo.PrimitiveType with
-            | PrimitiveType.Bool -> primitiveValues |> Seq.cast<bool> |> Array.ofSeq :> Array
-            | PrimitiveType.Int32 -> primitiveValues |> Seq.cast<int> |> Array.ofSeq :> Array
-            | PrimitiveType.Int64 -> primitiveValues |> Seq.cast<int64> |> Array.ofSeq :> Array
-            | PrimitiveType.Float32 -> primitiveValues |> Seq.cast<float32> |> Array.ofSeq :> Array
-            | PrimitiveType.Float64 -> primitiveValues |> Seq.cast<float> |> Array.ofSeq :> Array
-            | PrimitiveType.ByteArray -> primitiveValues |> Seq.cast<byte[]> |> Array.ofSeq :> Array
-            | PrimitiveType.FixedLengthByteArray -> primitiveValues |> Seq.cast<byte[]> |> Array.ofSeq :> Array
+        let columnValues = Array.CreateInstance(atomicInfo.ParquetNetSupportedType, primitiveValues.Count)
+        for index in [ 0 .. columnValues.Length - 1 ] do
+            columnValues.SetValue(primitiveValues[index], index)
         let repetitionLevels =
             if repetitionLevelsRequired
             then Option.Some (Array.ofSeq repetitionLevels)

@@ -5,17 +5,13 @@ open System
 open System.Collections
 open System.Collections.Generic
 open System.Reflection
-open System.Text
 
 type ValueInfo =
     | Atomic of AtomicInfo
     | List of ListInfo
     | Record of RecordInfo
 
-// TODO: This library doesn't need to deal with Parquet primitives any more, so
-// this should eventually be replaced with a System.Type representing the type
-// that the value will be converted to for compatability with Parquet.Net.
-// Types supported by Parquet.Net:
+// TODO: Types supported by Parquet.Net:
 //   - bool
 //   - int8, int16, int32, int64
 //   - uint8, uint16, uint32, uint64
@@ -27,22 +23,12 @@ type ValueInfo =
 //   - TimeSpan, Interval
 //   - string
 //   - Guid
-type PrimitiveType =
-    | Bool
-    | Int32
-    | Int64
-    | Float32
-    | Float64
-    | ByteArray
-    | FixedLengthByteArray
 
 type AtomicInfo = {
     DotnetType: Type
-    // This may not be necessary as it will be inferred from the Parquet.Net type
-    // that this value is resolved to, e.g. int option would be resolved to Nullable<int>,
-    // which Parquet.Net would automatically resolve as being optional.
     IsOptional: bool
-    PrimitiveType: PrimitiveType
+    // TODO: Naming?
+    ParquetNetSupportedType: Type
     IsNullValue: obj -> bool
     GetPrimitiveValue: obj -> obj
     CreateFromPrimitiveValue: obj -> obj
@@ -165,6 +151,11 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
+    let (|DateTime|_|) dotnetType =
+        if dotnetType = typeof<DateTime>
+        then Option.Some ()
+        else Option.None
+
     let (|DateTimeOffset|_|) dotnetType =
         if dotnetType = typeof<DateTimeOffset>
         then Option.Some ()
@@ -252,6 +243,7 @@ module ValueInfo =
                 | DotnetType.Float32 -> ValueInfo.Atomic AtomicInfo.Float32
                 | DotnetType.Float64 -> ValueInfo.Atomic AtomicInfo.Float64
                 | DotnetType.Decimal -> ValueInfo.Atomic AtomicInfo.Decimal
+                | DotnetType.DateTime -> ValueInfo.Atomic AtomicInfo.DateTime
                 | DotnetType.DateTimeOffset -> ValueInfo.Atomic AtomicInfo.DateTimeOffset
                 | DotnetType.String -> ValueInfo.Atomic AtomicInfo.String
                 | DotnetType.Guid -> ValueInfo.Atomic AtomicInfo.Guid
@@ -269,183 +261,72 @@ module ValueInfo =
 
 module private AtomicInfo =
     let private create
-        dotnetType isOptional primitiveType
+        dotnetType isOptional parquetNetSupportedType
         isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue =
         { AtomicInfo.DotnetType = dotnetType
           AtomicInfo.IsOptional = isOptional
-          AtomicInfo.PrimitiveType = primitiveType
+          AtomicInfo.ParquetNetSupportedType = parquetNetSupportedType
           AtomicInfo.IsNullValue = isNullValue
           AtomicInfo.GetPrimitiveValue = getPrimitiveValue
           AtomicInfo.CreateFromPrimitiveValue = createFromPrimitiveValue
           AtomicInfo.CreateNullValue = createNullValue }
 
-    let private ofPrimitive<'Value> primitiveType =
+    // TODO: Rename to something other than primitive, related to supported type.
+    let private ofPrimitive<'Value> =
         let dotnetType = typeof<'Value>
         let isOptional = false
+        let parquetNetSupportedType = dotnetType
         let isNullValue = fun _ -> false
         let getPrimitiveValue = id
         let createFromPrimitiveValue = id
         let createNullValue () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional primitiveType
+        create dotnetType isOptional parquetNetSupportedType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
-    let Bool = ofPrimitive<bool> PrimitiveType.Bool
-    let Int32 = ofPrimitive<int> PrimitiveType.Int32
-    let Int64 = ofPrimitive<int64> PrimitiveType.Int64
-    let Float32 = ofPrimitive<float32> PrimitiveType.Float32
-    let Float64 = ofPrimitive<float> PrimitiveType.Float64
-
-    let UInt32 =
-        let dotnetType = typeof<uint>
-        let isOptional = false
-        let primitiveType = PrimitiveType.Int32
-        let isNullValue = fun _ -> false
-        let getPrimitiveValue (valueObj: obj) =
-            int (valueObj :?> uint) :> obj
-        let createFromPrimitiveValue (primitiveValueObj: obj) =
-            uint (primitiveValueObj :?> int) :> obj
-        let createNullValue () =
-            failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional primitiveType
-            isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
-
-    let UInt64 =
-        let dotnetType = typeof<uint64>
-        let isOptional = false
-        let primitiveType = PrimitiveType.Int64
-        let isNullValue = fun _ -> false
-        let getPrimitiveValue (valueObj: obj) =
-            int64 (valueObj :?> uint64) :> obj
-        let createFromPrimitiveValue (primitiveValueObj: obj) =
-            uint64 (primitiveValueObj :?> int64) :> obj
-        let createNullValue () =
-            failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional primitiveType
-            isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
-
-    let Decimal =
-        let dotnetType = typeof<decimal>
-        let isOptional = false
-        let primitiveType = PrimitiveType.FixedLengthByteArray
-        let isNullValue = fun _ -> false
-        let getPrimitiveValue (valueObj: obj) =
-            let value = valueObj :?> decimal
-            // Get the decimal value's scale. The last element of the array
-            // returned by the {GetBits} method contains the scale in bits
-            // 16-23. Extract these bits by shifting and then using a bitwise
-            // AND operation.
-            let scale = System.Decimal.GetBits(value)[3] >>> 16 &&& 0b01111111
-            // The unscaled integer value is the decimal value multiplied by
-            // 10^maxScale = 10^28. We don't want to lose precision by using
-            // floating point arithmetic, so we need to calculate this scale
-            // factor using bigints. Unfortunately, there is no operator defined
-            // for multiplying decimal and bigint values so we can't apply this
-            // bigint scale factor to the decimal value unless we first convert
-            // it to a bigint. Since the decimal value may contain a fractional
-            // component, converting it straight to a bigint would result in
-            // truncating the value. To solve this problem we do the scaling in
-            // two steps. The first step shifts the decimal value such that
-            // there is no fractional component using the scale determined
-            // above. The second step converts the shifted decimal value to a
-            // bigint and applies the remaining scale.
-            let shiftedValue = value * decimal (10I ** scale)
-            let unscaledValue = bigint shiftedValue * 10I ** (28 - scale)
-            // Get the binary representation of the unscaled value. The
-            // {GetBytes} method returns the bytes in little-endian format but
-            // the Parquet format specifies that they must be big-endian so
-            // reverse the returned byte array.
-            let valueBytes = unscaledValue.ToByteArray() |> Array.rev
-            // Based on the two's compliment representation, negative numbers
-            // should have all pad bits set to one and positive numbers (and
-            // zero) should have all pad bits set to zero.
-            let padByte = if unscaledValue.Sign < 0 then 0b11111111uy else 0b00000000uy
-            let paddingBytes = Array.create (24 - valueBytes.Length) padByte
-            Array.append paddingBytes valueBytes :> obj
-        let createFromPrimitiveValue (primitiveValueObj: obj) =
-            let bytes = primitiveValueObj :?> byte[]
-            // Convert the binary representation of the unscaled value to an
-            // integer. The binary value is big-endian but the {bigint}
-            // constructor expects it to be little-endian, so reverse the array.
-            let unscaledValue = bigint (Array.rev bytes)
-            // Divide the unscaled value by the scale factor and capture the
-            // resulting integral and fractional values. These are integer
-            // representations of the values to the left and right of the
-            // decimal place respectively.
-            let scaleDivisor = 10I ** 28
-            let integralValue, fractionalValue = bigint.DivRem(unscaledValue, scaleDivisor)
-            // We can safely convert both the integral and fractional values to
-            // {decimal} values because we know the numbers of digits in each
-            // are supported by the {decimal} type.
-            decimal integralValue + decimal fractionalValue / decimal scaleDivisor :> obj
-        let createNullValue () =
-            failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional primitiveType
-            isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
+    let Bool = ofPrimitive<bool>
+    let Int32 = ofPrimitive<int>
+    let Int64 = ofPrimitive<int64>
+    let UInt32 = ofPrimitive<uint32>
+    let UInt64 = ofPrimitive<uint64>
+    let Float32 = ofPrimitive<float32>
+    let Float64 = ofPrimitive<float>
+    let Decimal = ofPrimitive<decimal>
+    let DateTime = ofPrimitive<DateTime>
+    let Guid = ofPrimitive<Guid>
 
     let DateTimeOffset =
         let dotnetType = typeof<DateTimeOffset>
         let isOptional = false
-        let primitiveType = PrimitiveType.Int64
+        let parquetNetSupportedType = typeof<DateTime>
         let isNullValue = fun _ -> false
         let getPrimitiveValue (valueObj: obj) =
-            let value = valueObj :?> DateTimeOffset
-            value.ToUnixTimeMilliseconds() :> obj
+            let dateTimeOffset = valueObj :?> DateTimeOffset
+            dateTimeOffset.UtcDateTime :> obj
         let createFromPrimitiveValue (primitiveValueObj: obj) =
-            let primitiveValue = primitiveValueObj :?> int64
-            System.DateTimeOffset.FromUnixTimeMilliseconds(primitiveValue) :> obj
+            let dateTime = primitiveValueObj :?> DateTime
+            System.DateTimeOffset(dateTime.ToUniversalTime()) :> obj
         let createNullValue () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional primitiveType
+        create dotnetType isOptional parquetNetSupportedType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
     let String =
         let dotnetType = typeof<string>
         let isOptional = true
-        let primitiveType = PrimitiveType.ByteArray
+        let parquetNetSupportedType = dotnetType
         let isNullValue = isNull
-        let getPrimitiveValue (valueObj: obj) =
-            let value = valueObj :?> string
-            Encoding.UTF8.GetBytes(value) :> obj
-        let createFromPrimitiveValue (primitiveValueObj: obj) =
-            let bytes = primitiveValueObj :?> byte[]
-            Encoding.UTF8.GetString(bytes) :> obj
+        let getPrimitiveValue = id
+        let createFromPrimitiveValue = id
+        // TODO: A lot of this is the same as for the non-nullable types above,
+        // but we need to know how to create a null value for the record assembly.
         let createNullValue = fun () -> null
-        create dotnetType isOptional primitiveType
-            isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
-
-    let Guid =
-        let dotnetType = typeof<Guid>
-        let isOptional = false
-        let primitiveType = PrimitiveType.FixedLengthByteArray
-        let isNullValue = fun _ -> false
-        let getPrimitiveValue (valueObj: obj) =
-            let value = valueObj :?> Guid
-            let littleEndianBytes = value.ToByteArray()
-            let bigEndianBytes =
-                Array.concat [|
-                    Array.rev littleEndianBytes[0..3]
-                    Array.rev littleEndianBytes[4..5]
-                    Array.rev littleEndianBytes[6..7]
-                    littleEndianBytes[8..15] |]
-            bigEndianBytes :> obj
-        let createFromPrimitiveValue (primitiveValueObj: obj) =
-            let bigEndianBytes = primitiveValueObj :?> byte[]
-            let littleEndianBytes =
-                Array.concat [|
-                    Array.rev bigEndianBytes[0..3]
-                    Array.rev bigEndianBytes[4..5]
-                    Array.rev bigEndianBytes[6..7]
-                    bigEndianBytes[8..15] |]
-            System.Guid(littleEndianBytes) :> obj
-        let createNullValue () =
-            failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional primitiveType
+        create dotnetType isOptional parquetNetSupportedType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
     let ofNullable (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
-        let primitiveType = valueInfo.PrimitiveType
+        let parquetNetSupportedType = valueInfo.ParquetNetSupportedType
         let isNullValue = Nullable.isNull'
         let getPrimitiveValue =
             let getValue = Nullable.preComputeGetValue dotnetType
@@ -458,12 +339,12 @@ module private AtomicInfo =
                 let valueObj = valueInfo.CreateFromPrimitiveValue primitiveValueObj
                 createValue valueObj
         let createNullValue = Nullable.createNull
-        create dotnetType isOptional primitiveType
+        create dotnetType isOptional parquetNetSupportedType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
     let ofOption (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
-        let primitiveType = valueInfo.PrimitiveType
+        let parquetNetSupportedType = valueInfo.ParquetNetSupportedType
         let isNullValue = Option.preComputeIsNone dotnetType
         let getPrimitiveValue =
             let getValue = Option.preComputeGetValue dotnetType
@@ -476,7 +357,7 @@ module private AtomicInfo =
                 let valueObj = valueInfo.CreateFromPrimitiveValue primitiveValueObj
                 createSome valueObj
         let createNullValue = Option.preComputeCreateNone dotnetType
-        create dotnetType isOptional primitiveType
+        create dotnetType isOptional parquetNetSupportedType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
 module private ListInfo =

@@ -10,20 +10,21 @@ type Gps = {
 
 type Data = {
     Value1: float
-    Value2: float
-    Value3: float }
+    Value2: Nullable<float>
+    Value3: Nullable<int> }
 
 type Message = {
-    (*Id: Guid
-    Time: DateTimeOffset
-    Source: string*)
+    Id: Guid
+    Time: DateTime
+    Timestamp: DateTimeOffset
+    Source: string
     Level: float
-    (*Flag: Nullable<bool>*)
+    Flag: Nullable<bool>
     Count: int
     Samples: int[]
     Gps: Gps
     Values: Data[]
-    (*Money: decimal*) }
+    Money: decimal }
 
 module Random =
     let private Random = Random()
@@ -43,6 +44,10 @@ module Random =
     let dateTimeOffset () =
         let ticks = Random.NextInt64(DateTimeOffset.MaxValue.Ticks)
         DateTimeOffset(ticks, TimeSpan.Zero)
+
+    let dateTime () =
+        let dateTimeOffset = dateTimeOffset ()
+        dateTimeOffset.UtcDateTime
 
     let guid () =
         Guid.NewGuid()
@@ -65,6 +70,11 @@ module Random =
         then Nullable<int>()
         else Nullable<int>(int ())
 
+    let nullableFloat () =
+        if Random.NextDouble() >= 0.75
+        then Nullable<float>()
+        else Nullable<float>(float ())
+
     let boolOption () =
         if Random.NextDouble() >= 0.75
         then Option.None
@@ -86,20 +96,21 @@ module Random =
 
     let data () =
         { Data.Value1 = float ()
-          Data.Value2 = float ()
-          Data.Value3 = float () }
+          Data.Value2 = nullableFloat ()
+          Data.Value3 = nullableInt () }
 
     let message () =
-        { (*Message.Id = guid ()
-          Message.Time = dateTimeOffset ()
-          Message.Source = string ()*)
+        { Message.Id = guid ()
+          Message.Time = dateTime ()
+          Message.Timestamp = dateTimeOffset ()
+          Message.Source = string ()
           Message.Level = float ()
-        (*  Message.Flag = nullableBool ()*)
+          Message.Flag = nullableBool ()
           Message.Count = int ()
           Message.Samples = array 5 int
           Message.Gps = gps ()
           Message.Values = array 3 data
-          (*Message.Money = decimal () *)}
+          Message.Money = decimal () }
 
 [<EntryPoint>]
 let main _ =

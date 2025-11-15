@@ -21,8 +21,8 @@ type Message = {
     (*Flag: Nullable<bool>*)
     Count: int
     Samples: int[]
-    (*Gps: Gps
-    Values: Data[]*)
+    Gps: Gps
+    Values: Data[]
     (*Money: decimal*) }
 
 module Random =
@@ -97,8 +97,8 @@ module Random =
         (*  Message.Flag = nullableBool ()*)
           Message.Count = int ()
           Message.Samples = array 5 int
-         (* Message.Gps = gps ()
-          Message.Values = array 3 data*)
+          Message.Gps = gps ()
+          Message.Values = array 3 data
           (*Message.Money = decimal () *)}
 
 [<EntryPoint>]

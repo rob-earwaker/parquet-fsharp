@@ -12,35 +12,21 @@ type ValueInfo =
     | List of ListInfo
     | Record of RecordInfo
 
-type LogicalType =
-    | Bool
-    | Int32
-    | Int64
-    | UInt32
-    | UInt64
-    | Float32
-    | Float64
-    | Decimal of DecimalType
-    | Timestamp of TimestampType
-    | String
-    | Uuid
-
-type DecimalType = {
-    Precision: int
-    Scale: int }
-
-type TimestampType = {
-    IsUtc: bool
-    Unit: TimeUnit }
-
-type TimeUnit =
-    | Milliseconds
-    | Microseconds
-    | Nanoseconds
-
 // TODO: This library doesn't need to deal with Parquet primitives any more, so
 // this should eventually be replaced with a System.Type representing the type
 // that the value will be converted to for compatability with Parquet.Net.
+// Types supported by Parquet.Net:
+//   - bool
+//   - int8, int16, int32, int64
+//   - uint8, uint16, uint32, uint64
+//   - BigInteger
+//   - float32, float64
+//   - decimal
+//   - byte[]
+//   - DateTime, DateOnly, TimeOnly
+//   - TimeSpan, Interval
+//   - string
+//   - Guid
 type PrimitiveType =
     | Bool
     | Int32
@@ -56,7 +42,6 @@ type AtomicInfo = {
     // that this value is resolved to, e.g. int option would be resolved to Nullable<int>,
     // which Parquet.Net would automatically resolve as being optional.
     IsOptional: bool
-    LogicalType: LogicalType
     PrimitiveType: PrimitiveType
     IsNullValue: obj -> bool
     GetPrimitiveValue: obj -> obj
@@ -284,18 +269,17 @@ module ValueInfo =
 
 module private AtomicInfo =
     let private create
-        dotnetType isOptional logicalType primitiveType
+        dotnetType isOptional primitiveType
         isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue =
         { AtomicInfo.DotnetType = dotnetType
           AtomicInfo.IsOptional = isOptional
-          AtomicInfo.LogicalType = logicalType
           AtomicInfo.PrimitiveType = primitiveType
           AtomicInfo.IsNullValue = isNullValue
           AtomicInfo.GetPrimitiveValue = getPrimitiveValue
           AtomicInfo.CreateFromPrimitiveValue = createFromPrimitiveValue
           AtomicInfo.CreateNullValue = createNullValue }
 
-    let private ofPrimitive<'Value> logicalType primitiveType =
+    let private ofPrimitive<'Value> primitiveType =
         let dotnetType = typeof<'Value>
         let isOptional = false
         let isNullValue = fun _ -> false
@@ -303,19 +287,18 @@ module private AtomicInfo =
         let createFromPrimitiveValue = id
         let createNullValue () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional logicalType primitiveType
+        create dotnetType isOptional primitiveType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
-    let Bool = ofPrimitive<bool> LogicalType.Bool PrimitiveType.Bool
-    let Int32 = ofPrimitive<int> LogicalType.Int32 PrimitiveType.Int32
-    let Int64 = ofPrimitive<int64> LogicalType.Int64 PrimitiveType.Int64
-    let Float32 = ofPrimitive<float32> LogicalType.Float32 PrimitiveType.Float32
-    let Float64 = ofPrimitive<float> LogicalType.Float64 PrimitiveType.Float64
+    let Bool = ofPrimitive<bool> PrimitiveType.Bool
+    let Int32 = ofPrimitive<int> PrimitiveType.Int32
+    let Int64 = ofPrimitive<int64> PrimitiveType.Int64
+    let Float32 = ofPrimitive<float32> PrimitiveType.Float32
+    let Float64 = ofPrimitive<float> PrimitiveType.Float64
 
     let UInt32 =
         let dotnetType = typeof<uint>
         let isOptional = false
-        let logicalType = LogicalType.UInt32
         let primitiveType = PrimitiveType.Int32
         let isNullValue = fun _ -> false
         let getPrimitiveValue (valueObj: obj) =
@@ -324,13 +307,12 @@ module private AtomicInfo =
             uint (primitiveValueObj :?> int) :> obj
         let createNullValue () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional logicalType primitiveType
+        create dotnetType isOptional primitiveType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
     let UInt64 =
         let dotnetType = typeof<uint64>
         let isOptional = false
-        let logicalType = LogicalType.UInt64
         let primitiveType = PrimitiveType.Int64
         let isNullValue = fun _ -> false
         let getPrimitiveValue (valueObj: obj) =
@@ -339,25 +321,12 @@ module private AtomicInfo =
             uint64 (primitiveValueObj :?> int64) :> obj
         let createNullValue () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional logicalType primitiveType
+        create dotnetType isOptional primitiveType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
     let Decimal =
         let dotnetType = typeof<decimal>
         let isOptional = false
-        // To allow accurate representation of all possible {decimal} values we
-        // need to determine the maximum precision and scale. The maximum scale
-        // is determined by looking at the smallest value that is greater than
-        // zero, which is 1E-28. This value has 28 digits to the right of the
-        // decimal place, so a scale of 28 is sufficient to represent all
-        // {decimal} values and the precision must be at least 28. The maximum
-        // precision is determined by looking at the maximum possible value,
-        // which is ~7.9228E28. This value has 29 digits to the left of the
-        // decimal place so an additional 29 digits of precision are required to
-        // represent all {decimal} values. This gives a total precision of 57,
-        // consisting of 29 digits to the right of the decimal place and 28
-        // digits to the left.
-        let logicalType = LogicalType.Decimal { Precision = 57; Scale = 28 }
         let primitiveType = PrimitiveType.FixedLengthByteArray
         let isNullValue = fun _ -> false
         let getPrimitiveValue (valueObj: obj) =
@@ -411,16 +380,12 @@ module private AtomicInfo =
             decimal integralValue + decimal fractionalValue / decimal scaleDivisor :> obj
         let createNullValue () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional logicalType primitiveType
+        create dotnetType isOptional primitiveType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
     let DateTimeOffset =
         let dotnetType = typeof<DateTimeOffset>
         let isOptional = false
-        let logicalType =
-            LogicalType.Timestamp {
-                IsUtc = true
-                Unit = TimeUnit.Milliseconds }
         let primitiveType = PrimitiveType.Int64
         let isNullValue = fun _ -> false
         let getPrimitiveValue (valueObj: obj) =
@@ -431,13 +396,12 @@ module private AtomicInfo =
             System.DateTimeOffset.FromUnixTimeMilliseconds(primitiveValue) :> obj
         let createNullValue () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional logicalType primitiveType
+        create dotnetType isOptional primitiveType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
     let String =
         let dotnetType = typeof<string>
         let isOptional = true
-        let logicalType = LogicalType.String
         let primitiveType = PrimitiveType.ByteArray
         let isNullValue = isNull
         let getPrimitiveValue (valueObj: obj) =
@@ -447,13 +411,12 @@ module private AtomicInfo =
             let bytes = primitiveValueObj :?> byte[]
             Encoding.UTF8.GetString(bytes) :> obj
         let createNullValue = fun () -> null
-        create dotnetType isOptional logicalType primitiveType
+        create dotnetType isOptional primitiveType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
     let Guid =
         let dotnetType = typeof<Guid>
         let isOptional = false
-        let logicalType = LogicalType.Uuid
         let primitiveType = PrimitiveType.FixedLengthByteArray
         let isNullValue = fun _ -> false
         let getPrimitiveValue (valueObj: obj) =
@@ -477,12 +440,11 @@ module private AtomicInfo =
             System.Guid(littleEndianBytes) :> obj
         let createNullValue () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional logicalType primitiveType
+        create dotnetType isOptional primitiveType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
     let ofNullable (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
-        let logicalType = valueInfo.LogicalType
         let primitiveType = valueInfo.PrimitiveType
         let isNullValue = Nullable.isNull'
         let getPrimitiveValue =
@@ -496,12 +458,11 @@ module private AtomicInfo =
                 let valueObj = valueInfo.CreateFromPrimitiveValue primitiveValueObj
                 createValue valueObj
         let createNullValue = Nullable.createNull
-        create dotnetType isOptional logicalType primitiveType
+        create dotnetType isOptional primitiveType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
     let ofOption (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
-        let logicalType = valueInfo.LogicalType
         let primitiveType = valueInfo.PrimitiveType
         let isNullValue = Option.preComputeIsNone dotnetType
         let getPrimitiveValue =
@@ -515,7 +476,7 @@ module private AtomicInfo =
                 let valueObj = valueInfo.CreateFromPrimitiveValue primitiveValueObj
                 createSome valueObj
         let createNullValue = Option.preComputeCreateNone dotnetType
-        create dotnetType isOptional logicalType primitiveType
+        create dotnetType isOptional primitiveType
             isNullValue getPrimitiveValue createFromPrimitiveValue createNullValue
 
 module private ListInfo =

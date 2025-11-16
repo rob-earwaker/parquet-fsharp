@@ -4,6 +4,27 @@ open Parquet.Schema
 open System
 open System.Collections.Generic
 
+module private Schema =
+    let private getValueSchema fieldName valueInfo =
+        match valueInfo with
+        | ValueInfo.Atomic atomicInfo ->
+            let dataType = atomicInfo.DataDotnetType
+            let isNullable = atomicInfo.IsOptional
+            DataField(fieldName, dataType, isNullable) :> Field
+        | ValueInfo.List listInfo ->
+            let element = getValueSchema ListField.ElementName listInfo.ElementInfo
+            ListField(fieldName, element) :> Field
+        | ValueInfo.Record recordInfo ->
+            let fields = getRecordFields recordInfo
+            StructField(fieldName, fields) :> Field
+
+    let private getRecordFields (recordInfo: RecordInfo) =
+        recordInfo.Fields
+        |> Array.map (fun field -> getValueSchema field.Name field.ValueInfo)
+
+    let ofRecordInfo recordInfo =
+        ParquetSchema(getRecordFields recordInfo)
+
 type private Levels = {
     Repetition: int
     Definition: int }
@@ -219,18 +240,23 @@ module private ValueShredder =
         | ValueInfo.List listInfo -> ValueShredder.forList listInfo parentMaxLevels
         | ValueInfo.Record recordInfo -> ValueShredder.forRecord recordInfo parentMaxLevels
 
-let shred (records: 'Record seq) =
+type RecordShredder<'Record>() =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
     // TODO: The root record is never optional, so update the record info
     // in case this is a nullable record type.
     let recordInfo = { recordInfo with IsOptional = false }
-    let maxLevels = Levels.Default
-    let recordShredder = ValueShredder.forRecord recordInfo maxLevels
-    for record in records do
-        let parentLevels = Levels.Default
-        recordShredder.ShredValue(parentLevels, record)
-    recordShredder.BuildColumns()
-    |> Array.ofSeq
+    let schema = Schema.ofRecordInfo recordInfo
+
+    member this.Schema = schema
+
+    member this.Shred(records: 'Record seq) =
+        let maxLevels = Levels.Default
+        let recordShredder = ValueShredder.forRecord recordInfo maxLevels
+        for record in records do
+            let parentLevels = Levels.Default
+            recordShredder.ShredValue(parentLevels, record)
+        recordShredder.BuildColumns()
+        |> Array.ofSeq
 
 type private AssembledValue = {
     Levels: Levels
@@ -516,21 +542,26 @@ module private ValueAssembler =
         | ValueInfo.List listInfo -> ValueAssembler.forList listInfo parentMaxLevels columns
         | ValueInfo.Record recordInfo -> ValueAssembler.forRecord recordInfo parentMaxLevels columns
 
-let assemble<'Record> (columns: Column[]) =
+type RecordAssembler<'Record>() =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
     // TODO: The root record is never optional, so update the record info
     // in case this is a nullable record type.
     let recordInfo = { recordInfo with IsOptional = false }
-    let maxLevels = Levels.Default
-    let columns = Queue(columns)
-    let recordAssembler = ValueAssembler.forRecord recordInfo maxLevels columns
-    let records = ResizeArray()
-    let mutable allRecordsAssembled = false
-    while not allRecordsAssembled do
-        match recordAssembler.TryReadNextValue() with
-        | Option.None -> allRecordsAssembled <- true
-        | Option.Some record ->
-            match record.Value with
-            | Option.None -> failwith "root record should always be defined"
-            | Option.Some record -> records.Add(record :?> 'Record)
-    Array.ofSeq records
+    let schema = Schema.ofRecordInfo recordInfo
+
+    member this.Schema = schema
+    
+    member this.Assemble(columns: Column[]) =
+        let maxLevels = Levels.Default
+        let columns = Queue(columns)
+        let recordAssembler = ValueAssembler.forRecord recordInfo maxLevels columns
+        let records = ResizeArray()
+        let mutable allRecordsAssembled = false
+        while not allRecordsAssembled do
+            match recordAssembler.TryReadNextValue() with
+            | Option.None -> allRecordsAssembled <- true
+            | Option.Some record ->
+                match record.Value with
+                | Option.None -> failwith "root record should always be defined"
+                | Option.Some record -> records.Add(record :?> 'Record)
+        Array.ofSeq records

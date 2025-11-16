@@ -247,6 +247,7 @@ module private ValueShredder =
             let structField = field :?> StructField
             ValueShredder.forRecord recordInfo parentMaxLevels structField.Fields
 
+// TODO: Rename to just Shredder?
 type RecordShredder<'Record>() =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
     // TODO: The root record is never optional, so update the record info
@@ -543,6 +544,7 @@ module private ValueAssembler =
         | ValueInfo.List listInfo -> ValueAssembler.forList listInfo parentMaxLevels columns
         | ValueInfo.Record recordInfo -> ValueAssembler.forRecord recordInfo parentMaxLevels columns
 
+// TODO: Rename to just Assembler?
 type RecordAssembler<'Record>() =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
     // TODO: The root record is never optional, so update the record info

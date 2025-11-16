@@ -106,6 +106,11 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
+    let (|Int16|_|) dotnetType =
+        if dotnetType = typeof<int16>
+        then Option.Some ()
+        else Option.None
+
     let (|Int32|_|) dotnetType =
         if dotnetType = typeof<int>
         then Option.Some ()
@@ -113,6 +118,11 @@ module private DotnetType =
 
     let (|Int64|_|) dotnetType =
         if dotnetType = typeof<int64>
+        then Option.Some ()
+        else Option.None
+
+    let (|UInt16|_|) dotnetType =
+        if dotnetType = typeof<uint16>
         then Option.Some ()
         else Option.None
 
@@ -236,8 +246,10 @@ module ValueInfo =
             let valueInfo =
                 match dotnetType with
                 | DotnetType.Bool -> ValueInfo.Atomic AtomicInfo.Bool
+                | DotnetType.Int16 -> ValueInfo.Atomic AtomicInfo.Int16
                 | DotnetType.Int32 -> ValueInfo.Atomic AtomicInfo.Int32
                 | DotnetType.Int64 -> ValueInfo.Atomic AtomicInfo.Int64
+                | DotnetType.UInt16 -> ValueInfo.Atomic AtomicInfo.UInt16
                 | DotnetType.UInt32 -> ValueInfo.Atomic AtomicInfo.UInt32
                 | DotnetType.UInt64 -> ValueInfo.Atomic AtomicInfo.UInt64
                 | DotnetType.Float32 -> ValueInfo.Atomic AtomicInfo.Float32
@@ -284,8 +296,10 @@ module private AtomicInfo =
             isNull getDataValue createFromDataValue createNull
 
     let Bool = ofDataType<bool>
+    let Int16 = ofDataType<int16>
     let Int32 = ofDataType<int>
     let Int64 = ofDataType<int64>
+    let UInt16 = ofDataType<uint16>
     let UInt32 = ofDataType<uint32>
     let UInt64 = ofDataType<uint64>
     let Float32 = ofDataType<float32>

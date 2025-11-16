@@ -12,17 +12,22 @@ type ValueInfo =
     | Record of RecordInfo
 
 // TODO: Types supported by Parquet.Net:
-//   - bool
-//   - int8, int16, int32, int64
-//   - uint8, uint16, uint32, uint64
-//   - BigInteger
-//   - float32, float64
-//   - decimal
-//   - byte[]
-//   - DateTime, DateOnly, TimeOnly
-//   - TimeSpan, Interval
-//   - string
-//   - Guid
+
+//   Implemented:
+//     - bool
+//     - int8, int16, int32, int64
+//     - uint8, uint16, uint32, uint64
+//     - float32, float64
+//     - decimal
+//     - DateTime
+//     - string
+//     - Guid
+
+//   Not implemented:
+//     - BigInteger
+//     - byte[]
+//     - DateOnly, TimeOnly
+//     - TimeSpan, Interval
 
 type AtomicInfo = {
     DotnetType: Type

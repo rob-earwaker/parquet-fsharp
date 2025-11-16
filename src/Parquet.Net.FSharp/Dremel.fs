@@ -1,5 +1,6 @@
 ﻿module rec Parquet.FSharp.Dremel
 
+open Parquet.Data
 open Parquet.Schema
 open System
 open System.Collections.Generic
@@ -50,9 +51,9 @@ type private ValueShredder(maxLevels: Levels) =
     member this.MaxLevels = maxLevels
     abstract member AddNull : levels:Levels -> unit
     abstract member ShredValue : parentLevels:Levels * value:obj -> unit
-    abstract member BuildColumns : unit -> Column seq
+    abstract member BuildColumns : unit -> DataColumn seq
 
-type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels, dataField: DataField) =
+type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels, field: DataField) =
     inherit ValueShredder(maxLevels)
 
     let repetitionLevelsRequired = maxLevels.Repetition > 0
@@ -103,25 +104,18 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels, dataField: DataFi
             addValue parentLevels value
 
     override this.BuildColumns() =
-        let columnValues = Array.CreateInstance(atomicInfo.DataDotnetType, dataValues.Count)
-        for index in [ 0 .. columnValues.Length - 1 ] do
-            columnValues.SetValue(dataValues[index], index)
+        let columnData = Array.CreateInstance(atomicInfo.DataDotnetType, dataValues.Count)
+        for index in [ 0 .. columnData.Length - 1 ] do
+            columnData.SetValue(dataValues[index], index)
         let repetitionLevels =
             if repetitionLevelsRequired
-            then Option.Some (Array.ofSeq repetitionLevels)
-            else Option.None
+            then Array.ofSeq repetitionLevels
+            else null
         let definitionLevels =
             if definitionLevelsRequired
-            then Option.Some (Array.ofSeq definitionLevels)
-            else Option.None
-        let column = {
-            Column.Field = dataField
-            Column.ValueCount = valueCount
-            Column.Values = columnValues
-            Column.MaxRepetitionLevel = maxLevels.Repetition
-            Column.MaxDefinitionLevel = maxLevels.Definition
-            Column.RepetitionLevels = repetitionLevels
-            Column.DefinitionLevels = definitionLevels }
+            then Array.ofSeq definitionLevels
+            else null
+        let column = DataColumn(field, columnData, definitionLevels, repetitionLevels)
         Seq.singleton column
 
 type private ListShredder(listInfo: ListInfo, maxLevels, elementShredder: ValueShredder) =
@@ -304,17 +298,11 @@ type private ValueAssembler(maxLevels: Levels) =
     member this.SkipPeekedValue() =
         peekedValue <- Option.None
 
-type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: Column) =
+type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: DataColumn) =
     inherit ValueAssembler(maxLevels)
 
     let repetitionLevelsRequired = maxLevels.Repetition > 0
     let definitionLevelsRequired = maxLevels.Definition > 0
-
-    do if repetitionLevelsRequired && column.RepetitionLevels.IsNone then
-        failwith "repetition levels are required but none exist in column data"
-
-    do if definitionLevelsRequired && column.DefinitionLevels.IsNone then
-        failwith "definition levels are required but none exist in column data"
 
     // NULL values are not written to the data array, so keep track of the data
     // index and the value index separately. For optional values, these will be
@@ -331,16 +319,16 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: Column) 
         // because for optional values reaching the end of the data array does
         // not imply we've reached the end of the column as there could be more
         // NULL values in the column.
-        if nextValueIndex = column.ValueCount
+        if nextValueIndex = column.NumValues
         then Option.None
         else
             let repetitionLevel =
                 if repetitionLevelsRequired
-                then column.RepetitionLevels.Value[nextValueIndex]
+                then column.RepetitionLevels[nextValueIndex]
                 else 0
             let definitionLevel =
                 if definitionLevelsRequired
-                then column.DefinitionLevels.Value[nextValueIndex]
+                then column.DefinitionLevels[nextValueIndex]
                 else 0
             let levels = Levels.create repetitionLevel definitionLevel
             let value =
@@ -364,7 +352,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: Column) 
                     // If the definition level equals the maximum definition
                     // level then this value is DEFINED and NOTNULL. Get the
                     // next data value and convert it to the correct type.
-                    let dataValue = column.Values.GetValue(nextDataValueIndex)
+                    let dataValue = column.DefinedData.GetValue(nextDataValueIndex)
                     nextDataValueIndex <- nextDataValueIndex + 1
                     Option.Some (atomicInfo.CreateFromDataValue dataValue)
             nextValueIndex <- nextValueIndex + 1
@@ -514,7 +502,7 @@ type private RecordAssembler(recordInfo: RecordInfo, maxLevels, fieldAssemblers:
             Option.Some assembledRecord
 
 module private ValueAssembler =
-    let forAtomic (atomicInfo: AtomicInfo) parentMaxLevels (columns: Queue<Column>) =
+    let forAtomic (atomicInfo: AtomicInfo) parentMaxLevels (columns: Queue<DataColumn>) =
         let maxLevels =
             if atomicInfo.IsOptional
             then Levels.incrementForOptional parentMaxLevels
@@ -564,8 +552,11 @@ type RecordAssembler<'Record>() =
 
     member this.Schema = schema
     
-    member this.Assemble(columns: Column[]) =
+    member this.Assemble(columns: DataColumn[]) =
         let maxLevels = Levels.Default
+        // TODO: Would this be better as a Dictionary of columns? Relies on being able
+        // to look up the correct data field, which may require the reflected schema
+        // to match the schema read from the file.
         let columns = Queue(columns)
         let recordAssembler = ValueAssembler.forRecord recordInfo maxLevels columns
         let records = ResizeArray()

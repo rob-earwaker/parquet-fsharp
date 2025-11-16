@@ -67,6 +67,12 @@ let ``decimal field`` records =
         Field1: decimal |}>
         records
 
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``date time field`` records =
+    testRecordRoundtrip<{|
+        Field1: DateTime |}>
+        records
+
 [<Property>]
 let ``date time offset field`` records =
     testRecordRoundtrip<{|
@@ -131,6 +137,12 @@ let ``array field with float64 elements`` records =
 let ``array field with decimal elements`` records =
     testRecordRoundtrip<{|
         Field1: array<decimal> |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``array field with date time elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<DateTime> |}>
         records
 
 [<Property>]
@@ -218,6 +230,12 @@ let ``array field with nullable decimal elements`` records =
         Field1: array<Nullable<decimal>> |}>
         records
 
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``array field with nullable date time elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<Nullable<DateTime>> |}>
+        records
+
 [<Property>]
 let ``array field with nullable date time offset elements`` records =
     testRecordRoundtrip<{|
@@ -283,6 +301,12 @@ let ``array field with option float64 elements`` records =
 let ``array field with option decimal elements`` records =
     testRecordRoundtrip<{|
         Field1: array<option<decimal>> |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``array field with option date time elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<option<DateTime>> |}>
         records
 
 [<Property>]
@@ -356,6 +380,12 @@ let ``list field with float64 elements`` records =
 let ``list field with decimal elements`` records =
     testRecordRoundtrip<{|
         Field1: list<decimal> |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``list field with date time elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<DateTime> |}>
         records
 
 [<Property>]
@@ -443,6 +473,12 @@ let ``list field with nullable decimal elements`` records =
         Field1: list<Nullable<decimal>> |}>
         records
 
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``list field with nullable date time elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<Nullable<DateTime>> |}>
+        records
+
 [<Property>]
 let ``list field with nullable date time offset elements`` records =
     testRecordRoundtrip<{|
@@ -508,6 +544,12 @@ let ``list field with option float64 elements`` records =
 let ``list field with option decimal elements`` records =
     testRecordRoundtrip<{|
         Field1: list<option<decimal>> |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``list field with option date time elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<option<DateTime>> |}>
         records
 
 [<Property>]
@@ -589,6 +631,13 @@ let ``record field with decimal field`` records =
     testRecordRoundtrip<{|
         Field1: {|
             Field2: decimal |} |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``record field with date time field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: DateTime |} |}>
         records
 
 [<Property>]
@@ -690,6 +739,13 @@ let ``record field with nullable decimal field`` records =
             Field2: Nullable<decimal> |} |}>
         records
 
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``record field with nullable date time field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: Nullable<DateTime> |} |}>
+        records
+
 [<Property>]
 let ``record field with nullable date time offset field`` records =
     testRecordRoundtrip<{|
@@ -766,6 +822,13 @@ let ``record field with option decimal field`` records =
     testRecordRoundtrip<{|
         Field1: {|
             Field2: option<decimal> |} |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``record field with option date time field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: option<DateTime> |} |}>
         records
 
 [<Property>]
@@ -845,6 +908,12 @@ let ``nullable decimal field`` records =
         Field1: Nullable<decimal> |}>
         records
 
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``nullable date time field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<DateTime> |}>
+        records
+
 [<Property>]
 let ``nullable date time offset field`` records =
     testRecordRoundtrip<{|
@@ -911,6 +980,13 @@ let ``nullable record field with decimal field`` records =
     testRecordRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: decimal |}> |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``nullable record field with date time field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: DateTime |}> |}>
         records
 
 [<Property>]
@@ -1005,6 +1081,13 @@ let ``nullable record field with nullable decimal field`` records =
             Field2: Nullable<decimal> |}> |}>
         records
 
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``nullable record field with nullable date time field`` records =
+    testRecordRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: Nullable<DateTime> |}> |}>
+        records
+
 [<Property>]
 let ``nullable record field with nullable date time offset field`` records =
     testRecordRoundtrip<{|
@@ -1075,6 +1158,12 @@ let ``option decimal field`` records =
         Field1: option<decimal> |}>
         records
 
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``option date time field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<DateTime> |}>
+        records
+
 [<Property>]
 let ``option date time offset field`` records =
     testRecordRoundtrip<{|
@@ -1133,6 +1222,12 @@ let ``option list field with float64 elements`` records =
 let ``option list field with decimal elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<decimal>> |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``option list field with date time elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<DateTime>> |}>
         records
 
 [<Property>]
@@ -1220,6 +1315,12 @@ let ``option list field with nullable decimal elements`` records =
         Field1: option<list<Nullable<decimal>>> |}>
         records
 
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``option list field with nullable date time elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<Nullable<DateTime>>> |}>
+        records
+
 [<Property>]
 let ``option list field with nullable date time offset elements`` records =
     testRecordRoundtrip<{|
@@ -1285,6 +1386,12 @@ let ``option list field with option float64 elements`` records =
 let ``option list field with option decimal elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<option<decimal>>> |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``option list field with option date time elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<option<DateTime>>> |}>
         records
 
 [<Property>]
@@ -1366,6 +1473,13 @@ let ``option record field with decimal field`` records =
     testRecordRoundtrip<{|
         Field1: option<{|
             Field2: decimal |}> |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``option record field with date time field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: DateTime |}> |}>
         records
 
 [<Property>]
@@ -1467,6 +1581,13 @@ let ``option record field with nullable decimal field`` records =
             Field2: Nullable<decimal> |}> |}>
         records
 
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``option record field with nullable date time field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: Nullable<DateTime> |}> |}>
+        records
+
 [<Property>]
 let ``option record field with nullable date time offset field`` records =
     testRecordRoundtrip<{|
@@ -1543,6 +1664,13 @@ let ``option record field with option decimal field`` records =
     testRecordRoundtrip<{|
         Field1: option<{|
             Field2: option<decimal> |}> |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``option record field with option date time field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: option<DateTime> |}> |}>
         records
 
 [<Property>]

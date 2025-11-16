@@ -316,8 +316,6 @@ module private AtomicInfo =
         let isNull = isNull
         let getDataValue = id
         let createFromDataValue = id
-        // TODO: A lot of this is the same as for the non-nullable types above,
-        // but we need to know how to create a null value for the record assembly.
         let createNull = fun () -> null
         create dotnetType isOptional dataDotnetType
             isNull getDataValue createFromDataValue createNull

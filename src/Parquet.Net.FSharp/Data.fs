@@ -2,8 +2,8 @@
 
 open System
 
+// TODO: Can we replace this with Parquet.Net's DataColumn?
 type Column = {
-    // TODO: Can probably get rid of the count.
     ValueCount: int
     // TODO: Rename to Data(Values)?
     Values: Array

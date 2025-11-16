@@ -46,7 +46,8 @@ type ParquetSerializer =
         let recordInfo = RecordInfo.ofRecord typeof<'Record>
         let schema = Schema.ofRecordInfo recordInfo
         use fileReader = ParquetReader.CreateAsync(stream).Result
-        // TODO: Check schema compatability
+        // TODO: Check schema compatability.
+        // TODO: Support reading multiple row groups.
         use rowGroupReader = fileReader.OpenRowGroupReader(0)
         let columns =
             schema.DataFields

@@ -52,7 +52,7 @@ type private ValueShredder(maxLevels: Levels) =
     abstract member ShredValue : parentLevels:Levels * value:obj -> unit
     abstract member BuildColumns : unit -> Column seq
 
-type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels) =
+type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels, dataField: DataField) =
     inherit ValueShredder(maxLevels)
 
     let repetitionLevelsRequired = maxLevels.Repetition > 0
@@ -115,6 +115,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels) =
             then Option.Some (Array.ofSeq definitionLevels)
             else Option.None
         let column = {
+            Column.Field = dataField
             Column.ValueCount = valueCount
             Column.Values = columnValues
             Column.MaxRepetitionLevel = maxLevels.Repetition
@@ -209,41 +210,48 @@ type private RecordShredder(recordInfo: RecordInfo, maxLevels, fieldShredders: V
         |> Seq.collect _.BuildColumns()
 
 module private ValueShredder =
-    let forAtomic (atomicInfo: AtomicInfo) parentMaxLevels =
+    let forAtomic (atomicInfo: AtomicInfo) parentMaxLevels dataField =
         let maxLevels =
             if atomicInfo.IsOptional
             then Levels.incrementForOptional parentMaxLevels
             else parentMaxLevels
-        AtomicShredder(atomicInfo, maxLevels)
+        AtomicShredder(atomicInfo, maxLevels, dataField)
         :> ValueShredder
 
-    let forList (listInfo: ListInfo) parentMaxLevels =
+    let forList (listInfo: ListInfo) parentMaxLevels (listFIeld: ListField) =
         let listMaxLevels =
             if listInfo.IsOptional
             then Levels.incrementForOptional parentMaxLevels
             else parentMaxLevels
         let elementMaxLevels = Levels.incrementForRepeated listMaxLevels
-        let elementShredder = ValueShredder.forValue listInfo.ElementInfo elementMaxLevels
+        let elementShredder = ValueShredder.forValue listInfo.ElementInfo elementMaxLevels listFIeld.Item
         ListShredder(listInfo, listMaxLevels, elementShredder)
         :> ValueShredder
 
-    let forRecord (recordInfo: RecordInfo) parentMaxLevels =
+    let forRecord (recordInfo: RecordInfo) parentMaxLevels (fields: Field seq) =
         let maxLevels =
             if recordInfo.IsOptional
             then Levels.incrementForOptional parentMaxLevels
             else parentMaxLevels
         let fieldShredders =
-            recordInfo.Fields
-            |> Array.map (fun fieldInfo ->
-                ValueShredder.forValue fieldInfo.ValueInfo maxLevels)
+            Seq.zip recordInfo.Fields fields
+            |> Seq.map (fun (fieldInfo, field) ->
+                ValueShredder.forValue fieldInfo.ValueInfo maxLevels field)
+            |> Array.ofSeq
         RecordShredder(recordInfo, maxLevels, fieldShredders)
         :> ValueShredder
 
-    let forValue (valueInfo: ValueInfo) parentMaxLevels =
+    let forValue (valueInfo: ValueInfo) parentMaxLevels (field: Field) =
         match valueInfo with
-        | ValueInfo.Atomic atomicInfo -> ValueShredder.forAtomic atomicInfo parentMaxLevels
-        | ValueInfo.List listInfo -> ValueShredder.forList listInfo parentMaxLevels
-        | ValueInfo.Record recordInfo -> ValueShredder.forRecord recordInfo parentMaxLevels
+        | ValueInfo.Atomic atomicInfo ->
+            let dataField = field :?> DataField
+            ValueShredder.forAtomic atomicInfo parentMaxLevels dataField
+        | ValueInfo.List listInfo ->
+            let listField = field :?> ListField
+            ValueShredder.forList listInfo parentMaxLevels listField
+        | ValueInfo.Record recordInfo ->
+            let structField = field :?> StructField
+            ValueShredder.forRecord recordInfo parentMaxLevels structField.Fields
 
 type RecordShredder<'Record>() =
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
@@ -256,7 +264,7 @@ type RecordShredder<'Record>() =
 
     member this.Shred(records: 'Record seq) =
         let maxLevels = Levels.Default
-        let recordShredder = ValueShredder.forRecord recordInfo maxLevels
+        let recordShredder = ValueShredder.forRecord recordInfo maxLevels schema.Fields
         for record in records do
             let parentLevels = Levels.Default
             recordShredder.ShredValue(parentLevels, record)

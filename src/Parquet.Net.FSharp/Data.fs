@@ -1,9 +1,11 @@
 ﻿namespace Parquet.FSharp
 
+open Parquet.Schema
 open System
 
 // TODO: Can we replace this with Parquet.Net's DataColumn?
 type Column = {
+    Field: DataField
     ValueCount: int
     // TODO: Rename to Data(Values)?
     Values: Array

@@ -45,7 +45,8 @@ type ParquetSerializer =
                     if valueCount = 0 && maxDefinitionLevel > 0
                     then Option.Some [||]
                     else Option.ofObj dataColumn.DefinitionLevels
-                { Column.ValueCount = valueCount
+                { Column.Field = dataColumn.Field
+                  Column.ValueCount = valueCount
                   Column.Values = dataColumn.DefinedData
                   Column.MaxRepetitionLevel = maxRepetitionLevel
                   Column.MaxDefinitionLevel = maxDefinitionLevel

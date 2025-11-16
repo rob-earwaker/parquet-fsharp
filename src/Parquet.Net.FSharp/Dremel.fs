@@ -9,6 +9,7 @@ module private Schema =
     let private getValueSchema fieldName valueInfo =
         match valueInfo with
         | ValueInfo.Atomic atomicInfo ->
+            // TODO: Should we use some of the custom DataField types here, e.g. DecimalDataField?
             let dataType = atomicInfo.DataDotnetType
             let isNullable = atomicInfo.IsOptional
             DataField(fieldName, dataType, isNullable) :> Field

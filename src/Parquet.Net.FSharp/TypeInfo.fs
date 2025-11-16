@@ -101,75 +101,27 @@ module private Option =
         fun () -> createNone [||]
 
 module private DotnetType =
-    let (|Bool|_|) dotnetType =
-        if dotnetType = typeof<bool>
+    let private ActivePatternTypeMatch<'Type> dotnetType =
+        if dotnetType = typeof<'Type>
         then Option.Some ()
         else Option.None
 
-    let (|Int16|_|) dotnetType =
-        if dotnetType = typeof<int16>
-        then Option.Some ()
-        else Option.None
-
-    let (|Int32|_|) dotnetType =
-        if dotnetType = typeof<int>
-        then Option.Some ()
-        else Option.None
-
-    let (|Int64|_|) dotnetType =
-        if dotnetType = typeof<int64>
-        then Option.Some ()
-        else Option.None
-
-    let (|UInt16|_|) dotnetType =
-        if dotnetType = typeof<uint16>
-        then Option.Some ()
-        else Option.None
-
-    let (|UInt32|_|) dotnetType =
-        if dotnetType = typeof<uint>
-        then Option.Some ()
-        else Option.None
-
-    let (|UInt64|_|) dotnetType =
-        if dotnetType = typeof<uint64>
-        then Option.Some ()
-        else Option.None
-
-    let (|Float32|_|) dotnetType =
-        if dotnetType = typeof<float32>
-        then Option.Some ()
-        else Option.None
-
-    let (|Float64|_|) dotnetType =
-        if dotnetType = typeof<float>
-        then Option.Some ()
-        else Option.None
-
-    let (|Decimal|_|) dotnetType =
-        if dotnetType = typeof<decimal>
-        then Option.Some ()
-        else Option.None
-
-    let (|String|_|) dotnetType =
-        if dotnetType = typeof<string>
-        then Option.Some ()
-        else Option.None
-
-    let (|Guid|_|) dotnetType =
-        if dotnetType = typeof<Guid>
-        then Option.Some ()
-        else Option.None
-
-    let (|DateTime|_|) dotnetType =
-        if dotnetType = typeof<DateTime>
-        then Option.Some ()
-        else Option.None
-
-    let (|DateTimeOffset|_|) dotnetType =
-        if dotnetType = typeof<DateTimeOffset>
-        then Option.Some ()
-        else Option.None
+    let (|Bool|_|) = ActivePatternTypeMatch<bool>
+    let (|Int8|_|) = ActivePatternTypeMatch<int8>
+    let (|Int16|_|) = ActivePatternTypeMatch<int16>
+    let (|Int32|_|) = ActivePatternTypeMatch<int>
+    let (|Int64|_|) = ActivePatternTypeMatch<int64>
+    let (|UInt8|_|) = ActivePatternTypeMatch<uint8>
+    let (|UInt16|_|) = ActivePatternTypeMatch<uint16>
+    let (|UInt32|_|) = ActivePatternTypeMatch<uint>
+    let (|UInt64|_|) = ActivePatternTypeMatch<uint64>
+    let (|Float32|_|) = ActivePatternTypeMatch<float32>
+    let (|Float64|_|) = ActivePatternTypeMatch<float>
+    let (|Decimal|_|) = ActivePatternTypeMatch<decimal>
+    let (|String|_|) = ActivePatternTypeMatch<string>
+    let (|Guid|_|) = ActivePatternTypeMatch<Guid>
+    let (|DateTime|_|) = ActivePatternTypeMatch<DateTime>
+    let (|DateTimeOffset|_|) = ActivePatternTypeMatch<DateTimeOffset>
 
     let (|Array1d|_|) (dotnetType: Type) =
         if dotnetType.IsArray
@@ -183,6 +135,7 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
+    // TODO: Might need to rename this if ambiguous with C# record types.
     let (|Record|_|) dotnetType =
         if FSharpType.IsRecord(dotnetType)
         then Option.Some ()
@@ -246,9 +199,11 @@ module ValueInfo =
             let valueInfo =
                 match dotnetType with
                 | DotnetType.Bool -> ValueInfo.Atomic AtomicInfo.Bool
+                | DotnetType.Int8 -> ValueInfo.Atomic AtomicInfo.Int8
                 | DotnetType.Int16 -> ValueInfo.Atomic AtomicInfo.Int16
                 | DotnetType.Int32 -> ValueInfo.Atomic AtomicInfo.Int32
                 | DotnetType.Int64 -> ValueInfo.Atomic AtomicInfo.Int64
+                | DotnetType.UInt8 -> ValueInfo.Atomic AtomicInfo.UInt8
                 | DotnetType.UInt16 -> ValueInfo.Atomic AtomicInfo.UInt16
                 | DotnetType.UInt32 -> ValueInfo.Atomic AtomicInfo.UInt32
                 | DotnetType.UInt64 -> ValueInfo.Atomic AtomicInfo.UInt64
@@ -296,9 +251,11 @@ module private AtomicInfo =
             isNull getDataValue createFromDataValue createNull
 
     let Bool = ofDataType<bool>
+    let Int8 = ofDataType<int8>
     let Int16 = ofDataType<int16>
     let Int32 = ofDataType<int>
     let Int64 = ofDataType<int64>
+    let UInt8 = ofDataType<uint8>
     let UInt16 = ofDataType<uint16>
     let UInt32 = ofDataType<uint32>
     let UInt64 = ofDataType<uint64>

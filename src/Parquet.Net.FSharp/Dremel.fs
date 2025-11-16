@@ -25,6 +25,7 @@ module private Schema =
     let ofRecordInfo recordInfo =
         ParquetSchema(getRecordFields recordInfo)
 
+// TODO: Maybe more efficient to just get rid of Levels type and split into separate fields?
 type private Levels = {
     Repetition: int
     Definition: int }
@@ -170,6 +171,7 @@ type private ListShredder(listInfo: ListInfo, maxLevels, elementShredder: ValueS
     override this.BuildColumns() =
         elementShredder.BuildColumns()
 
+// TODO: Rename to StructShredder?
 type private RecordShredder(recordInfo: RecordInfo, maxLevels, fieldShredders: ValueShredder[]) =
     inherit ValueShredder(maxLevels)
 
@@ -183,6 +185,9 @@ type private RecordShredder(recordInfo: RecordInfo, maxLevels, fieldShredders: V
             fieldShredder.AddNull(levels)
 
     override this.ShredValue(parentLevels, record) =
+        // TODO: Potential performance optimisation to have a different shredder
+        // implementation for optional and non-optional records/lists/atomics
+        // to reduce branching required with if statements.
         if recordInfo.IsOptional
         then
             if recordInfo.IsNull record

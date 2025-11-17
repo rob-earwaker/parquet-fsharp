@@ -167,7 +167,6 @@ type private ListShredder(listInfo: ListInfo, maxLevels, elementShredder: ValueS
     override this.BuildColumns() =
         elementShredder.BuildColumns()
 
-// TODO: Rename to StructShredder?
 type private RecordShredder(recordInfo: RecordInfo, maxLevels, fieldShredders: ValueShredder[]) =
     inherit ValueShredder(maxLevels)
 
@@ -248,8 +247,9 @@ module private ValueShredder =
             let structField = field :?> StructField
             ValueShredder.forRecord recordInfo parentMaxLevels structField.Fields
 
-// TODO: Rename to just Shredder?
-type RecordShredder<'Record>() =
+type Shredder<'Record>() =
+    // TODO: Currently only supports F# records but we probably want it to
+    // support other type as well, e.g. classes, structs, C# records.
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
     // TODO: The root record is never optional, so update the record info
     // in case this is a nullable record type.
@@ -545,8 +545,9 @@ module private ValueAssembler =
         | ValueInfo.List listInfo -> ValueAssembler.forList listInfo parentMaxLevels columns
         | ValueInfo.Record recordInfo -> ValueAssembler.forRecord recordInfo parentMaxLevels columns
 
-// TODO: Rename to just Assembler?
-type RecordAssembler<'Record>() =
+type Assembler<'Record>() =
+    // TODO: Currently only supports F# records but we probably want it to
+    // support other type as well, e.g. classes, structs, C# records.
     let recordInfo = RecordInfo.ofRecord typeof<'Record>
     // TODO: The root record is never optional, so update the record info
     // in case this is a nullable record type.

@@ -6,7 +6,7 @@ open System.IO
 type ParquetSerializer =
     static member Serialize<'Record>(records: 'Record seq, stream: Stream) =
         // TODO: Make Async and use cancellation tokens.
-        let recordShredder = Dremel.RecordShredder<'Record>()
+        let recordShredder = Dremel.Shredder<'Record>()
         use fileWriter = ParquetWriter.CreateAsync(recordShredder.Schema, stream).Result
         // TODO: Support multiple row groups based on configurable size.
         use rowGroupWriter = fileWriter.CreateRowGroup()
@@ -15,7 +15,7 @@ type ParquetSerializer =
 
     static member Deserialize<'Record>(stream: Stream) =
         // TODO: Make Async and use cancellation tokens.
-        let recordAssembler = Dremel.RecordAssembler<'Record>()
+        let recordAssembler = Dremel.Assembler<'Record>()
         use fileReader = ParquetReader.CreateAsync(stream).Result
         // TODO: Check schema compatability.
         // TODO: Support reading multiple row groups.

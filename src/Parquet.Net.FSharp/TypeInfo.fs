@@ -52,7 +52,6 @@ type FieldInfo = {
     Name: string
     ValueInfo: ValueInfo }
 
-// TODO: Rename Record to Stuct? I think this is the more common Parquet terminology.
 type RecordInfo = {
     DotnetType: Type
     IsOptional: bool

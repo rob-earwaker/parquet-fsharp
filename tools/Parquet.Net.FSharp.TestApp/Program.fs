@@ -4,6 +4,11 @@ open Parquet.FSharp
 open System
 open System.IO
 
+type Alternative =
+    | OptionA of value1:int * value2:float
+    | OptionB of string * bool
+    | OptionC
+
 type Gps = {
     Latitude: float
     Longitude: float }
@@ -14,15 +19,16 @@ type Data = {
     Value3: Nullable<int> }
 
 type Message = {
-    (*Id: Guid
-    Time: DateTime
-    Timestamp: DateTimeOffset
+    Id: Guid
+(*    Time: DateTime
+    Timestamp: DateTimeOffset*)
     Source: string
     Level: float
-    Flag: Nullable<bool>
-    Count: int*)
+    Alternative: Alternative
+    (*Flag: Nullable<bool>
+    Count: int option
     Samples: int list
-    (*Gps: Gps
+    Gps: Gps
     Values: Data[]
     Money: decimal*) }
 
@@ -93,6 +99,14 @@ module Random =
     let list count (createItem: unit -> 'Item) =
         List.init count (fun _ -> createItem ())
 
+    let alternative () =
+        let nextDouble = Random.NextDouble()
+        if nextDouble < 0.333
+        then Alternative.OptionA (int (), float ())
+        elif nextDouble < 0.666
+        then Alternative.OptionB (string (), bool ())
+        else Alternative.OptionC
+
     let gps () =
         { Gps.Latitude = float ()
           Gps.Longitude = float () }
@@ -103,15 +117,16 @@ module Random =
           Data.Value3 = nullableInt () }
 
     let message () =
-        { (*Message.Id = guid ()
-          Message.Time = dateTime ()
-          Message.Timestamp = dateTimeOffset ()
+        { Message.Id = guid ()
+    (*      Message.Time = dateTime ()
+          Message.Timestamp = dateTimeOffset ()*)
           Message.Source = string ()
           Message.Level = float ()
-          Message.Flag = nullableBool ()
-          Message.Count = int ()*)
+          Message.Alternative = alternative ()
+         (* Message.Flag = nullableBool ()
+          Message.Count = intOption ()
           Message.Samples = list 5 int
-          (*Message.Gps = gps ()
+          Message.Gps = gps ()
           Message.Values = array 3 data
           Message.Money = decimal ()*) }
 

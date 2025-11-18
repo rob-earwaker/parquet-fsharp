@@ -48,7 +48,6 @@ type ListInfo = {
     CreateNull: unit -> obj }
 
 type FieldInfo = {
-    Index: int
     Name: string
     ValueInfo: ValueInfo }
 
@@ -145,6 +144,11 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
+    let (|Union|_|) dotnetType =
+        if FSharpType.IsUnion(dotnetType)
+        then Option.Some ()
+        else Option.None
+
     let (|Nullable|_|) (dotnetType: Type) =
         if dotnetType.IsGenericType
             && dotnetType.GetGenericTypeDefinition() = typedefof<Nullable<_>>
@@ -196,6 +200,193 @@ module ValueInfo =
             let recordOptionInfo = RecordInfo.ofOption dotnetType recordInfo
             ValueInfo.Record recordOptionInfo
 
+    type private UnionInfo = {
+        DotnetType: Type
+        GetTag: obj -> int
+        UnionCases: UnionCaseInfo[] }
+
+    type private UnionCaseInfo = {
+        UnionDotnetType: Type
+        Tag: int
+        Name: string
+        Fields: PropertyInfo[]
+        GetFieldValues: obj -> obj[]
+        CreateFromFieldValues: obj[] -> obj }
+
+    module private UnionInfo =
+        let ofUnion dotnetType =
+            let unionCases =
+                FSharpType.GetUnionCases(dotnetType)
+                |> Array.map (fun unionCase ->
+                    let getFieldValues = FSharpValue.PreComputeUnionReader(unionCase)
+                    let createFromFieldValues = FSharpValue.PreComputeUnionConstructor(unionCase)
+                    { UnionCaseInfo.UnionDotnetType = dotnetType
+                      UnionCaseInfo.Tag = unionCase.Tag
+                      UnionCaseInfo.Name = unionCase.Name
+                      UnionCaseInfo.Fields = unionCase.GetFields()
+                      UnionCaseInfo.GetFieldValues = getFieldValues
+                      UnionCaseInfo.CreateFromFieldValues = createFromFieldValues })
+            { UnionInfo.DotnetType = dotnetType
+              UnionInfo.GetTag = FSharpValue.PreComputeUnionTagReader(dotnetType)
+              UnionInfo.UnionCases = unionCases }
+
+    let private ofUnionEnum (unionInfo: UnionInfo) =
+        let dotnetType = unionInfo.DotnetType
+        // We represent unions that are equivalent to enums, i.e. all cases have
+        // zero fields, as a string value containing the case name. Since a
+        // union value can't be null and must be one of the possible cases, this
+        // value is not optional despite being a string value.
+        let isOptional = false
+        let dataDotnetType = typeof<string>
+        let isNull = fun _ -> false
+        let getDataValue (unionObj: obj) =
+            let tag = unionInfo.GetTag unionObj
+            unionInfo.UnionCases
+            |> Array.pick (fun unionCase ->
+                if unionCase.Tag = tag
+                then Option.Some (unionCase.Name :> obj)
+                else Option.None)
+        let createFromDataValue (unionCaseNameObj: obj) =
+            let unionCaseName = unionCaseNameObj :?> string
+            unionInfo.UnionCases
+            |> Array.pick (fun unionCase ->
+                if unionCase.Name = unionCaseName
+                then Option.Some (unionCase.CreateFromFieldValues [||])
+                else Option.None)
+        let createNull () =
+            failwith $"type '{dotnetType.FullName}' is not optional"
+        AtomicInfo.create dotnetType isOptional dataDotnetType
+            isNull getDataValue createFromDataValue createNull
+        |> ValueInfo.Atomic
+
+    let private ofUnionCaseData (unionCase: UnionCaseInfo) =
+        let dotnetType = unionCase.UnionDotnetType
+        // Each union case is treated as optional. Only one case from the union
+        // can be set, so the others will be NULL.
+        let isOptional = true
+        let fields = unionCase.Fields |> Array.map FieldInfo.ofProperty
+        let isNull = isNull
+        // Field values for this union case are extracted in the root union
+        // record when the union is decomposed and are passed down through the
+        // union data record, so all we need to do is cast the object.
+        let getFieldValues (fieldValuesObj: obj) =
+            fieldValuesObj :?> obj[]
+        // The union object is created by the root union record, so just pass
+        // the field values up to the parent union data record so they can be
+        // passed through to the root.
+        let createFromFieldValues (fieldValues: obj[]) =
+            fieldValues :> obj
+        let createNull = fun () -> null
+        RecordInfo.create dotnetType isOptional fields
+            isNull getFieldValues createFromFieldValues createNull
+        |> ValueInfo.Record
+
+    let private ofUnionData (unionInfo: UnionInfo) =
+        let dotnetType = unionInfo.DotnetType
+        // Some union cases might not have any associated data fields. When
+        // representing these cases we want to be able to set the data to NULL,
+        // so this virtual record type must be optional.
+        let isOptional = true
+        let unionCasesWithFields =
+            unionInfo.UnionCases
+            |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
+        let fields =
+            unionCasesWithFields
+            |> Array.map (fun unionCase ->
+                let name = unionCase.Name
+                let valueInfo = ValueInfo.ofUnionCaseData unionCase
+                FieldInfo.create name valueInfo)
+        let isNull' = isNull
+        // The field values are already extracted by the root union record and
+        // are passed through along with the tag. We need to ensure we only pass
+        // the field values through to the correct union case based on the tag.
+        let getFieldValues (valueObj: obj) =
+            let tag, fieldValues = valueObj :?> (int * obj[])
+            unionCasesWithFields
+            |> Array.map (fun unionCase ->
+                if unionCase.Tag = tag
+                then fieldValues :> obj
+                else null)
+        // Only one of the union cases should have fields available, so find the
+        // field value that is NOTNULL. The union object is created by the root
+        // union record so pass the field values up to the parent union data
+        // record so they can be passed through to the root. There's no need to
+        // pass the tag up since the root record stores the case name.
+        let createFromFieldValues (fieldValues: obj[]) =
+            fieldValues
+            // TODO: Should technically use the 'IsNull' function from the
+            // relevant field here instead of the built-in isNull function.
+            |> Array.filter (fun fieldValue -> not (isNull fieldValue))
+            |> Array.exactlyOne
+        let createNull = fun () -> null
+        RecordInfo.create dotnetType isOptional fields
+            isNull' getFieldValues createFromFieldValues createNull
+        |> ValueInfo.Record
+
+    let private ofUnionComplex (unionInfo: UnionInfo) =
+        let dotnetType = unionInfo.DotnetType
+        // TODO: F# unions are not nullable by default, however we are mapping
+        // to a struct and Parquet.Net does not support struct fields that
+        // aren't nullable.
+        let isOptional = true
+        let fields =
+            let unionCaseField =
+                let name = "UnionCase"
+                let valueInfo = AtomicInfo.String |> ValueInfo.Atomic
+                FieldInfo.create name valueInfo
+            let dataField =
+                let name = "Data"
+                let valueInfo = ValueInfo.ofUnionData unionInfo
+                FieldInfo.create name valueInfo
+            [| unionCaseField; dataField |]
+        let isNull' = fun _ -> false
+        let getFieldValues (unionObj: obj) =
+            let tag = unionInfo.GetTag unionObj
+            unionInfo.UnionCases
+            |> Array.pick (fun unionCase ->
+                if unionCase.Tag <> tag
+                then Option.None
+                else
+                    let nameFieldValue = unionCase.Name :> obj
+                    let dataFieldValue =
+                        if unionCase.Fields.Length = 0
+                        // TODO: Should technically use the 'CreateNull' function
+                        // from the relevant field here instead of the null literal.
+                        then null
+                        else (tag, unionCase.GetFieldValues unionObj) :> obj
+                    Option.Some [| nameFieldValue; dataFieldValue |])
+        let createFromFieldValues (fieldValues: obj[]) =
+            let unionCaseName = fieldValues[0] :?> string
+            unionInfo.UnionCases
+            |> Array.pick (fun unionCase ->
+                if unionCase.Name <> unionCaseName
+                then Option.None
+                else
+                    let fieldValues =
+                        if unionCase.Fields.Length = 0
+                        then [||]
+                        else fieldValues[1] :?> obj[]
+                    Option.Some (unionCase.CreateFromFieldValues fieldValues))
+        let createNull () =
+            failwith $"type '{dotnetType.FullName}' is not optional"
+        RecordInfo.create dotnetType isOptional fields
+            isNull' getFieldValues createFromFieldValues createNull
+        |> ValueInfo.Record
+
+    let private ofUnion dotnetType =
+        // Unions are represented in one of two ways. For unions where none of
+        // the cases have any associated fields this is similar to an enum and
+        // we represent it as a string value where the value is the case name.
+        // For unions where at least one of the cases has at least one
+        // associated field we need a more complex data structure. We represent
+        // this as a record with two fields, one containing the case name and
+        // another containing the case data.
+        let unionInfo = UnionInfo.ofUnion dotnetType
+        if unionInfo.UnionCases
+            |> Array.forall (fun unionCase -> unionCase.Fields.Length = 0)
+        then ValueInfo.ofUnionEnum unionInfo
+        else ValueInfo.ofUnionComplex unionInfo
+
     let ofType (dotnetType: Type) =
         match tryGetCached dotnetType with
         | Option.Some valueInfo -> valueInfo
@@ -221,8 +412,9 @@ module ValueInfo =
                 | DotnetType.Array1d -> ValueInfo.List (ListInfo.ofArray1d dotnetType)
                 | DotnetType.List -> ValueInfo.List (ListInfo.ofList dotnetType)
                 | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
-                | DotnetType.Nullable -> ofNullable dotnetType
-                | DotnetType.Option -> ofOption dotnetType
+                | DotnetType.Union -> ValueInfo.ofUnion dotnetType
+                | DotnetType.Nullable -> ValueInfo.ofNullable dotnetType
+                | DotnetType.Option -> ValueInfo.ofOption dotnetType
                 | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
             addToCache dotnetType valueInfo
             valueInfo
@@ -231,7 +423,7 @@ module ValueInfo =
         ofType typeof<'Value>
 
 module private AtomicInfo =
-    let private create
+    let create
         dotnetType isOptional dataDotnetType
         isNull getDataValue createFromDataValue createNull =
         { AtomicInfo.DotnetType = dotnetType
@@ -424,18 +616,17 @@ module private ListInfo =
             isNull getElementValues createFromElementValues createNull
 
 module private FieldInfo =
-    let private create index name valueInfo =
-        { FieldInfo.Index = index
-          FieldInfo.Name = name
+    let create name valueInfo =
+        { FieldInfo.Name = name
           FieldInfo.ValueInfo = valueInfo }
 
-    let ofField index (field: PropertyInfo) =
+    let ofProperty (field: PropertyInfo) =
         let name = field.Name
         let valueInfo = ValueInfo.ofType field.PropertyType
-        create index name valueInfo
+        create name valueInfo
 
 module private RecordInfo =
-    let private create
+    let create
         dotnetType isOptional fields
         isNull getFieldValues createFromFieldValues createNull =
         { RecordInfo.DotnetType = dotnetType
@@ -455,7 +646,7 @@ module private RecordInfo =
         let isOptional = true
         let fields =
             FSharpType.GetRecordFields(dotnetType)
-            |> Array.mapi FieldInfo.ofField
+            |> Array.map FieldInfo.ofProperty
         let isNull = fun _ -> false
         let getFieldValues = FSharpValue.PreComputeRecordReader(dotnetType)
         let createFromFieldValues = FSharpValue.PreComputeRecordConstructor(dotnetType)

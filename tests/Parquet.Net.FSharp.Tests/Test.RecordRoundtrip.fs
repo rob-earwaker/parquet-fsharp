@@ -412,9 +412,21 @@ let ``array field with option date time offset elements`` records =
         records
 
 [<Property>]
+let ``array field with option string elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<option<string>> |}>
+        records
+
+[<Property>]
 let ``array field with option guid elements`` records =
     testRecordRoundtrip<{|
         Field1: array<option<Guid>> |}>
+        records
+
+[<Property>]
+let ``array field with option array elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<option<array<int>>> |}>
         records
 
 [<Property>]
@@ -428,6 +440,18 @@ let ``array field with option record elements`` records =
     testRecordRoundtrip<{|
         Field1: array<option<{|
             Field2: int |}>> |}>
+        records
+
+[<Property>]
+let ``array field with option nullable elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<option<Nullable<int>>> |}>
+        records
+
+[<Property>]
+let ``array field with option option elements`` records =
+    testRecordRoundtrip<{|
+        Field1: array<option<option<int>>> |}>
         records
 
 [<Property>]
@@ -727,9 +751,21 @@ let ``list field with option date time offset elements`` records =
         records
 
 [<Property>]
+let ``list field with option string elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<option<string>> |}>
+        records
+
+[<Property>]
 let ``list field with option guid elements`` records =
     testRecordRoundtrip<{|
         Field1: list<option<Guid>> |}>
+        records
+
+[<Property>]
+let ``list field with option array elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<option<array<int>>> |}>
         records
 
 [<Property>]
@@ -743,6 +779,18 @@ let ``list field with option record elements`` records =
     testRecordRoundtrip<{|
         Field1: list<option<{|
             Field2: int |}>> |}>
+        records
+
+[<Property>]
+let ``list field with option nullable elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<option<Nullable<int>>> |}>
+        records
+
+[<Property>]
+let ``list field with option option elements`` records =
+    testRecordRoundtrip<{|
+        Field1: list<option<option<int>>> |}>
         records
 
 [<Property>]
@@ -1091,10 +1139,24 @@ let ``record field with option date time offset field`` records =
         records
 
 [<Property>]
+let ``record field with option string field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: option<string> |} |}>
+        records
+
+[<Property>]
 let ``record field with option guid field`` records =
     testRecordRoundtrip<{|
         Field1: {|
             Field2: option<Guid> |} |}>
+        records
+
+[<Property>]
+let ``record field with option array field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: option<array<int>> |} |}>
         records
 
 [<Property>]
@@ -1110,6 +1172,20 @@ let ``record field with option record field`` records =
         Field1: {|
             Field2: option<{|
                 Field3: int |}> |} |}>
+        records
+
+[<Property>]
+let ``record field with option nullable field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: option<Nullable<int>> |} |}>
+        records
+
+[<Property>]
+let ``record field with option option field`` records =
+    testRecordRoundtrip<{|
+        Field1: {|
+            Field2: option<option<int>> |} |}>
         records
 
 [<Property>]
@@ -1527,9 +1603,354 @@ let ``option date time offset field`` records =
         records
 
 [<Property>]
+let ``option string field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<string> |}>
+        records
+
+[<Property>]
 let ``option guid field`` records =
     testRecordRoundtrip<{|
         Field1: option<Guid> |}>
+        records
+
+[<Property>]
+let ``option array field with bool elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<bool>> |}>
+        records
+
+[<Property>]
+let ``option array field with int8 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<int8>> |}>
+        records
+
+[<Property>]
+let ``option array field with int16 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<int16>> |}>
+        records
+
+[<Property>]
+let ``option array field with int32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<int>> |}>
+        records
+
+[<Property>]
+let ``option array field with int64 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<int64>> |}>
+        records
+
+[<Property>]
+let ``option array field with uint8 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<uint8>> |}>
+        records
+
+[<Property>]
+let ``option array field with uint16 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<uint16>> |}>
+        records
+
+[<Property>]
+let ``option array field with uint32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<uint>> |}>
+        records
+
+[<Property>]
+let ``option array field with uint64 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<uint64>> |}>
+        records
+
+[<Property>]
+let ``option array field with float32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<float32>> |}>
+        records
+
+[<Property>]
+let ``option array field with float64 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<float>> |}>
+        records
+
+[<Property>]
+let ``option array field with decimal elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<decimal>> |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``option array field with date time elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<DateTime>> |}>
+        records
+
+[<Property>]
+let ``option array field with date time offset elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<DateTimeOffset>> |}>
+        records
+
+[<Property>]
+let ``option array field with string elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<string>> |}>
+        records
+
+[<Property>]
+let ``option array field with guid elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Guid>> |}>
+        records
+
+[<Property>]
+let ``option array field with array elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<array<int>>> |}>
+        records
+
+[<Property>]
+let ``option array field with list elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<list<int>>> |}>
+        records
+
+[<Property>]
+let ``option array field with record elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<{|
+            Field2: int |}>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable bool elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<bool>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable int8 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<int8>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable int16 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<int16>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable int32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<int>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable int64 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<int64>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable uint8 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<uint8>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable uint16 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<uint16>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable uint32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<uint>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable uint64 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<uint64>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable float32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<float32>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable float64 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<float>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable decimal elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<decimal>>> |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``option array field with nullable date time elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<DateTime>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable date time offset elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<DateTimeOffset>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable guid elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<Guid>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable record elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<Nullable<struct {|
+            Field2: int |}>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option bool elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<bool>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option int8 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<int8>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option int16 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<int16>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option int32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<int>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option int64 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<int64>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option uint8 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<uint8>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option uint16 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<uint16>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option uint32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<uint>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option uint64 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<uint64>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option float32 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<float32>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option float64 elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<float>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option decimal elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<decimal>>> |}>
+        records
+
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+let ``option array field with option date time elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<DateTime>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option date time offset elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<DateTimeOffset>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option string elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<string>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option guid elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<Guid>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option array elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<array<int>>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option list elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<list<int>>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option record elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<{|
+            Field2: int |}>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option nullable elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<Nullable<int>>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option option elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<array<option<option<int>>>> |}>
         records
 
 [<Property>]
@@ -1829,9 +2250,21 @@ let ``option list field with option date time offset elements`` records =
         records
 
 [<Property>]
+let ``option list field with option string elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<option<string>>> |}>
+        records
+
+[<Property>]
 let ``option list field with option guid elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<option<Guid>>> |}>
+        records
+
+[<Property>]
+let ``option list field with option array elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<option<array<int>>>> |}>
         records
 
 [<Property>]
@@ -1845,6 +2278,18 @@ let ``option list field with option record elements`` records =
     testRecordRoundtrip<{|
         Field1: option<list<option<{|
             Field2: int |}>>> |}>
+        records
+
+[<Property>]
+let ``option list field with option nullable elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<option<Nullable<int>>>> |}>
+        records
+
+[<Property>]
+let ``option list field with option option elements`` records =
+    testRecordRoundtrip<{|
+        Field1: option<list<option<option<int>>>> |}>
         records
 
 [<Property>]
@@ -2193,10 +2638,24 @@ let ``option record field with option date time offset field`` records =
         records
 
 [<Property>]
+let ``option record field with option string field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: option<string> |}> |}>
+        records
+
+[<Property>]
 let ``option record field with option guid field`` records =
     testRecordRoundtrip<{|
         Field1: option<{|
             Field2: option<Guid> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with option array field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: option<array<int>> |}> |}>
         records
 
 [<Property>]
@@ -2212,4 +2671,30 @@ let ``option record field with option record field`` records =
         Field1: option<{|
             Field2: option<{|
                 Field3: int |}> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with option nullable field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: option<Nullable<int>> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with option option field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<{|
+            Field2: option<option<int>> |}> |}>
+        records
+
+[<Property>]
+let ``option nullable field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<Nullable<int>> |}>
+        records
+
+[<Property>]
+let ``option option field`` records =
+    testRecordRoundtrip<{|
+        Field1: option<option<int>> |}>
         records

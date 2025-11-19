@@ -282,7 +282,6 @@ type private ValueAssembler(maxLevels: Levels) =
 
     member this.MaxLevels = maxLevels
 
-    abstract member SkipUndefinedValue : unit -> unit
     abstract member TryAssembleNextValue : unit -> AssembledValue option
 
     member this.TryReadNextValue() =
@@ -300,6 +299,12 @@ type private ValueAssembler(maxLevels: Levels) =
     member this.SkipPeekedValue() =
         peekedValue <- Option.None
 
+    member this.SkipUndefinedValue() =
+        // TODO: This might be inefficient as we may be attempting to assemble
+        // values when we know they will be undefined, but it updates the
+        // assembler states in a more predictable way.
+        this.TryReadNextValue() |> ignore
+
 type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: DataColumn) =
     inherit ValueAssembler(maxLevels)
 
@@ -311,9 +316,6 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: DataColu
     // different if there are any NULL values in the column.
     let mutable nextValueIndex = 0
     let mutable nextDataValueIndex = 0
-
-    override this.SkipUndefinedValue() =
-        nextValueIndex <- nextValueIndex + 1
 
     override this.TryAssembleNextValue() =
         // Determine whether we've reached the end of our column data based on
@@ -363,9 +365,6 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxLevels, column: DataColu
 
 type private ListAssembler(listInfo: ListInfo, maxLevels, elementAssembler: ValueAssembler) =
     inherit ValueAssembler(maxLevels)
-
-    override this.SkipUndefinedValue() =
-        elementAssembler.SkipUndefinedValue()
 
     override this.TryAssembleNextValue() =
         let elementMaxLevels = elementAssembler.MaxLevels
@@ -440,10 +439,6 @@ type private ListAssembler(listInfo: ListInfo, maxLevels, elementAssembler: Valu
 
 type private RecordAssembler(recordInfo: RecordInfo, maxLevels, fieldAssemblers: ValueAssembler[]) =
     inherit ValueAssembler(maxLevels)
-
-    override this.SkipUndefinedValue() =
-        for fieldAssembler in fieldAssemblers do
-            fieldAssembler.SkipUndefinedValue()
 
     override this.TryAssembleNextValue() =
         let fieldValues = Array.zeroCreate<obj> fieldAssemblers.Length

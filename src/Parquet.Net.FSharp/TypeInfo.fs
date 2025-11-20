@@ -414,6 +414,8 @@ module ValueInfo =
                 | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
                 | DotnetType.Union -> ValueInfo.ofUnion dotnetType
                 | DotnetType.Nullable -> ValueInfo.ofNullable dotnetType
+                // TODO: Implement special handling for option types. Currently
+                // they are treated like any other union type.
                 | DotnetType.Option -> ValueInfo.ofOption dotnetType
                 | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
             addToCache dotnetType valueInfo

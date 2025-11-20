@@ -1,4 +1,4 @@
-﻿module Parquet.Net.FSharp.TestApp.Program
+﻿module Parquet.FSharp.TestApp.Program
 
 open Parquet.FSharp
 open System

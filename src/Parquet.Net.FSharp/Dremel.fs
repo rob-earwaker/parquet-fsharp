@@ -2,7 +2,7 @@
 
 open Parquet.Data
 open Parquet.Schema
-open System
+open System.Collections
 open System.Collections.Generic
 
 module private Schema =
@@ -61,7 +61,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels, field: DataField)
     let definitionLevelsRequired = maxLevels.Definition > 0
 
     let mutable valueCount = 0
-    let dataValues = ResizeArray()
+    let dataValues = ArrayList()
     let repetitionLevels = ResizeArray()
     let definitionLevels = ResizeArray()
 
@@ -77,7 +77,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels, field: DataField)
     let addValue levels value =
         let dataValue = atomicInfo.GetDataValue value
         addLevels levels
-        dataValues.Add(dataValue)
+        dataValues.Add(dataValue) |> ignore
         incrementValueCount ()
 
     override this.AddNull(levels) =
@@ -105,9 +105,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxLevels, field: DataField)
             addValue parentLevels value
 
     override this.BuildColumns() =
-        let columnData = Array.CreateInstance(atomicInfo.DataDotnetType, dataValues.Count)
-        for index in [ 0 .. columnData.Length - 1 ] do
-            columnData.SetValue(dataValues[index], index)
+        let columnData = dataValues.ToArray(atomicInfo.DataDotnetType)
         let repetitionLevels =
             if repetitionLevelsRequired
             then Array.ofSeq repetitionLevels
@@ -566,7 +564,7 @@ type Assembler<'Record>() =
         // TODO: Would this be better as a Dictionary of columns? Relies on being able
         // to look up the correct data field, which may require the reflected schema
         // to match the schema read from the file.
-        let columns = Queue(columns)
+        let columns = Queue<DataColumn>(columns)
         let recordAssembler = ValueAssembler.forRecord recordInfo maxLevels columns
         let records = ResizeArray()
         let mutable allRecordsAssembled = false

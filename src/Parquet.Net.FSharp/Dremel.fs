@@ -250,10 +250,15 @@ module private ValueShredder =
 type Shredder<'Record>() =
     // TODO: Currently only supports F# records but we probably want it to
     // support other type as well, e.g. classes, structs, C# records.
-    let recordInfo = RecordInfo.ofRecord typeof<'Record>
-    // TODO: The root record is never optional, so update the record info
-    // in case this is a nullable record type.
-    let recordInfo = { recordInfo with IsOptional = false }
+    let recordInfo =
+        match ValueInfo.of'<'Record> with
+        | ValueInfo.Record recordInfo ->
+            // TODO: The root record is never optional, so update the record info
+            // in case this is a nullable record type.
+            { recordInfo with IsOptional = false }
+        | _ ->
+            failwith $"type {typeof<'Record>.FullName} is not a record"
+
     let schema = Schema.ofRecordInfo recordInfo
 
     member this.Schema = schema
@@ -543,10 +548,15 @@ module private ValueAssembler =
 type Assembler<'Record>() =
     // TODO: Currently only supports F# records but we probably want it to
     // support other type as well, e.g. classes, structs, C# records.
-    let recordInfo = RecordInfo.ofRecord typeof<'Record>
-    // TODO: The root record is never optional, so update the record info
-    // in case this is a nullable record type.
-    let recordInfo = { recordInfo with IsOptional = false }
+    let recordInfo =
+        match ValueInfo.of'<'Record> with
+        | ValueInfo.Record recordInfo ->
+            // TODO: The root record is never optional, so update the record info
+            // in case this is a nullable record type.
+            { recordInfo with IsOptional = false }
+        | _ ->
+            failwith $"type {typeof<'Record>.FullName} is not a record"
+
     let schema = Schema.ofRecordInfo recordInfo
 
     member this.Schema = schema

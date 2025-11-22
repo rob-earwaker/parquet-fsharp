@@ -43,11 +43,11 @@ module Random =
 //[<DotNetObjectAllocDiagnoser>]
 //[<DotNetObjectAllocJobConfiguration>]
 [<MemoryDiagnoser>]
-type MyBenchmarks() =
+type ParquetSerialization() =
     let rowCount = 1_000_000
     let records =
         Array.init rowCount (fun _ ->
-            {| Field2 = Random.int () |})
+            {| Field1 = Random.int () |})
 
     //[<Benchmark>]
     //member this.ParquetNet() =
@@ -59,5 +59,5 @@ type MyBenchmarks() =
 
 [<EntryPoint>]
 let main _ =
-    let summary = BenchmarkRunner.Run<MyBenchmarks>()
+    let summary = BenchmarkRunner.Run<ParquetSerialization>()
     0

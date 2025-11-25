@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Compile Include="TypeInfo.fs" />
+    <Compile Include="DremelExpr.fs" />
     <Compile Include="Dremel.fs" />
     <Compile Include="ParquetSerializer.fs" />
   </ItemGroup>

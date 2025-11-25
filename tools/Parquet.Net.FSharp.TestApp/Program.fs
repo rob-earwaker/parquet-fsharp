@@ -3,6 +3,7 @@
 open Parquet.FSharp
 open System
 open System.IO
+open System.Linq.Expressions
 
 type Alternative =
     | OptionA of value1:int * value2:float
@@ -23,14 +24,14 @@ type Message = {
 (*    Time: DateTime
     Timestamp: DateTimeOffset*)
     Source: string
-    Level: float
-    Alternative: Alternative
-    (*Flag: Nullable<bool>
+    (*Level: float
+    Alternative: Alternative*)
+    Flag: Nullable<bool>
     Count: int option
     Samples: int list
-    Gps: Gps
+   (* Gps: Gps*)
     Values: Data[]
-    Money: decimal*) }
+    Money: decimal }
 
 module Random =
     let private Random = Random()
@@ -121,14 +122,14 @@ module Random =
     (*      Message.Time = dateTime ()
           Message.Timestamp = dateTimeOffset ()*)
           Message.Source = string ()
-          Message.Level = float ()
-          Message.Alternative = alternative ()
-         (* Message.Flag = nullableBool ()
+(*          Message.Level = float ()
+          Message.Alternative = alternative ()*)
+          Message.Flag = nullableBool ()
           Message.Count = intOption ()
           Message.Samples = list 5 int
-          Message.Gps = gps ()
+         (* Message.Gps = gps ()*)
           Message.Values = array 3 data
-          Message.Money = decimal ()*) }
+          Message.Money = decimal () }
 
 [<EntryPoint>]
 let main _ =

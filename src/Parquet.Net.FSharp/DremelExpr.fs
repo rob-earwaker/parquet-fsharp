@@ -89,10 +89,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
     let columnBuilderType =
         typedefof<ColumnBuilder<_>>.MakeGenericType(atomicInfo.DataDotnetType)
 
-    let columnBuilder =
-        Expression.Parameter(
-            columnBuilderType,
-            $"columnBuilder_{field.Path.ToString().Replace('/', '_')}")
+    let columnBuilder = Expression.Parameter(columnBuilderType, "columnBuilder")
 
     let initializeColumnBuilder =
         Expression.Assign(
@@ -141,6 +138,15 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
 type private ListShredder(listInfo: ListInfo, maxRepLevel, maxDefLevel, elementShredder: ValueShredder) =
     inherit ValueShredder()
 
+    let shredElement =
+        let repLevel = Expression.Parameter(typeof<int>, "repLevel")
+        let defLevel = Expression.Parameter(typeof<int>, "defLevel")
+        let element = Expression.Parameter(listInfo.ElementInfo.DotnetType, "element")
+        Expression.Lambda(
+            elementShredder.ShredValue(repLevel, defLevel, element),
+            "shredElement",
+            [ repLevel; defLevel; element ])
+
     let shredElements(listRepLevel, listDefLevel, list) =
         let elementCount = Expression.Variable(typeof<int>, "elementCount")
         let firstElementRepLevel = Expression.Variable(typeof<int>, "firstElementRepLevel")
@@ -171,7 +177,8 @@ type private ListShredder(listInfo: ListInfo, maxRepLevel, maxDefLevel, elementS
                     Expression.Assign(firstElementRepLevel, listRepLevel),
                     Expression.Assign(otherElementRepLevel, Expression.Constant(elementShredder.MaxRepLevel)),
                     Expression.Assign(elementDefLevel, Expression.Increment(listDefLevel)),
-                    elementShredder.ShredValue(
+                    Expression.Invoke(
+                        shredElement,
                         firstElementRepLevel,
                         elementDefLevel,
                         listInfo.GetElementExpr(list, Expression.Constant(0))),
@@ -184,10 +191,11 @@ type private ListShredder(listInfo: ListInfo, maxRepLevel, maxDefLevel, elementS
                             // then break
                             Expression.Break(loopBreakLabel),
                             // else
-                            //     elementShredder.ShredValue(...)
+                            //     shredValue(...)
                             //     elementIndex <- elementIndex + 1
                             Expression.Block(
-                                elementShredder.ShredValue(
+                                Expression.Invoke(
+                                    shredElement,
                                     otherElementRepLevel,
                                     elementDefLevel,
                                     listInfo.GetElementExpr(list, elementIndex)),
@@ -233,7 +241,7 @@ type private RecordShredder(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, fi
         let fieldValues =
             recordInfo.Fields
             |> Array.map (fun fieldInfo ->
-                Expression.Variable(fieldInfo.DotnetType, $"fieldValue_{fieldInfo.Name}"))
+                Expression.Variable(fieldInfo.ValueInfo.DotnetType, "fieldValue"))
         Expression.Block(
             seq {
                 yield recordValue

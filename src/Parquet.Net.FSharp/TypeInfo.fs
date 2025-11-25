@@ -6,7 +6,6 @@ open FSharp.Reflection
 open System
 open System.Collections
 open System.Collections.Generic
-open System.Collections.ObjectModel
 open System.Linq.Expressions
 open System.Reflection
 
@@ -14,6 +13,12 @@ type ValueInfo =
     | Atomic of AtomicInfo
     | List of ListInfo
     | Record of RecordInfo
+    with
+    member this.DotnetType =
+        match this with
+        | ValueInfo.Atomic atomicInfo -> atomicInfo.DotnetType
+        | ValueInfo.List listInfo -> listInfo.DotnetType
+        | ValueInfo.Record recordInfo -> recordInfo.DotnetType
 
 // TODO: Types supported by Parquet.Net:
 
@@ -58,7 +63,6 @@ type ListInfo = {
 
 type FieldInfo = {
     Name: string
-    DotnetType: Type
     ValueInfo: ValueInfo
     GetValueExpr: Expression -> Expression }
 
@@ -404,7 +408,7 @@ module ValueInfo =
                 let name = unionCase.Name
                 let valueInfo = ValueInfo.ofUnionCaseData unionInfo unionCase
                 let getValueExpr = id
-                FieldInfo.create name dotnetType valueInfo getValueExpr)
+                FieldInfo.create name valueInfo getValueExpr)
         let isNull' = isNull
         let isNullExpr (union: Expression) =
             // TODO: This whole thing could almost certainly be made more elegant
@@ -457,16 +461,15 @@ module ValueInfo =
         let fields =
             let unionCaseField =
                 let name = "UnionCase"
-                let dotnetType = typeof<string>
                 // TODO: This should really be a non-optional string like for the union enum
                 let valueInfo = AtomicInfo.String |> ValueInfo.Atomic
                 let getValueExpr = unionInfo.GetCaseNameExpr
-                FieldInfo.create name dotnetType valueInfo getValueExpr
+                FieldInfo.create name valueInfo getValueExpr
             let dataField =
                 let name = "Data"
                 let valueInfo = ValueInfo.ofUnionData unionInfo
                 let getValueExpr = id
-                FieldInfo.create name dotnetType valueInfo getValueExpr
+                FieldInfo.create name valueInfo getValueExpr
             [| unionCaseField; dataField |]
         let isNull' = fun _ -> false
         let isNullExpr = fun (union: Expression) -> Expression.False
@@ -805,20 +808,18 @@ module private ListInfo =
             createFromElementValues createNull
 
 module private FieldInfo =
-    let create name dotnetType valueInfo getValueExpr =
+    let create name valueInfo getValueExpr =
         { FieldInfo.Name = name
-          FieldInfo.DotnetType = dotnetType
           FieldInfo.ValueInfo = valueInfo
           FieldInfo.GetValueExpr = getValueExpr }
 
     let ofProperty (field: PropertyInfo) =
         let name = field.Name
-        let dotnetType = field.PropertyType
         let valueInfo = ValueInfo.ofType field.PropertyType
         let getValueExpr (record: Expression) =
             Expression.Property(record, field)
             :> Expression
-        create name dotnetType valueInfo getValueExpr
+        create name valueInfo getValueExpr
 
 module private RecordInfo =
     let create

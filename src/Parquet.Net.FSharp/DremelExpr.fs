@@ -89,7 +89,10 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
     let columnBuilderType =
         typedefof<ColumnBuilder<_>>.MakeGenericType(atomicInfo.DataDotnetType)
 
-    let columnBuilder = Expression.Parameter(columnBuilderType, "columnBuilder")
+    let columnBuilder =
+        Expression.Parameter(
+            columnBuilderType,
+            $"columnBuilder_{field.Path.ToString().Replace('/', '_')}")
 
     let initializeColumnBuilder =
         Expression.Assign(
@@ -175,21 +178,20 @@ type private ListShredder(listInfo: ListInfo, maxRepLevel, maxDefLevel, elementS
                     Expression.Assign(elementIndex, Expression.Constant(1)),
                     Expression.Loop(
                         // while True do
-                        Expression.Block(
-                            Expression.IfThenElse(
-                                // if elementIndex < elementCount
-                                Expression.LessThan(elementIndex, elementCount),
-                                // then
-                                //     elementShredder.ShredValue(...)
-                                //     elementIndex <- elementIndex + 1
-                                Expression.Block(
-                                    elementShredder.ShredValue(
-                                        otherElementRepLevel,
-                                        elementDefLevel,
-                                        listInfo.GetElementExpr(list, elementIndex)),
-                                    Expression.AddAssign(elementIndex, Expression.Constant(1))),
-                                // else break
-                                Expression.Break(loopBreakLabel))),
+                        Expression.IfThenElse(
+                            // if elementIndex = elementCount
+                            Expression.Equal(elementIndex, elementCount),
+                            // then break
+                            Expression.Break(loopBreakLabel),
+                            // else
+                            //     elementShredder.ShredValue(...)
+                            //     elementIndex <- elementIndex + 1
+                            Expression.Block(
+                                elementShredder.ShredValue(
+                                    otherElementRepLevel,
+                                    elementDefLevel,
+                                    listInfo.GetElementExpr(list, elementIndex)),
+                                Expression.AddAssign(elementIndex, Expression.Constant(1)))),
                         loopBreakLabel))))
 
     override this.MaxRepLevel = maxRepLevel
@@ -257,9 +259,16 @@ type private RecordShredder(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, fi
         |> Seq.collect _.CollectColumnBuilderInitializers()
 
     override this.AddNull(repLevel, defLevel) =
-        Expression.Block(
-            fieldShredders
-            |> Array.map _.AddNull(repLevel, defLevel))
+        // TODO: Slight improvement to debug readability of expression by only
+        // using a block if necessary. There must be a better way of combining
+        // blocks up the tree!
+        match fieldShredders with
+        | [| fieldShredder |] ->
+            fieldShredder.AddNull(repLevel, defLevel)
+        | _ ->
+            Expression.Block(
+                fieldShredders
+                |> Array.map _.AddNull(repLevel, defLevel))
 
     override this.ShredValue(parentRepLevel, parentDefLevel, record) =
         if recordInfo.IsOptional
@@ -381,9 +390,12 @@ type Shredder<'Record>() =
                     yield Expression.Loop(
                         // while True do
                         Expression.IfThenElse(
-                            // if recordEnumerator.MoveNext()
-                            Expression.Call(recordEnumerator, enumeratorMoveNextMethod),
-                            // then
+                            // if not (recordEnumerator.MoveNext())
+                            Expression.Not(
+                                Expression.Call(recordEnumerator, enumeratorMoveNextMethod)),
+                            // then break
+                            Expression.Break(loopBreakLabel),
+                            // else
                             Expression.Block(
                                 [ record ],
                                 // let record = recordEnumerator.Current
@@ -394,9 +406,7 @@ type Shredder<'Record>() =
                                 recordShredder.ShredValue(
                                     parentRepLevel = Expression.Constant(0),
                                     parentDefLevel = Expression.Constant(0),
-                                    value = record)),
-                            // else break
-                            Expression.Break(loopBreakLabel)),
+                                    value = record))),
                         loopBreakLabel)
                     // return [|
                     //     columnBuilder1.Build()

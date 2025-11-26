@@ -42,6 +42,7 @@ type AtomicInfo = {
     DotnetType: Type
     IsOptional: bool
     DataDotnetType: Type
+    IsPrimitive: bool
     IsNull: obj -> bool
     IsNullExpr: Expression -> Expression
     GetDataValue: obj -> obj
@@ -342,6 +343,7 @@ module ValueInfo =
         // value is not optional despite being a string value.
         let isOptional = false
         let dataDotnetType = typeof<string>
+        let isPrimitive = false
         let isNull = fun _ -> false
         let isNullExpr = fun (union: Expression) -> Expression.False
         let getDataValue (unionObj: obj) =
@@ -361,7 +363,7 @@ module ValueInfo =
                 else Option.None)
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        AtomicInfo.create dotnetType isOptional dataDotnetType
+        AtomicInfo.create dotnetType isOptional dataDotnetType isPrimitive
             isNull isNullExpr getDataValue getDataValueExpr createFromDataValue createNull
         |> ValueInfo.Atomic
 
@@ -560,11 +562,12 @@ module ValueInfo =
 
 module private AtomicInfo =
     let create
-        dotnetType isOptional dataDotnetType
+        dotnetType isOptional dataDotnetType isPrimitive
         isNull isNullExpr getDataValue getDataValueExpr createFromDataValue createNull =
         { AtomicInfo.DotnetType = dotnetType
           AtomicInfo.IsOptional = isOptional
           AtomicInfo.DataDotnetType = dataDotnetType
+          AtomicInfo.IsPrimitive = isPrimitive
           AtomicInfo.IsNull = isNull
           AtomicInfo.IsNullExpr = isNullExpr
           AtomicInfo.GetDataValue = getDataValue
@@ -572,10 +575,11 @@ module private AtomicInfo =
           AtomicInfo.CreateFromDataValue = createFromDataValue
           AtomicInfo.CreateNull = createNull }
 
-    let private ofDataType<'Value> =
+    let private ofPrimitive<'Value> =
         let dotnetType = typeof<'Value>
         let isOptional = false
         let dataDotnetType = dotnetType
+        let isPrimitive = true
         let isNull = fun _ -> false
         let isNullExpr = fun (value: Expression) -> Expression.False
         let getDataValue = id
@@ -583,28 +587,29 @@ module private AtomicInfo =
         let createFromDataValue = id
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional dataDotnetType
+        create dotnetType isOptional dataDotnetType isPrimitive
             isNull isNullExpr getDataValue getDataValueExpr createFromDataValue createNull
 
-    let Bool = ofDataType<bool>
-    let Int8 = ofDataType<int8>
-    let Int16 = ofDataType<int16>
-    let Int32 = ofDataType<int>
-    let Int64 = ofDataType<int64>
-    let UInt8 = ofDataType<uint8>
-    let UInt16 = ofDataType<uint16>
-    let UInt32 = ofDataType<uint32>
-    let UInt64 = ofDataType<uint64>
-    let Float32 = ofDataType<float32>
-    let Float64 = ofDataType<float>
-    let Decimal = ofDataType<decimal>
-    let DateTime = ofDataType<DateTime>
-    let Guid = ofDataType<Guid>
+    let Bool = ofPrimitive<bool>
+    let Int8 = ofPrimitive<int8>
+    let Int16 = ofPrimitive<int16>
+    let Int32 = ofPrimitive<int>
+    let Int64 = ofPrimitive<int64>
+    let UInt8 = ofPrimitive<uint8>
+    let UInt16 = ofPrimitive<uint16>
+    let UInt32 = ofPrimitive<uint32>
+    let UInt64 = ofPrimitive<uint64>
+    let Float32 = ofPrimitive<float32>
+    let Float64 = ofPrimitive<float>
+    let Decimal = ofPrimitive<decimal>
+    let DateTime = ofPrimitive<DateTime>
+    let Guid = ofPrimitive<Guid>
 
     let DateTimeOffset =
         let dotnetType = typeof<DateTimeOffset>
         let isOptional = false
         let dataDotnetType = typeof<DateTime>
+        let isPrimitive = false
         let isNull = fun _ -> false
         let isNullExpr = fun (value: Expression) -> Expression.False
         let getDataValue (valueObj: obj) =
@@ -618,25 +623,27 @@ module private AtomicInfo =
             System.DateTimeOffset(dateTime.ToUniversalTime()) :> obj
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        create dotnetType isOptional dataDotnetType
+        create dotnetType isOptional dataDotnetType isPrimitive
             isNull isNullExpr getDataValue getDataValueExpr createFromDataValue createNull
 
     let String =
         let dotnetType = typeof<string>
         let isOptional = true
         let dataDotnetType = dotnetType
+        let isPrimitive = true
         let isNull = isNull
         let isNullExpr = Expression.EqualsNull
         let getDataValue = id
         let getDataValueExpr = id
         let createFromDataValue = id
         let createNull = fun () -> null
-        create dotnetType isOptional dataDotnetType
+        create dotnetType isOptional dataDotnetType isPrimitive
             isNull isNullExpr getDataValue getDataValueExpr createFromDataValue createNull
 
     let ofNullable (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
         let dataDotnetType = valueInfo.DataDotnetType
+        let isPrimitive = false
         let isNull = Nullable.isNull'
         let isNullExpr = Nullable.isNullExpr
         let getDataValue =
@@ -653,12 +660,13 @@ module private AtomicInfo =
                 let valueObj = valueInfo.CreateFromDataValue dataValueObj
                 createValue valueObj
         let createNull = Nullable.createNull
-        create dotnetType isOptional dataDotnetType
+        create dotnetType isOptional dataDotnetType isPrimitive
             isNull isNullExpr getDataValue getDataValueExpr createFromDataValue createNull
 
     let ofOption (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
         let dataDotnetType = valueInfo.DataDotnetType
+        let isPrimitive = false
         let isNull = Option.preComputeIsNone dotnetType
         let isNullExpr = Option.isNoneExpr valueInfo.DotnetType
         let getDataValue =
@@ -675,7 +683,7 @@ module private AtomicInfo =
                 let valueObj = valueInfo.CreateFromDataValue dataValueObj
                 createSome valueObj
         let createNull = Option.preComputeCreateNone dotnetType
-        create dotnetType isOptional dataDotnetType
+        create dotnetType isOptional dataDotnetType isPrimitive
             isNull isNullExpr getDataValue getDataValueExpr createFromDataValue createNull
 
 module private ListInfo =

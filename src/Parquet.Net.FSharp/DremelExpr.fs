@@ -41,11 +41,22 @@ type private ColumnBuilder<'DataValue>(maxRepLevel, maxDefLevel, field) =
     let incrementValueCount () =
         valueCount <- valueCount + 1
 
-    let addLevels repLevel defLevel =
-        if repLevelsRequired then
-            repLevels.Add(repLevel)
-        if defLevelsRequired then
-            defLevels.Add(defLevel)
+    let addLevels =
+        if repLevelsRequired && defLevelsRequired
+        then
+            fun repLevel defLevel ->
+                repLevels.Add(repLevel)
+                defLevels.Add(defLevel)
+        elif repLevelsRequired && not defLevelsRequired
+        then
+            fun repLevel defLevel ->
+                repLevels.Add(repLevel)
+        elif not repLevelsRequired && defLevelsRequired
+        then
+            fun repLevel defLevel ->
+                defLevels.Add(defLevel)
+        else
+            fun repLevel defLevel -> ()
 
     member this.AddNull(repLevel, defLevel) =
         addLevels repLevel defLevel
@@ -70,10 +81,6 @@ type private ColumnBuilder<'DataValue>(maxRepLevel, maxDefLevel, field) =
 
 [<AbstractClass>]
 type private ValueShredder() =
-    // TODO: Do we even need these or can they be calculated/inferred while shredding?
-    // e.g. for an optional record field that is NUTNULL we know we need to increment defLevel.
-    abstract member MaxRepLevel : int
-    abstract member MaxDefLevel : int
     abstract member CollectColumnBuilderParams : unit -> ParameterExpression seq
     abstract member CollectColumnBuilderInitializers : unit -> Expression seq
     abstract member AddNull
@@ -100,12 +107,15 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
                 Expression.Constant(maxDefLevel),
                 Expression.Constant(field)))
 
-    let addValue(repLevel, defLevel, value) =
-        let dataValue = atomicInfo.GetDataValueExpr value
-        Expression.Call(columnBuilder, "AddDataValue", [||], repLevel, defLevel, dataValue)
-
-    override this.MaxRepLevel = maxRepLevel
-    override this.MaxDefLevel = maxDefLevel
+    let addValue(repLevel, defLevel, value) : Expression =
+        if atomicInfo.IsPrimitive
+        then Expression.Call(columnBuilder, "AddDataValue", [||], repLevel, defLevel, value)
+        else
+            let dataValue = Expression.Variable(atomicInfo.DataDotnetType, "dataValue")
+            Expression.Block(
+                [ dataValue ],
+                Expression.Assign(dataValue, atomicInfo.GetDataValueExpr value),
+                Expression.Call(columnBuilder, "AddDataValue", [||], repLevel, defLevel, dataValue))
 
     override this.CollectColumnBuilderParams() =
         Seq.singleton columnBuilder
@@ -135,7 +145,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
             // the parent, so just add the value using the parent levels.
             addValue(parentRepLevel, parentDefLevel, value)
 
-type private ListShredder(listInfo: ListInfo, maxRepLevel, maxDefLevel, elementShredder: ValueShredder) =
+type private ListShredder(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, elementShredder: ValueShredder) =
     inherit ValueShredder()
 
     let shredElement =
@@ -177,7 +187,7 @@ type private ListShredder(listInfo: ListInfo, maxRepLevel, maxDefLevel, elementS
                 Expression.Block(
                     [ firstElementRepLevel; otherElementRepLevel; elementDefLevel; elementIndex ],
                     Expression.Assign(firstElementRepLevel, listRepLevel),
-                    Expression.Assign(otherElementRepLevel, Expression.Constant(elementShredder.MaxRepLevel)),
+                    Expression.Assign(otherElementRepLevel, Expression.Constant(elementMaxRepLevel)),
                     Expression.Assign(elementDefLevel, Expression.Increment(listDefLevel)),
                     Expression.Invoke(
                         shredElement,
@@ -203,9 +213,6 @@ type private ListShredder(listInfo: ListInfo, maxRepLevel, maxDefLevel, elementS
                                     listInfo.GetElementExpr(list, elementIndex)),
                                 Expression.AddAssign(elementIndex, Expression.Constant(1)))),
                         loopBreakLabel))))
-
-    override this.MaxRepLevel = maxRepLevel
-    override this.MaxDefLevel = maxDefLevel
 
     override this.CollectColumnBuilderParams() =
         elementShredder.CollectColumnBuilderParams()
@@ -235,30 +242,35 @@ type private ListShredder(listInfo: ListInfo, maxRepLevel, maxDefLevel, elementS
             // the parent, so use the parent levels when shredding the elements.
             shredElements(parentRepLevel, parentDefLevel, list)
 
-type private RecordShredder(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, fieldShredders: ValueShredder[]) =
+type private RecordShredder(recordInfo: RecordInfo, maxDefLevel, fieldShredders: ValueShredder[]) =
     inherit ValueShredder()
+
+    let shredFieldLambdas =
+        Array.zip recordInfo.Fields fieldShredders
+        |> Array.map (fun (fieldInfo, fieldShredder) ->
+            let recordRepLevel = Expression.Parameter(typeof<int>, "recordRepLevel")
+            let recordDefLevel = Expression.Parameter(typeof<int>, "recordDefLevel")
+            let recordValue = Expression.Parameter(recordInfo.ValueDotnetType, "recordValue")
+            let fieldValue = Expression.Variable(fieldInfo.ValueInfo.DotnetType, "fieldValue")
+            Expression.Lambda(
+                Expression.Block(
+                    [ fieldValue ],
+                    Expression.Assign(fieldValue, fieldInfo.GetValueExpr recordValue),
+                    fieldShredder.ShredValue(recordRepLevel, recordDefLevel, fieldValue)),
+                "shredField",
+                [ recordRepLevel; recordDefLevel; recordValue ]))
 
     let shredFields(recordRepLevel, recordDefLevel, record) =
         let recordValue = Expression.Variable(recordInfo.ValueDotnetType, "recordValue")
-        let fieldValues =
-            recordInfo.Fields
-            |> Array.map (fun fieldInfo ->
-                Expression.Variable(fieldInfo.ValueInfo.DotnetType, "fieldValue"))
         Expression.Block(
-            seq {
-                yield recordValue
-                yield! fieldValues
-            },
+            [ recordValue ],
             seq {
                 yield Expression.Assign(recordValue, recordInfo.GetValueExpr record) :> Expression
-                yield! Array.zip3 recordInfo.Fields fieldShredders fieldValues
-                    |> Array.collect (fun (fieldInfo, fieldShredder, fieldValue) ->
-                        [| Expression.Assign(fieldValue, fieldInfo.GetValueExpr recordValue) :> Expression
-                           fieldShredder.ShredValue(recordRepLevel, recordDefLevel, fieldValue) |])
+                yield! shredFieldLambdas
+                    |> Array.map (fun shredField ->
+                        Expression.Invoke(shredField, recordRepLevel, recordDefLevel, recordValue)
+                        :> Expression)
             })
-
-    override this.MaxRepLevel = maxRepLevel
-    override this.MaxDefLevel = maxDefLevel
 
     override this.CollectColumnBuilderParams() =
         fieldShredders
@@ -323,7 +335,7 @@ module private ValueShredder =
                 elementMaxRepLevel
                 elementMaxDefLevel
                 listField.Item
-        ListShredder(listInfo, listMaxRepLevel, listMaxDefLevel, elementShredder)
+        ListShredder(listInfo, listMaxDefLevel, elementMaxRepLevel, elementShredder)
         :> ValueShredder
 
     let forRecord (recordInfo: RecordInfo) parentMaxRepLevel parentMaxDefLevel (fields: Field seq) =
@@ -337,7 +349,7 @@ module private ValueShredder =
             |> Seq.map (fun (fieldInfo, field) ->
                 ValueShredder.forValue fieldInfo.ValueInfo maxRepLevel maxDefLevel field)
             |> Array.ofSeq
-        RecordShredder(recordInfo, maxRepLevel, maxDefLevel, fieldShredders)
+        RecordShredder(recordInfo, maxDefLevel, fieldShredders)
         :> ValueShredder
 
     let forValue (valueInfo: ValueInfo) parentMaxRepLevel parentMaxDefLevel (field: Field) =

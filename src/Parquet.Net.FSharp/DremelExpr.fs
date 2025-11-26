@@ -154,6 +154,8 @@ type private ListShredder(listInfo: ListInfo, maxRepLevel, maxDefLevel, elementS
         let elementDefLevel = Expression.Variable(typeof<int>, "elementDefLevel")
         let elementIndex = Expression.Variable(typeof<int>, "elementIndex")
         let loopBreakLabel = Expression.Label("loopBreak")
+        // TODO: Should probably do this using IEnumerator instead to allow
+        // support for sequences and IEnumerables
         Expression.Block(
             [ elementCount ],
             // Get the element count.

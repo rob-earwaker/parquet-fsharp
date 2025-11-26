@@ -40,8 +40,8 @@ module Random =
         Array.init count (fun _ -> createItem ())
 
 [<CPUUsageDiagnoser>]
-[<DotNetObjectAllocDiagnoser>]
-[<DotNetObjectAllocJobConfiguration>]
+//[<DotNetObjectAllocDiagnoser>]
+//[<DotNetObjectAllocJobConfiguration>]
 [<MemoryDiagnoser>]
 type ParquetSerialization() =
     let rowCount = 1_000_000
@@ -51,9 +51,9 @@ type ParquetSerialization() =
                Field2 = Random.int ()
                Field3 = Random.float () |})
 
-    //[<Benchmark>]
-    //member this.ParquetNet() =
-    //    ParquetNet.serialize records
+    [<Benchmark>]
+    member this.ParquetNet() =
+        ParquetNet.serialize records
 
     [<Benchmark>]
     member this.ParquetFSharp() =

@@ -20,6 +20,12 @@ type ValueInfo =
         | ValueInfo.List listInfo -> listInfo.DotnetType
         | ValueInfo.Record recordInfo -> recordInfo.DotnetType
 
+    member this.IsOptional =
+        match this with
+        | ValueInfo.Atomic atomicInfo -> atomicInfo.IsOptional
+        | ValueInfo.List listInfo -> listInfo.IsOptional
+        | ValueInfo.Record recordInfo -> recordInfo.IsOptional
+
 // TODO: Types supported by Parquet.Net:
 
 //   Implemented:
@@ -245,18 +251,48 @@ module ValueInfo =
             let nullableRecordInfo = RecordInfo.ofNullable dotnetType recordInfo
             ValueInfo.Record nullableRecordInfo
 
+    let private ofOptionOuter (dotnetType: Type) (valueInfo: ValueInfo) =
+        let dotnetType = dotnetType
+        let valueDotnetType = dotnetType
+        let isOptional = true
+        let fields =
+            let valueField =
+                let name = "Value"
+                let getValueExpr = Option.getValueExpr
+                FieldInfo.create name valueInfo getValueExpr
+            [| valueField |]
+        let isNull' = fun _ -> failwith "not implemented!"
+        let isNullExpr = Option.isNoneExpr valueInfo.DotnetType
+        let getValueExpr = id
+        let getFieldValues (optionObj: obj) =
+            failwith "not implemented!"
+        let createFromFieldValues =
+            let createSome = Option.preComputeCreateSome dotnetType
+            fun (fieldValues: obj[]) ->
+                createSome fieldValues[0]
+        let createNull = Option.preComputeCreateNone dotnetType
+        RecordInfo.create dotnetType valueDotnetType isOptional fields
+            isNull' isNullExpr getValueExpr getFieldValues createFromFieldValues createNull
+        |> ValueInfo.Record
+
+    let private ofOptionInner dotnetType valueInfo =
+        match valueInfo with
+        | ValueInfo.Atomic atomicInfo ->
+            AtomicInfo.ofOptionInner dotnetType atomicInfo
+            |> ValueInfo.Atomic
+        | ValueInfo.List listInfo ->
+            ListInfo.ofOptionInner dotnetType listInfo
+            |> ValueInfo.List
+        | ValueInfo.Record recordInfo ->
+            RecordInfo.ofOptionInner dotnetType recordInfo
+            |> ValueInfo.Record
+
     let private ofOption (dotnetType: Type) =
         let valueDotnetType = dotnetType.GetGenericArguments()[0]
-        match ValueInfo.ofType valueDotnetType with
-        | ValueInfo.Atomic atomicInfo ->
-            let atomicOptionInfo = AtomicInfo.ofOption dotnetType atomicInfo
-            ValueInfo.Atomic atomicOptionInfo
-        | ValueInfo.List listInfo ->
-            let listOptionInfo = ListInfo.ofOption dotnetType listInfo
-            ValueInfo.List listOptionInfo
-        | ValueInfo.Record recordInfo ->
-            let recordOptionInfo = RecordInfo.ofOption dotnetType recordInfo
-            ValueInfo.Record recordOptionInfo
+        let valueInfo = ValueInfo.ofType valueDotnetType
+        if valueInfo.IsOptional
+        then ValueInfo.ofOptionOuter dotnetType valueInfo
+        else ValueInfo.ofOptionInner dotnetType valueInfo
 
     type private UnionInfo = {
         DotnetType: Type
@@ -548,11 +584,11 @@ module ValueInfo =
                 | DotnetType.Array1d -> ValueInfo.List (ListInfo.ofArray1d dotnetType)
                 | DotnetType.List -> ValueInfo.List (ListInfo.ofList dotnetType)
                 | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
-                | DotnetType.Union -> ValueInfo.ofUnion dotnetType
                 | DotnetType.Nullable -> ValueInfo.ofNullable dotnetType
-                // TODO: Implement special handling for option types. Currently
-                // they are treated like any other union type.
                 | DotnetType.Option -> ValueInfo.ofOption dotnetType
+                // This must come after the option type since option types are
+                // handled in a special way.
+                | DotnetType.Union -> ValueInfo.ofUnion dotnetType
                 | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
             addToCache dotnetType valueInfo
             valueInfo
@@ -663,7 +699,7 @@ module private AtomicInfo =
         create dotnetType isOptional dataDotnetType isPrimitive
             isNull isNullExpr getDataValue getDataValueExpr createFromDataValue createNull
 
-    let ofOption (dotnetType: Type) (valueInfo: AtomicInfo) =
+    let ofOptionInner (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
         let dataDotnetType = valueInfo.DataDotnetType
         let isPrimitive = false
@@ -789,7 +825,7 @@ module private ListInfo =
             isNull isNullExpr getElementValues getLengthExpr getElementExpr
             createFromElementValues createNull
 
-    let ofOption (dotnetType: Type) (listInfo: ListInfo) =
+    let ofOptionInner (dotnetType: Type) (listInfo: ListInfo) =
         let isOptional = true
         let elementInfo = listInfo.ElementInfo
         let isNull = Option.preComputeIsNone dotnetType
@@ -886,7 +922,7 @@ module private RecordInfo =
         create dotnetType valueDotnetType isOptional fields
             isNull isNullExpr getValueExpr getFieldValues createFromFieldValues createNull
 
-    let ofOption dotnetType (recordInfo: RecordInfo) =
+    let ofOptionInner dotnetType (recordInfo: RecordInfo) =
         let valueDotnetType = recordInfo.DotnetType
         let isOptional = true
         let fields = recordInfo.Fields

@@ -365,15 +365,17 @@ module private ValueShredder =
             ValueShredder.forRecord recordInfo parentMaxRepLevel parentMaxDefLevel structField.Fields
 
 
-// TODO: Make this private or internal.
-type Shredder<'Record>() =
+type internal Shredder<'Record>() =
     // TODO: Currently only supports F# records but we probably want it to
     // support other type as well, e.g. classes, structs, C# records.
     let recordInfo =
         match ValueInfo.of'<'Record> with
         | ValueInfo.Record recordInfo ->
-            // TODO: The root record is never optional, so update the record info
-            // in case this is a nullable record type.
+            // Update the root record info to be non-optional. This ensures the
+            // definition levels for the schema are set correctly when
+            // generating the schema and when initializing the shredder.
+            // TODO: If this is an optional record we should check for null before
+            // shredding each record and raise an exception if a null record is encountered.
             { recordInfo with IsOptional = false }
         | _ ->
             failwith $"type {typeof<'Record>.FullName} is not a record"

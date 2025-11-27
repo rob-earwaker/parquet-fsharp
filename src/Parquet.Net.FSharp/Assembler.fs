@@ -1,30 +1,7 @@
-﻿module rec Parquet.FSharp.Dremel
+﻿namespace Parquet.FSharp
 
 open Parquet.Data
-open Parquet.Schema
 open System.Collections.Generic
-
-module private Schema =
-    let private getValueSchema fieldName valueInfo =
-        match valueInfo with
-        | ValueInfo.Atomic atomicInfo ->
-            // TODO: Should we use some of the custom DataField types here, e.g. DecimalDataField?
-            let dataType = atomicInfo.DataDotnetType
-            let isNullable = atomicInfo.IsOptional
-            DataField(fieldName, dataType, isNullable) :> Field
-        | ValueInfo.List listInfo ->
-            let element = getValueSchema ListField.ElementName listInfo.ElementInfo
-            ListField(fieldName, element) :> Field
-        | ValueInfo.Record recordInfo ->
-            let fields = getRecordFields recordInfo
-            StructField(fieldName, fields) :> Field
-
-    let private getRecordFields (recordInfo: RecordInfo) =
-        recordInfo.Fields
-        |> Array.map (fun field -> getValueSchema field.Name field.ValueInfo)
-
-    let ofRecordInfo recordInfo =
-        ParquetSchema(getRecordFields recordInfo)
 
 // TODO: Maybe more efficient to just get rid of Levels type and split into separate fields?
 type private Levels = {
@@ -277,7 +254,7 @@ type private RecordAssembler(recordInfo: RecordInfo, maxLevels, fieldAssemblers:
             let assembledRecord = AssembledValue.create firstField.Levels record
             Option.Some assembledRecord
 
-module private ValueAssembler =
+module private rec ValueAssembler =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxLevels (columns: Queue<DataColumn>) =
         let maxLevels =
             if atomicInfo.IsOptional
@@ -319,7 +296,7 @@ module private ValueAssembler =
         | ValueInfo.List listInfo -> ValueAssembler.forList listInfo parentMaxLevels columns
         | ValueInfo.Record recordInfo -> ValueAssembler.forRecord recordInfo parentMaxLevels columns
 
-type Assembler<'Record>() =
+type private Assembler<'Record>() =
     // TODO: Currently only supports F# records but we probably want it to
     // support other type as well, e.g. classes, structs, C# records.
     let recordInfo =

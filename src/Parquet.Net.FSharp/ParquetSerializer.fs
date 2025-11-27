@@ -17,7 +17,7 @@ type ParquetSerializer =
 
     static member Deserialize<'Record>(stream: Stream) =
         // TODO: Make Async and use cancellation tokens.
-        let assembler = Dremel.Assembler<'Record>()
+        let assembler = Assembler<'Record>()
         use fileReader = ParquetReader.CreateAsync(stream).Result
         // TODO: Check schema compatability.
         // TODO: Support reading multiple row groups.

@@ -44,12 +44,16 @@ module Random =
 //[<DotNetObjectAllocJobConfiguration>]
 [<MemoryDiagnoser>]
 type ParquetSerialization() =
-    let rowCount = 1_000_000
+    let rowCount = 1_000
     let records =
         Array.init rowCount (fun _ ->
             {| Field1 = Random.bool ()
                Field2 = Random.int ()
-               Field3 = Random.float () |})
+               Field3 = Random.float ()
+               Field4 = Random.array 100 (fun () ->
+                {| Field41 = Random.bool ()
+                   Field42 = Random.int ()
+                   Field43 = Random.float () |})|})
 
     [<Benchmark>]
     member this.ParquetNet() =

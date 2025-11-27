@@ -43,6 +43,7 @@ type ValueInfo =
 //     - byte[]
 //     - DateOnly, TimeOnly
 //     - TimeSpan, Interval
+//     - Enums?
 
 type AtomicInfo = {
     DotnetType: Type
@@ -57,6 +58,7 @@ type AtomicInfo = {
 type ListInfo = {
     DotnetType: Type
     IsOptional: bool
+    // TODO: Should this have a 'ValueDotnetType' like RecordInfo?
     ElementInfo: ValueInfo
     IsNullExpr: Expression -> Expression
     GetLengthExpr: Expression -> Expression

@@ -3,6 +3,8 @@
 open Parquet
 open System.IO
 
+// TODO: How will support for Parquet.Net attributes work?
+
 type ParquetSerializer =
     static member Serialize<'Record>(records: 'Record seq, stream: Stream) =
         // TODO: Make Async and use cancellation tokens.

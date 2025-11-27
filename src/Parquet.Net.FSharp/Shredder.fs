@@ -1,4 +1,4 @@
-﻿module Parquet.FSharp.DremelExpr
+﻿namespace Parquet.FSharp
 
 open Parquet.Data
 open Parquet.Schema
@@ -364,7 +364,7 @@ module private rec ValueShredder =
             let structField = field :?> StructField
             ValueShredder.forRecord recordInfo parentMaxRepLevel parentMaxDefLevel structField.Fields
 
-type internal Shredder<'Record>() =
+type private Shredder<'Record>() =
     // TODO: Currently only supports F# records but we probably want it to
     // support other type as well, e.g. classes, structs, C# records.
     let recordInfo =
@@ -452,7 +452,7 @@ type internal Shredder<'Record>() =
     member this.Shred(records: 'Record seq) =
         shred.Invoke(records)
 
-module internal Shredder =
+module private Shredder =
     let private Cache = Dictionary<Type, obj>()
 
     let private tryGetCached<'Record> =

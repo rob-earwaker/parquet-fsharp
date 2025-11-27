@@ -1,4 +1,4 @@
-﻿namespace Parquet.FSharp
+﻿module Parquet.FSharp.Deprecated
 
 open Parquet.Data
 open System.Collections.Generic
@@ -296,7 +296,7 @@ module private rec ValueAssembler =
         | ValueInfo.List listInfo -> ValueAssembler.forList listInfo parentMaxLevels columns
         | ValueInfo.Record recordInfo -> ValueAssembler.forRecord recordInfo parentMaxLevels columns
 
-type private Assembler<'Record>() =
+type internal Assembler<'Record>() =
     // TODO: Currently only supports F# records but we probably want it to
     // support other type as well, e.g. classes, structs, C# records.
     let recordInfo =

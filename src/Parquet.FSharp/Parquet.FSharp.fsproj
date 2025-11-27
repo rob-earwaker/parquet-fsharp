@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Compile Include="TypeInfo.fs" />
+    <Compile Include="Schema.fs" />
     <Compile Include="Shredder.fs" />
     <Compile Include="Assembler.fs" />
     <Compile Include="ParquetSerializer.fs" />

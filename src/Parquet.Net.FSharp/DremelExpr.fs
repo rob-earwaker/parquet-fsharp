@@ -1,4 +1,4 @@
-﻿module rec Parquet.FSharp.DremelExpr
+﻿module Parquet.FSharp.DremelExpr
 
 open Parquet.Data
 open Parquet.Schema
@@ -7,7 +7,7 @@ open System.Collections
 open System.Collections.Generic
 open System.Linq.Expressions
 
-module private Schema =
+module private rec Schema =
     let private getValueSchema fieldName valueInfo =
         match valueInfo with
         | ValueInfo.Atomic atomicInfo ->
@@ -311,7 +311,7 @@ type private RecordShredder(recordInfo: RecordInfo, maxDefLevel, fieldShredders:
             // the parent, so use the parent levels when shredding the fields.
             shredFields(parentRepLevel, parentDefLevel, record)
 
-module private ValueShredder =
+module private rec ValueShredder =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxRepLevel parentMaxDefLevel dataField =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel =
@@ -363,7 +363,6 @@ module private ValueShredder =
         | ValueInfo.Record recordInfo ->
             let structField = field :?> StructField
             ValueShredder.forRecord recordInfo parentMaxRepLevel parentMaxDefLevel structField.Fields
-
 
 type internal Shredder<'Record>() =
     // TODO: Currently only supports F# records but we probably want it to
@@ -452,3 +451,25 @@ type internal Shredder<'Record>() =
 
     member this.Shred(records: 'Record seq) =
         shred.Invoke(records)
+
+module internal Shredder =
+    let private Cache = Dictionary<Type, obj>()
+
+    let private tryGetCached<'Record> =
+        lock Cache (fun () ->
+            match Cache.TryGetValue(typeof<'Record>) with
+            | false, _ -> Option.None
+            | true, shredder ->
+                Option.Some (shredder :?> Shredder<'Record>))
+
+    let private addToCache<'Record> (shredder: Shredder<'Record>) =
+        lock Cache (fun () ->
+            Cache[typeof<'Record>] <- shredder)
+
+    let of'<'Record> =
+        match tryGetCached<'Record> with
+        | Option.Some shredder -> shredder
+        | Option.None ->
+            let shredder = Shredder<'Record>()
+            addToCache shredder
+            shredder

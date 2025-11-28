@@ -59,7 +59,7 @@ type private ColumnBuilder<'DataValue>(maxRepLevel, maxDefLevel, field) =
 
 [<AbstractClass>]
 type private ValueShredder() =
-    abstract member CollectColumnBuilderParams : unit -> ParameterExpression seq
+    abstract member CollectColumnBuilderVariables : unit -> ParameterExpression seq
     abstract member CollectColumnBuilderInitializers : unit -> Expression seq
     abstract member AddNull
         : repLevel:Expression * defLevel:Expression
@@ -74,7 +74,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
     let columnBuilderType =
         typedefof<ColumnBuilder<_>>.MakeGenericType(atomicInfo.DataDotnetType)
 
-    let columnBuilder = Expression.Parameter(columnBuilderType, "columnBuilder")
+    let columnBuilder = Expression.Variable(columnBuilderType, "columnBuilder")
 
     let initializeColumnBuilder =
         Expression.Assign(
@@ -95,7 +95,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
                 Expression.Assign(dataValue, atomicInfo.GetDataValueExpr value),
                 Expression.Call(columnBuilder, "AddDataValue", [||], repLevel, defLevel, dataValue))
 
-    override this.CollectColumnBuilderParams() =
+    override this.CollectColumnBuilderVariables() =
         Seq.singleton columnBuilder
 
     override this.CollectColumnBuilderInitializers() =
@@ -192,8 +192,8 @@ type private ListShredder(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, e
                                 Expression.AddAssign(elementIndex, Expression.Constant(1)))),
                         loopBreakLabel))))
 
-    override this.CollectColumnBuilderParams() =
-        elementShredder.CollectColumnBuilderParams()
+    override this.CollectColumnBuilderVariables() =
+        elementShredder.CollectColumnBuilderVariables()
 
     override this.CollectColumnBuilderInitializers() =
         elementShredder.CollectColumnBuilderInitializers()
@@ -250,9 +250,9 @@ type private RecordShredder(recordInfo: RecordInfo, maxDefLevel, fieldShredders:
                         :> Expression)
             })
 
-    override this.CollectColumnBuilderParams() =
+    override this.CollectColumnBuilderVariables() =
         fieldShredders
-        |> Seq.collect _.CollectColumnBuilderParams()
+        |> Seq.collect _.CollectColumnBuilderVariables()
 
     override this.CollectColumnBuilderInitializers() =
         fieldShredders
@@ -309,10 +309,7 @@ module private rec ValueShredder =
         let elementMaxDefLevel = listMaxDefLevel + 1
         let elementShredder =
             ValueShredder.forValue
-                listInfo.ElementInfo
-                elementMaxRepLevel
-                elementMaxDefLevel
-                listField.Item
+                listInfo.ElementInfo elementMaxRepLevel elementMaxDefLevel listField.Item
         ListShredder(listInfo, listMaxDefLevel, elementMaxRepLevel, elementShredder)
         :> ValueShredder
 
@@ -367,7 +364,7 @@ type private Shredder<'Record>() =
 
     let shredExpr =
         let records = Expression.Parameter(typeof<'Record seq>, "records")
-        let columnBuilderParams = recordShredder.CollectColumnBuilderParams()
+        let columnBuilderVariables = recordShredder.CollectColumnBuilderVariables()
         let recordEnumerator = Expression.Variable(typeof<IEnumerator<'Record>>, "recordEnumerator")
         let record = Expression.Variable(typeof<'Record>, "record")
         let enumeratorMoveNextMethod = typeof<IEnumerator>.GetMethod("MoveNext")
@@ -376,7 +373,7 @@ type private Shredder<'Record>() =
         Expression.Lambda<Func<'Record seq, DataColumn[]>>(
             Expression.Block(
                 seq {
-                    yield! columnBuilderParams
+                    yield! columnBuilderVariables
                     yield recordEnumerator
                 },
                 seq {
@@ -416,7 +413,7 @@ type private Shredder<'Record>() =
                     // |]
                     yield Expression.NewArrayInit(
                         typeof<DataColumn>,
-                        columnBuilderParams
+                        columnBuilderVariables
                         |> Seq.map (fun columnBuilder ->
                             Expression.Call(columnBuilder, "Build", [||])
                             :> Expression))
@@ -427,7 +424,7 @@ type private Shredder<'Record>() =
 
     member this.Schema = schema
 
-    member this.Shred(records: 'Record seq) =
+    member this.Shred(records) =
         shred.Invoke(records)
 
 module private Shredder =

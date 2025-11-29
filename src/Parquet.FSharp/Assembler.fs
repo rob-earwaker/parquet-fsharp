@@ -22,7 +22,7 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
 
     let mutable currentRepLevel = 0
     let mutable currentDefLevel = 0
-    let mutable currentValueIsDefined = true
+    let mutable currentValueIsNull = false
     let mutable currentDataValue = Unchecked.defaultof<'DataValue>
 
     let updateCurrentRepLevel =
@@ -38,9 +38,9 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
                 currentDefLevel <- defLevels[nextValueIndex]
                 if currentDefLevel < maxDefLevel
                 then
-                    currentValueIsDefined <- false
+                    currentValueIsNull <- true
                 else
-                    currentValueIsDefined <- true
+                    currentValueIsNull <- false
                     currentDataValue <- dataValues[nextDataValueIndex]
                     nextDataValueIndex <- nextDataValueIndex + 1
                 nextValueIndex <- nextValueIndex + 1
@@ -55,7 +55,7 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
 
     member val CurrentRepLevel = currentRepLevel
     member val CurrentDefLevel = currentDefLevel
-    member val CurrentValueIsDefined = currentValueIsDefined
+    member val CurrentValueIsNull = currentValueIsNull
     member val CurrentDataValue = currentDataValue
 
     member this.MoveNext() =
@@ -75,7 +75,12 @@ type AssembledValue<'Value>() =
     member this.MarkUsed() =
         this.Used <- true
 
-    member this.SetValue(repLevel, defLevel, value) =
+    member this.SetValue(value) =
+        this.Used <- false
+        this.IsDefined <- true
+        this.Value <- value
+
+    member this.SetLevelsAndValue(repLevel, defLevel, value) =
         this.Used <- false
         this.RepLevel <- repLevel
         this.DefLevel <- defLevel
@@ -95,6 +100,15 @@ type private ValueAssembler(dotnetType: Type) =
             typedefof<AssembledValue<_>>.MakeGenericType(dotnetType),
             "currentValue")
 
+    let currentValueProperty (propertyName: string) =
+        Expression.Property(currentValue, propertyName)
+        :> Expression
+
+    member this.CurrentValueRepLevel = currentValueProperty "RepLevel"
+    member this.CurrentValueDefLevel = currentValueProperty "DefLevel"
+    member this.CurrentValueIsDefined = currentValueProperty "IsDefined"
+    member this.CurrentValue = currentValueProperty "Value"
+
     member this.MarkCurrentValueUsed =
         Expression.Call(currentValue, "MarkUsed", [||], [||])
         :> Expression
@@ -103,8 +117,12 @@ type private ValueAssembler(dotnetType: Type) =
         Expression.Call(currentValue, "SetUndefined", [||], repLevel, defLevel)
         :> Expression
 
-    member this.SetCurrentValue(repLevel, defLevel, value) =
-        Expression.Call(currentValue, "SetValue", [||], repLevel, defLevel, value)
+    member this.SetCurrentValue(value: Expression) =
+        Expression.Call(currentValue, "SetValue", [||], value)
+        :> Expression
+
+    member this.SetCurrentLevelsAndValue(repLevel, defLevel, value) =
+        Expression.Call(currentValue, "SetLevelsAndValue", [||], repLevel, defLevel, value)
         :> Expression
 
     abstract member CollectColumnEnumeratorVariables : unit -> ParameterExpression seq
@@ -154,6 +172,8 @@ type private ValueAssembler(dotnetType: Type) =
 type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
     inherit ValueAssembler(atomicInfo.DotnetType)
 
+    let defLevelsRequired = maxDefLevel > 0
+
     let columnEnumeratorType =
         typedefof<ColumnEnumerator<_>>.MakeGenericType(atomicInfo.DataDotnetType)
 
@@ -169,6 +189,13 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
                 dataColumn))
         :> Expression
 
+    let columnEnumeratorProperty (propertyName: string) =
+        Expression.Property(columnEnumerator, propertyName)
+        :> Expression
+
+    let columnEnumeratorMoveNext =
+        Expression.Call(columnEnumerator, "MoveNext", [||], [||])
+
     override this.CollectColumnEnumeratorVariables() =
         Seq.singleton columnEnumerator
 
@@ -179,7 +206,35 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
         Seq.empty
 
     override this.TryAssembleNextValue =
-        failwith "not implemented!"
+        let returnValue = Expression.Label(typeof<bool>)
+        if defLevelsRequired
+        then
+            failwith "not implemented!"
+        else
+            // fun () ->
+            //     if not (columnEnumerator.MoveNext())
+            //     then false
+            //     else
+            //         let dataValue = columnEnumerator.CurrentDataValue
+            //         let value = atomicInfo.CreateFromDataValue(dataValue)
+            //         this.SetCurrentValue(value)
+            //         true
+            let dataValue = Expression.Variable(atomicInfo.DataDotnetType, "dataValue")
+            let value = Expression.Variable(atomicInfo.DotnetType, "value")
+            Expression.Lambda(
+                Expression.Block(
+                    [ dataValue; value ],
+                    Expression.IfThen(
+                        Expression.Not(columnEnumeratorMoveNext),
+                        Expression.Return(returnValue, Expression.False)),
+                    Expression.Assign(dataValue, columnEnumeratorProperty "CurrentDataValue"),
+                    Expression.Assign(value, Expression.Default(atomicInfo.DotnetType)),
+                    // TODO: Sub this in!
+                    //atomicInfo.CreateFromDataValueExpr(dataValue)),
+                    this.SetCurrentValue(value),
+                    Expression.Label(returnValue, Expression.True)),
+                "tryAssembleNextValue",
+                [||])
 
 type private ListAssembler(listInfo: ListInfo, maxRepLevel, maxDefLevel, elementAssembler: ValueAssembler) =
     inherit ValueAssembler(listInfo.DotnetType)
@@ -199,6 +254,8 @@ type private ListAssembler(listInfo: ListInfo, maxRepLevel, maxDefLevel, element
 type private RecordAssembler(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, fieldAssemblers: ValueAssembler[]) =
     inherit ValueAssembler(recordInfo.DotnetType)
 
+    let defLevelsRequired = maxDefLevel > 0
+
     override this.CollectColumnEnumeratorVariables() =
         fieldAssemblers
         |> Seq.collect _.CollectColumnEnumeratorVariables()
@@ -212,7 +269,61 @@ type private RecordAssembler(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, f
         |> Seq.collect _.CollectCurrentValueVariables()
 
     override this.TryAssembleNextValue =
-        failwith "not implemented!"
+        let fieldValues =
+            recordInfo.Fields
+            |> Array.map (fun fieldInfo ->
+                Expression.Variable(fieldInfo.ValueInfo.DotnetType, "fieldValue"))
+        let record = Expression.Variable(recordInfo.DotnetType, "record")
+        let returnValue = Expression.Label(typeof<bool>)
+        if defLevelsRequired
+        then
+            failwith "not implemented!"
+        else
+            // fun () ->
+            //     if not (fieldAssembler[0].TryReadNextValue())
+            //     then false
+            //     else
+            //         for fieldAssembler in fieldAssemblers[1..] do
+            //             fieldAssembler.TryReadNextValue |> ignore
+            //         let fieldValue1 = fieldAssembler[0].CurrentValue
+            //         let fieldValue2 = fieldAssembler[1].CurrentValue
+            //         ...
+            //         let record =
+            //             recordInfo.CreateFromFieldValues(
+            //                 fieldValue1,
+            //                 fieldValue2,
+            //                 ...)
+            //         this.SetCurrentValue(record)
+            //         true
+            Expression.Lambda(
+                Expression.Block(
+                    seq {
+                        yield! fieldValues
+                        yield record
+                    },
+                    seq<Expression> {
+                        yield Expression.IfThen(
+                            Expression.Not(fieldAssemblers[0].TryReadNextValue),
+                            Expression.Return(returnValue, Expression.False))
+                        // The record must be defined, therefore all field
+                        // values must be defined. Read all subsequent field
+                        // values and then assign all field values to their
+                        // corresponding variables without checking whether
+                        // they are defined or not.
+                        yield! fieldAssemblers[1..] |> Array.map _.TryReadNextValue
+                        yield! Array.zip fieldValues fieldAssemblers
+                            |> Array.map (fun (fieldValue, fieldAssembler) ->
+                                Expression.Assign(fieldValue, fieldAssembler.CurrentValue)
+                                :> Expression)
+                        yield Expression.Assign(
+                            record, Expression.Default(recordInfo.DotnetType))
+                            // TODO: Sub this in!
+                            //recordInfo.CreateFromFieldValuesExpr(fieldValues))
+                        yield this.SetCurrentValue(record)
+                        yield Expression.Label(returnValue, Expression.True)
+                    }),
+                "tryAssembleNextRecord",
+                [||])
 
 module private rec ValueAssembler =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxRepLevel parentMaxDefLevel =
@@ -284,7 +395,6 @@ type internal Assembler<'Record>() =
         let columnEnumeratorVariables = recordAssembler.CollectColumnEnumeratorVariables()
         let currentValueVariables = recordAssembler.CollectCurrentValueVariables() |> Array.ofSeq
         let records = Expression.Variable(typeof<ResizeArray<'Record>>, "records")
-        let record = Expression.Variable(typeof<'Record>, "record")
         let loopBreakLabel = Expression.Label("loopBreak")
         // fun (dataColumns: DataColumn[]) ->
         Expression.Lambda<Func<DataColumn[], 'Record[]>>(
@@ -314,14 +424,15 @@ type internal Assembler<'Record>() =
                             :> Expression)
                     // let records = ResizeArray<'Record>()
                     yield Expression.Assign(records, Expression.New(records.Type))
+                    // while True do
                     yield Expression.Loop(
-                        // while True do
-                        Expression.Block(
-                            [ record ],
-                            // TODO!!!
-                            Expression.Break(loopBreakLabel),
-                            // records.Add(record)
-                            Expression.Call(records, "Add", [||], record)),
+                            // if recordAssembler.TryReadNextValue()
+                            // then records.Add(recordAssembler.CurrentValue)
+                            // else break
+                            Expression.IfThenElse(
+                                recordAssembler.TryReadNextValue,
+                                Expression.Call(records, "Add", [||], recordAssembler.CurrentValue),
+                                Expression.Break(loopBreakLabel)),
                         loopBreakLabel)
                     // return records.ToArray()
                     yield Expression.Call(records, "ToArray", [||], [||])

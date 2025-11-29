@@ -22,7 +22,7 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
 
     let mutable currentRepLevel = 0
     let mutable currentDefLevel = 0
-    let mutable currentValueDefined = true
+    let mutable currentValueIsDefined = true
     let mutable currentDataValue = Unchecked.defaultof<'DataValue>
 
     let updateCurrentRepLevel =
@@ -38,9 +38,9 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
                 currentDefLevel <- defLevels[nextValueIndex]
                 if currentDefLevel < maxDefLevel
                 then
-                    currentValueDefined <- false
+                    currentValueIsDefined <- false
                 else
-                    currentValueDefined <- true
+                    currentValueIsDefined <- true
                     currentDataValue <- dataValues[nextDataValueIndex]
                     nextDataValueIndex <- nextDataValueIndex + 1
                 nextValueIndex <- nextValueIndex + 1
@@ -55,7 +55,7 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
 
     member val CurrentRepLevel = currentRepLevel
     member val CurrentDefLevel = currentDefLevel
-    member val CurrentValueDefined = currentValueDefined
+    member val CurrentValueIsDefined = currentValueIsDefined
     member val CurrentDataValue = currentDataValue
 
     member this.MoveNext() =
@@ -65,41 +65,91 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
             moveNextValue ()
             true
 
-type CurrentValue<'Value>() =
-    member val RepLevel = 0 with get, set
-    member val DefLevel = 0 with get, set
-    member val Defined = false with get, set
-    member val Value = Unchecked.defaultof<'Value> with get, set
+type AssembledValue<'Value>() =
+    member val Used = true with get, private set
+    member val RepLevel = 0 with get, private set
+    member val DefLevel = 0 with get, private set
+    member val IsDefined = true with get, private set
+    member val Value = Unchecked.defaultof<'Value> with get, private set
+
+    member this.MarkUsed() =
+        this.Used <- true
+
+    member this.SetValue(repLevel, defLevel, value) =
+        this.Used <- false
+        this.RepLevel <- repLevel
+        this.DefLevel <- defLevel
+        this.IsDefined <- true
+        this.Value <- value
+
+    member this.SetUndefined(repLevel, defLevel) =
+        this.Used <- false
+        this.RepLevel <- repLevel
+        this.DefLevel <- defLevel
+        this.IsDefined <- false
 
 [<AbstractClass>]
 type private ValueAssembler(dotnetType: Type) =
-    let currentValueVariable =
+    let currentValue =
         Expression.Variable(
-            typedefof<CurrentValue<_>>.MakeGenericType(dotnetType),
+            typedefof<AssembledValue<_>>.MakeGenericType(dotnetType),
             "currentValue")
 
-    let setCurrentValue (propertyName: string) value =
-        Expression.Assign(
-            Expression.Property(currentValueVariable, propertyName),
-            value)
+    member this.MarkCurrentValueUsed =
+        Expression.Call(currentValue, "MarkUsed", [||], [||])
+        :> Expression
 
-    member this.SetCurrentValueRepLevel(replevel) = setCurrentValue "RepLevel" replevel
-    member this.SetCurrentValueDefLevel(defLevel) = setCurrentValue "DefLevel" defLevel
-    member this.SetCurrentValueDefined(defined) = setCurrentValue "Defined" defined
-    member this.SetCurrentValue(value) = setCurrentValue "Value" value
+    member this.SetCurrentValueUndefined(repLevel, defLevel) =
+        Expression.Call(currentValue, "SetUndefined", [||], repLevel, defLevel)
+        :> Expression
+
+    member this.SetCurrentValue(repLevel, defLevel, value) =
+        Expression.Call(currentValue, "SetValue", [||], repLevel, defLevel, value)
+        :> Expression
 
     abstract member CollectColumnEnumeratorVariables : unit -> ParameterExpression seq
     abstract member CollectColumnEnumeratorInitializers : unit -> (Expression -> Expression) seq
-
     abstract member CollectChildCurrentValueVariables : unit -> ParameterExpression seq
 
     member this.CollectCurrentValueVariables() =
         seq {
             yield! this.CollectChildCurrentValueVariables()
-            yield currentValueVariable
+            yield currentValue
         }
 
-    abstract member MoveNext : LambdaExpression
+    abstract member TryAssembleNextValue : LambdaExpression
+
+    member this.TryReadNextValue =
+        let valueAvailable = Expression.Variable(typeof<bool>, "valueAvailable")
+        Expression.Block(
+            [ valueAvailable ],
+            // let valueAvailable =
+            //     not currentValue.Used
+            //     || tryAssembleNextValue ()
+            Expression.Assign(
+                valueAvailable,
+                Expression.OrElse(
+                    Expression.Not(Expression.Property(currentValue, "Used")),
+                    Expression.Invoke(this.TryAssembleNextValue))),
+            this.MarkCurrentValueUsed,
+            valueAvailable)
+        :> Expression
+
+    member this.TryPeekNextValue =
+        // There's no need to check whether the current value is used before
+        // assembling the next value. The only situation in which a value is
+        // peeked is when dealing with repeated elements of a list after the
+        // first element. Since the first element must always have a value,
+        // regardless of whether that value is DEFINED or UNDEFINED, we must
+        // always _read_ the first element of the list. This guarantees that
+        // when we peek the second element the current value (first element)
+        // must always have been used. Each subsequent element of the list will
+        // also be peeked, but only if the previous value was part of the list
+        // and therefore already marked as used. The peeked value that indicates
+        // we've reached the end of the list, i.e. that is not part of the
+        // current list, will be the first element of the next list and will
+        // therefore also be _read_ as per above.
+        Expression.Invoke(this.TryAssembleNextValue)
 
 type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
     inherit ValueAssembler(atomicInfo.DotnetType)
@@ -128,7 +178,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
     override this.CollectChildCurrentValueVariables() =
         Seq.empty
 
-    override this.MoveNext =
+    override this.TryAssembleNextValue =
         failwith "not implemented!"
 
 type private ListAssembler(listInfo: ListInfo, maxRepLevel, maxDefLevel, elementAssembler: ValueAssembler) =
@@ -143,7 +193,7 @@ type private ListAssembler(listInfo: ListInfo, maxRepLevel, maxDefLevel, element
     override this.CollectChildCurrentValueVariables() =
         elementAssembler.CollectCurrentValueVariables()
 
-    override this.MoveNext =
+    override this.TryAssembleNextValue =
         failwith "not implemented!"
 
 type private RecordAssembler(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, fieldAssemblers: ValueAssembler[]) =
@@ -161,7 +211,7 @@ type private RecordAssembler(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, f
         fieldAssemblers
         |> Seq.collect _.CollectCurrentValueVariables()
 
-    override this.MoveNext =
+    override this.TryAssembleNextValue =
         failwith "not implemented!"
 
 module private rec ValueAssembler =

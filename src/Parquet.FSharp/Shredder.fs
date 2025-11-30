@@ -92,7 +92,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
             let dataValue = Expression.Variable(atomicInfo.DataDotnetType, "dataValue")
             Expression.Block(
                 [ dataValue ],
-                Expression.Assign(dataValue, atomicInfo.GetDataValueExpr value),
+                Expression.Assign(dataValue, atomicInfo.GetDataValue value),
                 Expression.Call(columnBuilder, "AddDataValue", [||], repLevel, defLevel, dataValue))
 
     override this.CollectColumnBuilderVariables() =
@@ -109,7 +109,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
         then
             Expression.IfThenElse(
                 // The value is OPTIONAL, so check for NULL.
-                atomicInfo.IsNullExpr value,
+                atomicInfo.IsNull value,
                 // If the value is NULL, add a NULL value using the parent
                 // levels to indicate the last definition level at which a value
                 // was present.
@@ -147,7 +147,7 @@ type private ListShredder(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, e
         Expression.Block(
             [ elementCount ],
             // Get the element count.
-            Expression.Assign(elementCount, listInfo.GetLengthExpr list),
+            Expression.Assign(elementCount, listInfo.GetLength list),
             Expression.IfThenElse(
                 // Check if the list is empty.
                 Expression.Equal(elementCount, Expression.Constant(0)),
@@ -171,7 +171,7 @@ type private ListShredder(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, e
                         shredElement,
                         firstElementRepLevel,
                         elementDefLevel,
-                        listInfo.GetElementExpr(list, Expression.Constant(0))),
+                        listInfo.GetElement(list, Expression.Constant(0))),
                     Expression.Assign(elementIndex, Expression.Constant(1)),
                     Expression.Loop(
                         // while True do
@@ -188,7 +188,7 @@ type private ListShredder(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, e
                                     shredElement,
                                     otherElementRepLevel,
                                     elementDefLevel,
-                                    listInfo.GetElementExpr(list, elementIndex)),
+                                    listInfo.GetElement(list, elementIndex)),
                                 Expression.AddAssign(elementIndex, Expression.Constant(1)))),
                         loopBreakLabel))))
 
@@ -206,7 +206,7 @@ type private ListShredder(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, e
         then
             Expression.IfThenElse(
                 // The list is OPTIONAL, so check for NULL.
-                listInfo.IsNullExpr list,
+                listInfo.IsNull list,
                 // If the list is NULL, add a NULL value using the parent levels
                 // to indicate the last definition level at which a value was
                 // present.
@@ -233,7 +233,7 @@ type private RecordShredder(recordInfo: RecordInfo, maxDefLevel, fieldShredders:
             Expression.Lambda(
                 Expression.Block(
                     [ fieldValue ],
-                    Expression.Assign(fieldValue, fieldInfo.GetValueExpr recordValue),
+                    Expression.Assign(fieldValue, fieldInfo.GetValue recordValue),
                     fieldShredder.ShredValue(recordRepLevel, recordDefLevel, fieldValue)),
                 "shredField",
                 [ recordRepLevel; recordDefLevel; recordValue ]))
@@ -243,7 +243,7 @@ type private RecordShredder(recordInfo: RecordInfo, maxDefLevel, fieldShredders:
         Expression.Block(
             [ recordValue ],
             seq {
-                yield Expression.Assign(recordValue, recordInfo.GetValueExpr record) :> Expression
+                yield Expression.Assign(recordValue, recordInfo.GetValue record) :> Expression
                 yield! shredFieldLambdas
                     |> Array.map (fun shredField ->
                         Expression.Invoke(shredField, recordRepLevel, recordDefLevel, recordValue)
@@ -275,7 +275,7 @@ type private RecordShredder(recordInfo: RecordInfo, maxDefLevel, fieldShredders:
         then
             Expression.IfThenElse(
                 // The record is OPTIONAL, so check for NULL.
-                recordInfo.IsNullExpr record,
+                recordInfo.IsNull record,
                 // If the record is NULL, add a NULL value using the parent
                 // levels to indicate the last definition level at which a value
                 // was present.

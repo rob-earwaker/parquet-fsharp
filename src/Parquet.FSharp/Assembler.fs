@@ -280,62 +280,54 @@ type private RecordAssembler(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, f
         |> Seq.collect _.CollectCurrentValueVariables()
 
     override this.TryAssembleNextValue =
+        let repLevel = Expression.Variable(typeof<int>, "repLevel")
+        let defLevel = Expression.Variable(typeof<int>, "defLevel")
         let fieldValues =
             recordInfo.Fields
             |> Array.map (fun fieldInfo ->
                 Expression.Variable(fieldInfo.ValueInfo.DotnetType, "fieldValue"))
         let record = Expression.Variable(recordInfo.DotnetType, "record")
         let returnValue = Expression.Label(typeof<bool>)
-        if defLevelsRequired
-        then
-            failwith "not implemented!"
-        else
-            // fun () ->
-            //     if not (fieldAssembler[0].TryReadNextValue())
-            //     then false
-            //     else
-            //         for fieldAssembler in fieldAssemblers[1..] do
-            //             fieldAssembler.TryReadNextValue |> ignore
-            //         let fieldValue1 = fieldAssembler[0].CurrentValue
-            //         let fieldValue2 = fieldAssembler[1].CurrentValue
-            //         ...
-            //         let record =
-            //             recordInfo.CreateFromFieldValues(
-            //                 fieldValue1,
-            //                 fieldValue2,
-            //                 ...)
-            //         this.SetCurrentValue(record)
-            //         true
-            Expression.Lambda(
-                Expression.Block(
-                    seq {
-                        yield! fieldValues
-                        yield record
-                    },
-                    seq<Expression> {
-                        yield Expression.IfThen(
-                            Expression.Not(fieldAssemblers[0].TryReadNextValue),
-                            Expression.Return(returnValue, Expression.False))
-                        // The record must be defined, therefore all field
-                        // values must be defined. Read all subsequent field
-                        // values and then assign all field values to their
-                        // corresponding variables without checking whether
-                        // they are defined or not.
-                        yield! fieldAssemblers[1..] |> Array.map _.TryReadNextValue
-                        yield! Array.zip fieldValues fieldAssemblers
-                            |> Array.map (fun (fieldValue, fieldAssembler) ->
-                                Expression.Assign(fieldValue, fieldAssembler.CurrentValue)
-                                :> Expression)
-                        yield Expression.Assign(
-                            record,
-                            fieldValues
-                            |> Array.map (fun fieldValue -> fieldValue :> Expression)
-                            |> recordInfo.CreateFromFieldValuesExpr)
-                        yield this.SetCurrentValue(record)
-                        yield Expression.Label(returnValue, Expression.True)
-                    }),
-                "tryAssembleNextRecord",
-                [||])
+        Expression.Lambda(
+            Expression.Block(
+                Array.append [| repLevel; defLevel; record |] fieldValues,
+                seq<Expression> {
+                    // if not fieldAssembler1.TryReadNextValue() then
+                    //     return false
+                    yield Expression.IfThen(
+                        Expression.Not(fieldAssemblers[0].TryReadNextValue),
+                        Expression.Return(returnValue, Expression.False))
+                    // let repLevel = fieldAssembler1.CurrentValue.RepLevel
+                    // let defLevel = fieldAssembler1.CurrentValue.DefLevel
+                    yield Expression.Assign(repLevel, fieldAssemblers[0].CurrentValueRepLevel)
+                    yield Expression.Assign(defLevel, fieldAssemblers[0].CurrentValueDefLevel)
+                    // fieldAssembler2.TryReadNextValue() |> ignore
+                    // fieldAssembler3.TryReadNextValue() |> ignore
+                    // ...
+                    yield! fieldAssemblers[1..] |> Array.map _.TryReadNextValue
+                    // let fieldValue1 = fieldAssembler1.CurrentValue.Value
+                    // let fieldValue2 = fieldAssembler2.CurrentValue.Value
+                    yield! Array.zip fieldValues fieldAssemblers
+                        |> Array.map (fun (fieldValue, fieldAssembler) ->
+                            Expression.Assign(fieldValue, fieldAssembler.CurrentValue)
+                            :> Expression)
+                    // let record =
+                    //     recordInfo.CreateFromFieldValues(
+                    //         fieldValue1,
+                    //         fieldValue2,
+                    //         ...)
+                    yield Expression.Assign(
+                        record,
+                        fieldValues
+                        |> Array.map (fun fieldValue -> fieldValue :> Expression)
+                        |> recordInfo.CreateFromFieldValuesExpr)
+                    // currentValue.SetValue(repLevel, defLevel, value)
+                    yield this.SetCurrentLevelsAndValue(repLevel, defLevel, record)
+                    // return true
+                    yield Expression.Label(returnValue, Expression.True)
+                }),
+            "tryAssembleNextRecord",
+            [||])
 
 module private rec ValueAssembler =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxRepLevel parentMaxDefLevel =

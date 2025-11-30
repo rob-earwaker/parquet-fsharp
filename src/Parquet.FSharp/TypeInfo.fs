@@ -85,6 +85,7 @@ type RecordInfo = {
     CreateFromFieldValuesExpr: Expression[] -> Expression
     CreateNull: unit -> obj }
 
+// TODO: Move this into separate file!
 [<AutoOpen>]
 module ExpressionExtensions =
     type Expression with

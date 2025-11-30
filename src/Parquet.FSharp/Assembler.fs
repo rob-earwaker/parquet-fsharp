@@ -211,8 +211,8 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
                     Expression.Not(columnEnumeratorMoveNext),
                     Expression.Return(returnValue, Expression.False)),
                 // let repLevel = columnEnumerator.CurrentRepLevel
-                Expression.Assign(repLevel, columnEnumeratorProperty "CurrentRepLevel"),
                 // let defLevel = columnEnumerator.CurrentDefLevel
+                Expression.Assign(repLevel, columnEnumeratorProperty "CurrentRepLevel"),
                 Expression.Assign(defLevel, columnEnumeratorProperty "CurrentDefLevel"),
                 Expression.IfThenElse(
                     // if defLevel < maxDefLevel
@@ -296,18 +296,34 @@ type private RecordAssembler(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, f
                     // let defLevel = fieldAssembler1.CurrentValue.DefLevel
                     yield Expression.Assign(repLevel, fieldAssemblers[0].CurrentValueRepLevel)
                     yield Expression.Assign(defLevel, fieldAssemblers[0].CurrentValueDefLevel)
-                    // let record =
-                    //     recordInfo.CreateFromFieldValues(
-                    //         fieldAssembler1.CurrentValue.Value,
-                    //         fieldAssembler2.CurrentValue.Value,
-                    //         ...)
-                    yield Expression.Assign(
-                        record,
-                        fieldAssemblers
-                        |> Array.map (fun fieldAssembler -> fieldAssembler.CurrentValue)
-                        |> recordInfo.CreateFromFieldValuesExpr)
-                    // this.CurrentValue.SetValue(repLevel, defLevel, value)
-                    yield this.SetCurrentLevelsAndValue(repLevel, defLevel, record)
+                    yield Expression.IfThenElse(
+                        // if defLevel < maxDefLevel
+                        Expression.LessThan(defLevel, Expression.Constant(maxDefLevel)),
+                        // then
+                        Expression.IfThenElse(
+                            // if recordInfo.IsOptional
+                            //     && defLevel = maxDefLevel - 1
+                            Expression.And(
+                                Expression.Constant(recordInfo.IsOptional),
+                                Expression.Equal(defLevel, Expression.Constant(maxDefLevel - 1))),
+                            // then this.CurrentValue.SetValue(repLevel, defLevel, <null>)
+                            this.SetCurrentLevelsAndValue(repLevel, defLevel, recordInfo.NullExpr),
+                            // else this.CurrentValue.SetUndefined(repLevel, defLevel)
+                            this.SetCurrentValueUndefined(repLevel, defLevel)),
+                        // else
+                        Expression.Block(
+                            // let record =
+                            //     recordInfo.CreateFromFieldValues(
+                            //         fieldAssembler1.CurrentValue.Value,
+                            //         fieldAssembler2.CurrentValue.Value,
+                            //         ...)
+                            Expression.Assign(
+                                record,
+                                fieldAssemblers
+                                |> Array.map (fun fieldAssembler -> fieldAssembler.CurrentValue)
+                                |> recordInfo.CreateFromFieldValuesExpr),
+                            // this.CurrentValue.SetValue(repLevel, defLevel, value)
+                            this.SetCurrentLevelsAndValue(repLevel, defLevel, record)))
                     // return true
                     yield Expression.Label(returnValue, Expression.True)
                 }),

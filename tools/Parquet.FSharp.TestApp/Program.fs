@@ -20,18 +20,18 @@ type Data = {
     Value3: Nullable<int> }
 
 type Message = {
-    (*Id: Guid
+    Id: Guid
     Time: DateTime
-    Timestamp: DateTimeOffset*)
+    Timestamp: DateTimeOffset
     Source: string
     Level: float
-    (*Alternative: Alternative
+    (*Alternative: Alternative*)
     Flag: Nullable<bool>
     Count: int option
-    Samples: int list
+  (*  Samples: int list*)
     Gps: Gps
-    Values: Data[]
-    Money: decimal*) }
+    (*Values: Data[]*)
+    Money: decimal }
 
 module Random =
     let private Random = Random()
@@ -118,18 +118,18 @@ module Random =
           Data.Value3 = nullableInt () }
 
     let message () =
-        { (*Message.Id = guid ()
+        { Message.Id = guid ()
           Message.Time = dateTime ()
-          Message.Timestamp = dateTimeOffset ()*)
+          Message.Timestamp = dateTimeOffset ()
           Message.Source = string ()
           Message.Level = float ()
-          (*Message.Alternative = alternative ()
+         (* Message.Alternative = alternative ()*)
           Message.Flag = nullableBool ()
           Message.Count = intOption ()
-          Message.Samples = list 5 int
+       (*   Message.Samples = list 5 int*)
           Message.Gps = gps ()
-          Message.Values = array 3 data
-          Message.Money = decimal ()*) }
+        (*  Message.Values = array 3 data*)
+          Message.Money = decimal () }
 
 [<EntryPoint>]
 let main _ =

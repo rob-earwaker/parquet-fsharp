@@ -20,28 +20,28 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
     let mutable nextValueIndex = 0
     let mutable nextDataValueIndex = 0
 
-    member val CurrentRepLevel = 0 with get, private set
-    member val CurrentDefLevel = 0 with get, private set
-    member val CurrentDataValue = Unchecked.defaultof<'DataValue> with get, private set
+    let mutable currentRepLevel = 0
+    let mutable currentDefLevel = 0
+    let mutable currentDataValue = Unchecked.defaultof<'DataValue>
 
-    member private this.UpdateCurrentRepLevel =
+    let updateCurrentRepLevel =
         if repLevelsRequired
-        then fun () -> this.CurrentRepLevel <- repLevels[nextValueIndex]
+        then fun () -> currentRepLevel <- repLevels[nextValueIndex]
         else fun () -> ()
 
-    member private this.UpdateCurrentDefLevel =
+    let updateCurrentDefLevel =
         if defLevelsRequired
-        then fun () -> this.CurrentDefLevel <- defLevels[nextValueIndex]
+        then fun () -> currentDefLevel <- defLevels[nextValueIndex]
         else fun () -> ()
 
-    member this.MoveNextValue =
+    let moveNextValue =
         if defLevelsRequired
         then
             fun () ->
-                this.UpdateCurrentRepLevel()
-                this.UpdateCurrentDefLevel()
-                if this.CurrentDefLevel >= maxDefLevel then
-                    this.CurrentDataValue <- dataValues[nextDataValueIndex]
+                updateCurrentRepLevel ()
+                updateCurrentDefLevel ()
+                if currentDefLevel >= maxDefLevel then
+                    currentDataValue <- dataValues[nextDataValueIndex]
                     nextDataValueIndex <- nextDataValueIndex + 1
                 nextValueIndex <- nextValueIndex + 1
         else
@@ -50,14 +50,18 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
             // can optimize for this case by only using the next value index and
             // never setting the level fields.
             fun () ->
-                this.CurrentDataValue <- dataValues[nextValueIndex]
+                currentDataValue <- dataValues[nextValueIndex]
                 nextValueIndex <- nextValueIndex + 1
+
+    member this.CurrentRepLevel = currentRepLevel
+    member this.CurrentDefLevel = currentDefLevel
+    member this.CurrentDataValue = currentDataValue
 
     member this.MoveNext() =
         if nextValueIndex >= valueCount
         then false
         else
-            this.MoveNextValue()
+            moveNextValue ()
             true
 
 type AssembledValue<'Value>() =
@@ -70,13 +74,7 @@ type AssembledValue<'Value>() =
     member this.MarkUsed() =
         this.Used <- true
 
-    // TODO: Let's just consolidate this back to always set levels and value.
-    member this.SetValue(value) =
-        this.Used <- false
-        this.IsDefined <- true
-        this.Value <- value
-
-    member this.SetLevelsAndValue(repLevel, defLevel, value) =
+    member this.SetValue(repLevel, defLevel, value) =
         this.Used <- false
         this.RepLevel <- repLevel
         this.DefLevel <- defLevel
@@ -113,12 +111,8 @@ type private ValueAssembler(dotnetType: Type) =
         Expression.Call(currentValue, "SetUndefined", [||], repLevel, defLevel)
         :> Expression
 
-    member this.SetCurrentValue(value: Expression) =
-        Expression.Call(currentValue, "SetValue", [||], value)
-        :> Expression
-
-    member this.SetCurrentLevelsAndValue(repLevel, defLevel, value) =
-        Expression.Call(currentValue, "SetLevelsAndValue", [||], repLevel, defLevel, value)
+    member this.SetCurrentValue(repLevel, defLevel, value) =
+        Expression.Call(currentValue, "SetValue", [||], repLevel, defLevel, value)
         :> Expression
 
     abstract member CollectColumnEnumeratorVariables : unit -> ParameterExpression seq
@@ -226,7 +220,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
                             Expression.Constant(atomicInfo.IsOptional),
                             Expression.Equal(defLevel, Expression.Constant(maxDefLevel - 1))),
                         // then this.CurrentValue.SetValue(repLevel, defLevel, <null>)
-                        this.SetCurrentLevelsAndValue(repLevel, defLevel, atomicInfo.NullExpr),
+                        this.SetCurrentValue(repLevel, defLevel, atomicInfo.NullExpr),
                         // else this.CurrentValue.SetUndefined(repLevel, defLevel)
                         this.SetCurrentValueUndefined(repLevel, defLevel)),
                     // else
@@ -236,7 +230,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
                         // let value = atomicInfo.CreateFromDataValue dataValue
                         Expression.Assign(value, atomicInfo.CreateFromDataValueExpr(dataValue)),
                         // this.CurrentValue.SetValue(repLevel, defLevel, value)
-                        this.SetCurrentLevelsAndValue(repLevel, defLevel, value))),
+                        this.SetCurrentValue(repLevel, defLevel, value))),
                 // return true
                 Expression.Label(returnValue, Expression.True)),
             "tryAssembleNextValue",
@@ -307,7 +301,7 @@ type private RecordAssembler(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, f
                                 Expression.Constant(recordInfo.IsOptional),
                                 Expression.Equal(defLevel, Expression.Constant(maxDefLevel - 1))),
                             // then this.CurrentValue.SetValue(repLevel, defLevel, <null>)
-                            this.SetCurrentLevelsAndValue(repLevel, defLevel, recordInfo.NullExpr),
+                            this.SetCurrentValue(repLevel, defLevel, recordInfo.NullExpr),
                             // else this.CurrentValue.SetUndefined(repLevel, defLevel)
                             this.SetCurrentValueUndefined(repLevel, defLevel)),
                         // else
@@ -323,7 +317,7 @@ type private RecordAssembler(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, f
                                 |> Array.map (fun fieldAssembler -> fieldAssembler.CurrentValue)
                                 |> recordInfo.CreateFromFieldValuesExpr),
                             // this.CurrentValue.SetValue(repLevel, defLevel, value)
-                            this.SetCurrentLevelsAndValue(repLevel, defLevel, record)))
+                            this.SetCurrentValue(repLevel, defLevel, record)))
                     // return true
                     yield Expression.Label(returnValue, Expression.True)
                 }),

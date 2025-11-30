@@ -13,11 +13,23 @@ module ParquetNet =
         |> Async.AwaitTask
         |> Async.Ignore
         |> Async.RunSynchronously
+        stream.ToArray()
+
+    let deserialize<'Record when 'Record : (new: unit -> 'Record)> (bytes: byte[]) =
+        use stream = new MemoryStream(bytes)
+        Parquet.Serialization.ParquetSerializer.DeserializeAsync<'Record>(stream)
+        |> Async.AwaitTask
+        |> Async.RunSynchronously
 
 module ParquetFSharp =
     let serialize (records: 'Record seq) =
         use stream = new MemoryStream()
         Parquet.FSharp.ParquetSerializer.Serialize(records, stream)
+        stream.ToArray()
+
+    let deserialize<'Record> (bytes: byte[]) =
+        use stream = new MemoryStream(bytes)
+        Parquet.FSharp.ParquetSerializer.Deserialize<'Record>(stream)
 
 module Random =
     let private Random = Random()
@@ -63,7 +75,34 @@ type ParquetSerialization() =
     member this.ParquetFSharp() =
         ParquetFSharp.serialize records
 
+[<CLIMutable>]
+type Record = {
+    Field1: bool
+    Field2: int
+    Field3: float }
+
+[<CPUUsageDiagnoser>]
+//[<DotNetObjectAllocDiagnoser>]
+//[<DotNetObjectAllocJobConfiguration>]
+[<MemoryDiagnoser>]
+type ParquetDeserialization() =
+    let rowCount = 100_000
+    let records =
+        Array.init rowCount (fun _ ->
+            { Record.Field1 = Random.bool ()
+              Record.Field2 = Random.int ()
+              Record.Field3 = Random.float () })
+    let bytes = ParquetNet.serialize records
+
+    [<Benchmark>]
+    member this.ParquetNet() =
+        ParquetNet.deserialize<Record> bytes
+
+    [<Benchmark>]
+    member this.ParquetFSharp() =
+        ParquetFSharp.deserialize<Record> bytes
+
 [<EntryPoint>]
 let main _ =
-    let summary = BenchmarkRunner.Run<ParquetSerialization>()
+    let summary = BenchmarkRunner.Run<ParquetDeserialization>()
     0

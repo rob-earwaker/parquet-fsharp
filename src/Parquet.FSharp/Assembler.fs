@@ -20,28 +20,28 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
     let mutable nextValueIndex = 0
     let mutable nextDataValueIndex = 0
 
-    let mutable currentRepLevel = 0
-    let mutable currentDefLevel = 0
-    let mutable currentValueIsNull = false
-    let mutable currentDataValue = Unchecked.defaultof<'DataValue>
+    member val CurrentRepLevel = 0 with get, private set
+    member val CurrentDefLevel = 0 with get, private set
+    member val CurrentValueIsNull = false with get, private set
+    member val CurrentDataValue = Unchecked.defaultof<'DataValue> with get, private set
 
-    let updateCurrentRepLevel =
+    member private this.UpdateCurrentRepLevel =
         if repLevelsRequired
-        then fun () -> currentRepLevel <- repLevels[nextValueIndex]
+        then fun () -> this.CurrentRepLevel <- repLevels[nextValueIndex]
         else fun () -> ()
 
-    let moveNextValue =
+    member this.MoveNextValue =
         if defLevelsRequired
         then
             fun () ->
-                updateCurrentRepLevel ()
-                currentDefLevel <- defLevels[nextValueIndex]
-                if currentDefLevel < maxDefLevel
+                this.UpdateCurrentRepLevel()
+                this.CurrentDefLevel <- defLevels[nextValueIndex]
+                if this.CurrentDefLevel < maxDefLevel
                 then
-                    currentValueIsNull <- true
+                    this.CurrentValueIsNull <- true
                 else
-                    currentValueIsNull <- false
-                    currentDataValue <- dataValues[nextDataValueIndex]
+                    this.CurrentValueIsNull <- false
+                    this.CurrentDataValue <- dataValues[nextDataValueIndex]
                     nextDataValueIndex <- nextDataValueIndex + 1
                 nextValueIndex <- nextValueIndex + 1
         else
@@ -50,19 +50,14 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
             // can optimize for this case by only using the next value index and
             // never setting the level fields.
             fun () ->
-                currentDataValue <- dataValues[nextValueIndex]
+                this.CurrentDataValue <- dataValues[nextValueIndex]
                 nextValueIndex <- nextValueIndex + 1
-
-    member val CurrentRepLevel = currentRepLevel
-    member val CurrentDefLevel = currentDefLevel
-    member val CurrentValueIsNull = currentValueIsNull
-    member val CurrentDataValue = currentDataValue
 
     member this.MoveNext() =
         if nextValueIndex >= valueCount
         then false
         else
-            moveNextValue ()
+            this.MoveNextValue()
             true
 
 type AssembledValue<'Value>() =
@@ -228,9 +223,10 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
                         Expression.Not(columnEnumeratorMoveNext),
                         Expression.Return(returnValue, Expression.False)),
                     Expression.Assign(dataValue, columnEnumeratorProperty "CurrentDataValue"),
-                    Expression.Assign(value, Expression.Default(atomicInfo.DotnetType)),
-                    // TODO: Sub this in!
-                    //atomicInfo.CreateFromDataValueExpr(dataValue)),
+                    // TODO: The value variable and assignment are unecessary if it's a primitive value.
+                    Expression.Assign(
+                        value,
+                        atomicInfo.CreateFromDataValueExpr(dataValue)),
                     this.SetCurrentValue(value),
                     Expression.Label(returnValue, Expression.True)),
                 "tryAssembleNextValue",
@@ -316,9 +312,10 @@ type private RecordAssembler(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, f
                                 Expression.Assign(fieldValue, fieldAssembler.CurrentValue)
                                 :> Expression)
                         yield Expression.Assign(
-                            record, Expression.Default(recordInfo.DotnetType))
-                            // TODO: Sub this in!
-                            //recordInfo.CreateFromFieldValuesExpr(fieldValues))
+                            record,
+                            fieldValues
+                            |> Array.map (fun fieldValue -> fieldValue :> Expression)
+                            |> recordInfo.CreateFromFieldValuesExpr)
                         yield this.SetCurrentValue(record)
                         yield Expression.Label(returnValue, Expression.True)
                     }),

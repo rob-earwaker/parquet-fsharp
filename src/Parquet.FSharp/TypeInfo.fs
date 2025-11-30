@@ -53,12 +53,14 @@ type AtomicInfo = {
     IsNullExpr: Expression -> Expression
     GetDataValueExpr: Expression -> Expression
     CreateFromDataValue: obj -> obj
+    CreateFromDataValueExpr: Expression -> Expression
     CreateNull: unit -> obj }
 
 type ListInfo = {
     DotnetType: Type
     IsOptional: bool
     // TODO: Should this have a 'ValueDotnetType' like RecordInfo?
+    // Probably useful when it's an optional list to save calling .Value all the time.
     ElementInfo: ValueInfo
     IsNullExpr: Expression -> Expression
     GetLengthExpr: Expression -> Expression
@@ -79,6 +81,7 @@ type RecordInfo = {
     IsNullExpr: Expression -> Expression
     GetValueExpr: Expression -> Expression
     CreateFromFieldValues: obj[] -> obj
+    CreateFromFieldValuesExpr: Expression[] -> Expression
     CreateNull: unit -> obj }
 
 [<AutoOpen>]
@@ -98,6 +101,10 @@ module ExpressionExtensions =
             |> Array.reduce (fun combined value ->
                 Expression.AndAlso(combined, value))
 
+        static member FailWith(message: string) =
+            Expression.Throw(Expression.Constant(exn(message)))
+            :> Expression
+
 module private Nullable =
     let preComputeCreateValue (dotnetType: Type) =
         let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
@@ -114,6 +121,13 @@ module private Nullable =
     let getValueExpr (nullableValue: Expression) =
         Expression.Property(nullableValue, "Value")
         :> Expression
+
+    let createValueExpr dotnetType =
+        let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
+        let constructor = dotnetType.GetConstructor([| valueDotnetType |])
+        fun (value: Expression) ->
+            Expression.New(constructor, value)
+            :> Expression
 
 module private Option =
     let private getSomeCase dotnetType =
@@ -146,6 +160,13 @@ module private Option =
     let getValueExpr (valueOption: Expression) =
         Expression.Property(valueOption, "Value")
         :> Expression
+
+    let createSomeExpr dotnetType =
+        let someCase = getSomeCase dotnetType
+        let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(someCase)
+        fun (value: Expression) ->
+            Expression.Call(constructorMethod, value)
+            :> Expression
 
 module private DotnetType =
     let private ActivePatternTypeMatch<'Type> dotnetType =
@@ -247,9 +268,13 @@ module ValueInfo =
             let createSome = Option.preComputeCreateSome dotnetType
             fun (fieldValues: obj[]) ->
                 createSome fieldValues[0]
+        let createFromFieldValuesExpr =
+            let createSome = Option.createSomeExpr dotnetType
+            fun (fieldValues: Expression[]) ->
+                createSome fieldValues[0]
         let createNull = Option.preComputeCreateNone dotnetType
         RecordInfo.create dotnetType valueDotnetType isOptional fields
-            isNullExpr getValueExpr createFromFieldValues createNull
+            isNullExpr getValueExpr createFromFieldValues createFromFieldValuesExpr createNull
         |> ValueInfo.Record
 
     let private ofOptionInner dotnetType valueInfo =
@@ -285,7 +310,8 @@ module ValueInfo =
         Name: string
         Fields: PropertyInfo[]
         GetFieldValues: obj -> obj[]
-        CreateFromFieldValues: obj[] -> obj }
+        CreateFromFieldValues: obj[] -> obj
+        CreateFromFieldValuesExpr: Expression[] -> Expression  }
 
     module private UnionInfo =
         let ofUnion dotnetType =
@@ -294,13 +320,19 @@ module ValueInfo =
                 |> Array.map (fun unionCase ->
                     let getFieldValues = FSharpValue.PreComputeUnionReader(unionCase)
                     let createFromFieldValues = FSharpValue.PreComputeUnionConstructor(unionCase)
+                    let createFromFieldValuesExpr =
+                        let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(unionCase)
+                        fun (fieldValues: Expression[]) ->
+                            Expression.Call(constructorMethod, fieldValues)
+                            :> Expression
                     { UnionCaseInfo.UnionDotnetType = dotnetType
                       UnionCaseInfo.Tag = unionCase.Tag
                       UnionCaseInfo.TagExpr = Expression.Constant(unionCase.Tag)
                       UnionCaseInfo.Name = unionCase.Name
                       UnionCaseInfo.Fields = unionCase.GetFields()
                       UnionCaseInfo.GetFieldValues = getFieldValues
-                      UnionCaseInfo.CreateFromFieldValues = createFromFieldValues })
+                      UnionCaseInfo.CreateFromFieldValues = createFromFieldValues
+                      UnionCaseInfo.CreateFromFieldValuesExpr = createFromFieldValuesExpr })
             let getTag = FSharpValue.PreComputeUnionTagReader(dotnetType)
             let getTagExpr =
                 // TODO: Can some of these options be removed in practice? Do we even
@@ -324,10 +356,9 @@ module ValueInfo =
                     failwith $"unsupported tag member info type '{memberInfo.GetType().FullName}'"
             let getCaseNameExpr (union: Expression) =
                 let tag = Expression.Variable(typeof<int>, "tag")
-                let throwInvalidTagExn =
-                    Expression.Throw(
-                        Expression.Constant(
-                            exn($"union of type '{dotnetType.FullName}' has invalid tag value")))
+                let failWithInvalidTag =
+                    Expression.FailWith(
+                        $"union of type '{dotnetType.FullName}' has invalid tag value")
                 let returnLabel = Expression.Label(typeof<string>, "caseName")
                 Expression.Block(
                     [ tag ],
@@ -339,7 +370,7 @@ module ValueInfo =
                             let test = Expression.Equal(tag, Expression.Constant(caseInfo.Tag))
                             let ifTrue = Expression.Return(returnLabel, Expression.Constant(caseInfo.Name))
                             Expression.IfThenElse(test, ifTrue, ifFalse))
-                        throwInvalidTagExn,
+                        failWithInvalidTag,
                     Expression.Label(returnLabel, Expression.Constant(null, typeof<string>)))
                 :> Expression
             { UnionInfo.DotnetType = dotnetType
@@ -366,10 +397,26 @@ module ValueInfo =
                 if unionCase.Name = unionCaseName
                 then Option.Some (unionCase.CreateFromFieldValues [||])
                 else Option.None)
+        let createFromDataValueExpr (caseName: Expression) =
+            let failWithInvalidName =
+                Expression.FailWith(
+                    $"union of type '{dotnetType.FullName}' has invalid name value")
+            let returnLabel = Expression.Label(dotnetType, "union")
+            Expression.Block(
+                unionInfo.UnionCases
+                |> Array.rev
+                |> Array.fold
+                    (fun (ifFalse: Expression) caseInfo ->
+                        let test = Expression.Equal(caseName, Expression.Constant(caseInfo.Name))
+                        let ifTrue = Expression.Return(returnLabel, caseInfo.CreateFromFieldValuesExpr [||])
+                        Expression.IfThenElse(test, ifTrue, ifFalse))
+                    failWithInvalidName,
+                Expression.Label(returnLabel))
+            :> Expression
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
         AtomicInfo.create dotnetType isOptional dataDotnetType isPrimitive
-            isNullExpr getDataValueExpr createFromDataValue createNull
+            isNullExpr getDataValueExpr createFromDataValue createFromDataValueExpr createNull
         |> ValueInfo.Atomic
 
     let private ofUnionCaseData (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
@@ -388,9 +435,10 @@ module ValueInfo =
         // passed through to the root.
         let createFromFieldValues (fieldValues: obj[]) =
             fieldValues :> obj
+        let createFromFieldValuesExpr = unionCase.CreateFromFieldValuesExpr
         let createNull = fun () -> null
         RecordInfo.create dotnetType valueDotnetType isOptional fields
-            isNullExpr getValueExpr createFromFieldValues createNull
+            isNullExpr getValueExpr createFromFieldValues createFromFieldValuesExpr createNull
         |> ValueInfo.Record
 
     let private ofUnionData (unionInfo: UnionInfo) =
@@ -436,9 +484,27 @@ module ValueInfo =
             // relevant field here instead of the built-in isNull function.
             |> Array.filter (fun fieldValue -> not (isNull fieldValue))
             |> Array.exactlyOne
+        let createFromFieldValuesExpr (fieldValues: Expression[]) =
+            let failWithAllCaseDataNull =
+                Expression.FailWith(
+                    $"all case data fields are null for union of type '{dotnetType.FullName}'")
+            let returnLabel = Expression.Label(dotnetType, "union")
+            Expression.Block(
+                Array.zip unionCasesWithFields fieldValues
+                |> Array.rev
+                |> Array.fold
+                    (fun (ifFalse: Expression) (caseInfo, fieldValue) ->
+                        // TODO: Should technically use the 'IsNull' function from the
+                        // relevant field here instead checking directly.
+                        let test = Expression.Equal(fieldValue, Expression.Null)
+                        let ifTrue = Expression.Return(returnLabel, fieldValue)
+                        Expression.IfThenElse(test, ifTrue, ifFalse))
+                    failWithAllCaseDataNull,
+                Expression.Label(returnLabel))
+            :> Expression
         let createNull = fun () -> null
         RecordInfo.create dotnetType valueDotnetType isOptional fields
-            isNullExpr getValueExpr createFromFieldValues createNull
+            isNullExpr getValueExpr createFromFieldValues createFromFieldValuesExpr createNull
         |> ValueInfo.Record
 
     let private ofUnionComplex (unionInfo: UnionInfo) =
@@ -475,10 +541,36 @@ module ValueInfo =
                         then [||]
                         else fieldValues[1] :?> obj[]
                     Option.Some (unionCase.CreateFromFieldValues fieldValues))
+        let createFromFieldValuesExpr (fieldValues: Expression[]) =
+            let caseName = Expression.Variable(typeof<string>, "caseName")
+            let caseData = Expression.Variable(dotnetType, "caseData")
+            let failWithInvalidName =
+                Expression.FailWith(
+                    $"union of type '{dotnetType.FullName}' has invalid name value")
+            let returnLabel = Expression.Label(dotnetType, "union")
+            Expression.Block(
+                [ caseName; caseData ],
+                Expression.Assign(caseName, fieldValues[0]),
+                Expression.Assign(caseData, fieldValues[1]),
+                Expression.IfThenElse(
+                    // TODO: Common expression IsNull(value)
+                    Expression.Not(Expression.Equal(caseData, Expression.Null)),
+                    Expression.Return(returnLabel, caseData),
+                    unionInfo.UnionCases
+                    |> Array.rev
+                    |> Array.fold
+                        (fun (ifFalse: Expression) caseInfo ->
+                            let test = Expression.Equal(caseName, Expression.Constant(caseInfo.Name))
+                            let union = caseInfo.CreateFromFieldValuesExpr [||]
+                            let ifTrue = Expression.Return(returnLabel, union)
+                            Expression.IfThenElse(test, ifTrue, ifFalse))
+                        failWithInvalidName),
+                Expression.Label(returnLabel))
+            :> Expression
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
         RecordInfo.create dotnetType valueDotnetType isOptional fields
-            isNullExpr getValueExpr createFromFieldValues createNull
+            isNullExpr getValueExpr createFromFieldValues createFromFieldValuesExpr createNull
         |> ValueInfo.Record
 
     let private ofUnion dotnetType =
@@ -535,7 +627,7 @@ module ValueInfo =
 module private AtomicInfo =
     let create
         dotnetType isOptional dataDotnetType isPrimitive
-        isNullExpr getDataValueExpr createFromDataValue createNull =
+        isNullExpr getDataValueExpr createFromDataValue createFromDataValueExpr createNull =
         { AtomicInfo.DotnetType = dotnetType
           AtomicInfo.IsOptional = isOptional
           AtomicInfo.DataDotnetType = dataDotnetType
@@ -543,6 +635,7 @@ module private AtomicInfo =
           AtomicInfo.IsNullExpr = isNullExpr
           AtomicInfo.GetDataValueExpr = getDataValueExpr
           AtomicInfo.CreateFromDataValue = createFromDataValue
+          AtomicInfo.CreateFromDataValueExpr = createFromDataValueExpr
           AtomicInfo.CreateNull = createNull }
 
     let private ofPrimitive<'Value> =
@@ -553,10 +646,11 @@ module private AtomicInfo =
         let isNullExpr = fun (value: Expression) -> Expression.False
         let getDataValueExpr = id
         let createFromDataValue = id
+        let createFromDataValueExpr = id
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
         create dotnetType isOptional dataDotnetType isPrimitive
-            isNullExpr getDataValueExpr createFromDataValue createNull
+            isNullExpr getDataValueExpr createFromDataValue createFromDataValueExpr createNull
 
     let Bool = ofPrimitive<bool>
     let Int8 = ofPrimitive<int8>
@@ -585,10 +679,15 @@ module private AtomicInfo =
         let createFromDataValue (dataValueObj: obj) =
             let dateTime = dataValueObj :?> DateTime
             System.DateTimeOffset(dateTime.ToUniversalTime()) :> obj
+        let createFromDataValueExpr (dataValue: Expression) =
+            Expression.New(
+                typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
+                Expression.Call(dataValue, "ToUniversalTime", [||], [||]))
+            :> Expression
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
         create dotnetType isOptional dataDotnetType isPrimitive
-            isNullExpr getDataValueExpr createFromDataValue createNull
+            isNullExpr getDataValueExpr createFromDataValue createFromDataValueExpr createNull
 
     let String =
         let dotnetType = typeof<string>
@@ -598,9 +697,10 @@ module private AtomicInfo =
         let isNullExpr = Expression.EqualsNull
         let getDataValueExpr = id
         let createFromDataValue = id
+        let createFromDataValueExpr = id
         let createNull = fun () -> null
         create dotnetType isOptional dataDotnetType isPrimitive
-            isNullExpr getDataValueExpr createFromDataValue createNull
+            isNullExpr getDataValueExpr createFromDataValue createFromDataValueExpr createNull
 
     let ofNullable (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
@@ -615,9 +715,14 @@ module private AtomicInfo =
             fun dataValueObj ->
                 let valueObj = valueInfo.CreateFromDataValue dataValueObj
                 createValue valueObj
+        let createFromDataValueExpr =
+            let createValue = Nullable.createValueExpr dotnetType
+            fun (dataValue: Expression) ->
+                let value = valueInfo.CreateFromDataValueExpr dataValue
+                createValue value
         let createNull = Nullable.createNull
         create dotnetType isOptional dataDotnetType isPrimitive
-            isNullExpr getDataValueExpr createFromDataValue createNull
+            isNullExpr getDataValueExpr createFromDataValue createFromDataValueExpr createNull
 
     let ofOptionInner (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
@@ -632,9 +737,14 @@ module private AtomicInfo =
             fun dataValueObj ->
                 let valueObj = valueInfo.CreateFromDataValue dataValueObj
                 createSome valueObj
+        let createFromDataValueExpr =
+            let createSome = Option.createSomeExpr dotnetType
+            fun (dataValue: Expression) ->
+                let value = valueInfo.CreateFromDataValueExpr dataValue
+                createSome value
         let createNull = Option.preComputeCreateNone dotnetType
         create dotnetType isOptional dataDotnetType isPrimitive
-            isNullExpr getDataValueExpr createFromDataValue createNull
+            isNullExpr getDataValueExpr createFromDataValue createFromDataValueExpr createNull
 
 module private ListInfo =
     let private create
@@ -759,7 +869,7 @@ module private FieldInfo =
 module private RecordInfo =
     let create
         dotnetType valueDotnetType isOptional fields
-        isNullExpr getValueExpr createFromFieldValues createNull =
+        isNullExpr getValueExpr createFromFieldValues createFromFieldValuesExpr createNull =
         { RecordInfo.DotnetType = dotnetType
           RecordInfo.ValueDotnetType = valueDotnetType
           RecordInfo.IsOptional = isOptional
@@ -767,6 +877,7 @@ module private RecordInfo =
           RecordInfo.IsNullExpr = isNullExpr
           RecordInfo.GetValueExpr = getValueExpr
           RecordInfo.CreateFromFieldValues = createFromFieldValues
+          RecordInfo.CreateFromFieldValuesExpr = createFromFieldValuesExpr
           RecordInfo.CreateNull = createNull }
 
     let ofRecord dotnetType =
@@ -783,10 +894,15 @@ module private RecordInfo =
         let isNullExpr = fun (record: Expression) -> Expression.False
         let getValueExpr = id
         let createFromFieldValues = FSharpValue.PreComputeRecordConstructor(dotnetType)
+        let createFromFieldValuesExpr =
+            let constructor = FSharpValue.PreComputeRecordConstructorInfo(dotnetType)
+            fun (fieldValues: Expression[]) ->
+                Expression.New(constructor, fieldValues)
+                :> Expression
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
         create dotnetType valueDotnetType isOptional fields
-            isNullExpr getValueExpr createFromFieldValues createNull
+            isNullExpr getValueExpr createFromFieldValues createFromFieldValuesExpr createNull
 
     let ofNullable dotnetType (recordInfo: RecordInfo) =
         let valueDotnetType = recordInfo.DotnetType
@@ -799,9 +915,14 @@ module private RecordInfo =
             fun (fieldValues: obj[]) ->
                 let record = recordInfo.CreateFromFieldValues fieldValues
                 createValue record
+        let createFromFieldValuesExpr =
+            let createValue = Nullable.createValueExpr dotnetType
+            fun (fieldValues: Expression[]) ->
+                let record = recordInfo.CreateFromFieldValuesExpr fieldValues
+                createValue record
         let createNull = Nullable.createNull
         create dotnetType valueDotnetType isOptional fields
-            isNullExpr getValueExpr createFromFieldValues createNull
+            isNullExpr getValueExpr createFromFieldValues createFromFieldValuesExpr createNull
 
     let ofOptionInner dotnetType (recordInfo: RecordInfo) =
         let valueDotnetType = recordInfo.DotnetType
@@ -814,6 +935,11 @@ module private RecordInfo =
             fun (fieldValues: obj[]) ->
                 let record = recordInfo.CreateFromFieldValues fieldValues
                 createSome record
+        let createFromFieldValuesExpr =
+            let createSome = Option.createSomeExpr dotnetType
+            fun (fieldValues: Expression[]) ->
+                let record = recordInfo.CreateFromFieldValuesExpr fieldValues
+                createSome record
         let createNull = Option.preComputeCreateNone dotnetType
         create dotnetType valueDotnetType isOptional fields
-            isNullExpr getValueExpr createFromFieldValues createNull
+            isNullExpr getValueExpr createFromFieldValues createFromFieldValuesExpr createNull

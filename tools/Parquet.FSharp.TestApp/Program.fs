@@ -22,8 +22,8 @@ type Data = {
 type Message = {
     (*Id: Guid
     Time: DateTime
-    Timestamp: DateTimeOffset
-    Source: string*)
+    Timestamp: DateTimeOffset*)
+    Source: string
     Level: float
     (*Alternative: Alternative
     Flag: Nullable<bool>
@@ -120,8 +120,8 @@ module Random =
     let message () =
         { (*Message.Id = guid ()
           Message.Time = dateTime ()
-          Message.Timestamp = dateTimeOffset ()
-          Message.Source = string ()*)
+          Message.Timestamp = dateTimeOffset ()*)
+          Message.Source = string ()
           Message.Level = float ()
           (*Message.Alternative = alternative ()
           Message.Flag = nullableBool ()

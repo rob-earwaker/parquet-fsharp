@@ -22,6 +22,7 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
 
     member val CurrentRepLevel = 0 with get, private set
     member val CurrentDefLevel = 0 with get, private set
+    // TODO: I don't think this will be used and has a confusing name anyway.
     member val CurrentValueIsNull = false with get, private set
     member val CurrentDataValue = Unchecked.defaultof<'DataValue> with get, private set
 
@@ -70,6 +71,7 @@ type AssembledValue<'Value>() =
     member this.MarkUsed() =
         this.Used <- true
 
+    // TODO: Let's just consolidate this back to always set levels and value.
     member this.SetValue(value) =
         this.Used <- false
         this.IsDefined <- true
@@ -167,8 +169,6 @@ type private ValueAssembler(dotnetType: Type) =
 type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
     inherit ValueAssembler(atomicInfo.DotnetType)
 
-    let defLevelsRequired = maxDefLevel > 0
-
     let columnEnumeratorType =
         typedefof<ColumnEnumerator<_>>.MakeGenericType(atomicInfo.DataDotnetType)
 
@@ -201,36 +201,51 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
         Seq.empty
 
     override this.TryAssembleNextValue =
+        let repLevel = Expression.Variable(typeof<int>, "repLevel")
+        let defLevel = Expression.Variable(typeof<int>, "defLevel")
+        let dataValue = Expression.Variable(atomicInfo.DataDotnetType, "dataValue")
+        let value = Expression.Variable(atomicInfo.DotnetType, "value")
         let returnValue = Expression.Label(typeof<bool>)
-        if defLevelsRequired
-        then
-            failwith "not implemented!"
-        else
-            // fun () ->
-            //     if not (columnEnumerator.MoveNext())
-            //     then false
-            //     else
-            //         let dataValue = columnEnumerator.CurrentDataValue
-            //         let value = atomicInfo.CreateFromDataValue(dataValue)
-            //         this.SetCurrentValue(value)
-            //         true
-            let dataValue = Expression.Variable(atomicInfo.DataDotnetType, "dataValue")
-            let value = Expression.Variable(atomicInfo.DotnetType, "value")
-            Expression.Lambda(
-                Expression.Block(
-                    [ dataValue; value ],
-                    Expression.IfThen(
-                        Expression.Not(columnEnumeratorMoveNext),
-                        Expression.Return(returnValue, Expression.False)),
-                    Expression.Assign(dataValue, columnEnumeratorProperty "CurrentDataValue"),
-                    // TODO: The value variable and assignment are unecessary if it's a primitive value.
-                    Expression.Assign(
-                        value,
-                        atomicInfo.CreateFromDataValueExpr(dataValue)),
-                    this.SetCurrentValue(value),
-                    Expression.Label(returnValue, Expression.True)),
-                "tryAssembleNextValue",
-                [||])
+        // fun () ->
+        Expression.Lambda(
+            Expression.Block(
+                [ repLevel; defLevel; dataValue; value ],
+                // if not columnEnumerator.MoveNext() then
+                //     return false
+                Expression.IfThen(
+                    Expression.Not(columnEnumeratorMoveNext),
+                    Expression.Return(returnValue, Expression.False)),
+                // let repLevel = columnEnumerator.CurrentRepLevel
+                Expression.Assign(repLevel, columnEnumeratorProperty "CurrentRepLevel"),
+                // let defLevel = columnEnumerator.CurrentDefLevel
+                Expression.Assign(defLevel, columnEnumeratorProperty "CurrentDefLevel"),
+                Expression.IfThenElse(
+                    // if defLevel < maxDefLevel
+                    Expression.LessThan(defLevel, Expression.Constant(maxDefLevel)),
+                    // then
+                    Expression.IfThenElse(
+                        // TODO: Use >>> before pseudo code so we can also add normal comments
+                        // if atomicInfo.IsOptional
+                        //     && defLevel = maxDefLevel - 1
+                        Expression.And(
+                            Expression.Constant(atomicInfo.IsOptional),
+                            Expression.Equal(defLevel, Expression.Constant(maxDefLevel - 1))),
+                        // then currentValue.SetValue(repLevel, defLevel, <null>)
+                        this.SetCurrentLevelsAndValue(repLevel, defLevel, atomicInfo.NullExpr),
+                        // else currentValue.SetUndefined(repLevel, defLevel)
+                        this.SetCurrentValueUndefined(repLevel, defLevel)),
+                    // else
+                    Expression.Block(
+                        // let dataValue = columnEnumerator.CurrentDataValue
+                        Expression.Assign(dataValue, columnEnumeratorProperty "CurrentDataValue"),
+                        // let value = atomicInfo.CreateFromDataValue dataValue
+                        Expression.Assign(value, atomicInfo.CreateFromDataValueExpr(dataValue)),
+                        // currentValue.SetValue(repLevel, defLevel, value)
+                        this.SetCurrentLevelsAndValue(repLevel, defLevel, value))),
+                // return true
+                Expression.Label(returnValue, Expression.True)),
+            "tryAssembleNextValue",
+            [||])
 
 type private ListAssembler(listInfo: ListInfo, maxRepLevel, maxDefLevel, elementAssembler: ValueAssembler) =
     inherit ValueAssembler(listInfo.DotnetType)

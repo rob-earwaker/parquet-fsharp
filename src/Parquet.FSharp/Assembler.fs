@@ -22,8 +22,6 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
 
     member val CurrentRepLevel = 0 with get, private set
     member val CurrentDefLevel = 0 with get, private set
-    // TODO: I don't think this will be used and has a confusing name anyway.
-    member val CurrentValueIsNull = false with get, private set
     member val CurrentDataValue = Unchecked.defaultof<'DataValue> with get, private set
 
     member private this.UpdateCurrentRepLevel =
@@ -31,17 +29,18 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
         then fun () -> this.CurrentRepLevel <- repLevels[nextValueIndex]
         else fun () -> ()
 
+    member private this.UpdateCurrentDefLevel =
+        if defLevelsRequired
+        then fun () -> this.CurrentDefLevel <- defLevels[nextValueIndex]
+        else fun () -> ()
+
     member this.MoveNextValue =
         if defLevelsRequired
         then
             fun () ->
                 this.UpdateCurrentRepLevel()
-                this.CurrentDefLevel <- defLevels[nextValueIndex]
-                if this.CurrentDefLevel < maxDefLevel
-                then
-                    this.CurrentValueIsNull <- true
-                else
-                    this.CurrentValueIsNull <- false
+                this.UpdateCurrentDefLevel()
+                if this.CurrentDefLevel >= maxDefLevel then
                     this.CurrentDataValue <- dataValues[nextDataValueIndex]
                     nextDataValueIndex <- nextDataValueIndex + 1
                 nextValueIndex <- nextValueIndex + 1
@@ -136,35 +135,31 @@ type private ValueAssembler(dotnetType: Type) =
 
     member this.TryReadNextValue =
         let valueAvailable = Expression.Variable(typeof<bool>, "valueAvailable")
-        Expression.Block(
-            [ valueAvailable ],
-            // let valueAvailable =
-            //     not currentValue.Used
-            //     || tryAssembleNextValue ()
-            Expression.Assign(
-                valueAvailable,
-                Expression.OrElse(
-                    Expression.Not(Expression.Property(currentValue, "Used")),
-                    Expression.Invoke(this.TryAssembleNextValue))),
-            this.MarkCurrentValueUsed,
-            valueAvailable)
-        :> Expression
+        Expression.Lambda(
+            Expression.Block(
+                [ valueAvailable ],
+                // let valueAvailable = this.TryPeekNextValue()
+                Expression.Assign(
+                    valueAvailable,
+                    Expression.Invoke(this.TryPeekNextValue)),
+                // this.CurrentValue.MarkUsed()
+                this.MarkCurrentValueUsed,
+                // return valueAvailable
+                valueAvailable),
+            "tryReadNextValue",
+            [||])
 
     member this.TryPeekNextValue =
-        // There's no need to check whether the current value is used before
-        // assembling the next value. The only situation in which a value is
-        // peeked is when dealing with repeated elements of a list after the
-        // first element. Since the first element must always have a value,
-        // regardless of whether that value is DEFINED or UNDEFINED, we must
-        // always _read_ the first element of the list. This guarantees that
-        // when we peek the second element the current value (first element)
-        // must always have been used. Each subsequent element of the list will
-        // also be peeked, but only if the previous value was part of the list
-        // and therefore already marked as used. The peeked value that indicates
-        // we've reached the end of the list, i.e. that is not part of the
-        // current list, will be the first element of the next list and will
-        // therefore also be _read_ as per above.
-        Expression.Invoke(this.TryAssembleNextValue)
+        Expression.Lambda(
+            Expression.OrElse(
+                Expression.Not(Expression.Property(currentValue, "Used")),
+                Expression.Invoke(this.TryAssembleNextValue)),
+            "tryPeekNextValue",
+            [||])
+        :> Expression
+
+    member this.SkipPeekedValue =
+        this.MarkCurrentValueUsed
 
 type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
     inherit ValueAssembler(atomicInfo.DotnetType)
@@ -205,7 +200,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
         let defLevel = Expression.Variable(typeof<int>, "defLevel")
         let dataValue = Expression.Variable(atomicInfo.DataDotnetType, "dataValue")
         let value = Expression.Variable(atomicInfo.DotnetType, "value")
-        let returnValue = Expression.Label(typeof<bool>)
+        let returnValue = Expression.Label(typeof<bool>, "valueAvailable")
         // fun () ->
         Expression.Lambda(
             Expression.Block(
@@ -230,9 +225,9 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
                         Expression.And(
                             Expression.Constant(atomicInfo.IsOptional),
                             Expression.Equal(defLevel, Expression.Constant(maxDefLevel - 1))),
-                        // then currentValue.SetValue(repLevel, defLevel, <null>)
+                        // then this.CurrentValue.SetValue(repLevel, defLevel, <null>)
                         this.SetCurrentLevelsAndValue(repLevel, defLevel, atomicInfo.NullExpr),
-                        // else currentValue.SetUndefined(repLevel, defLevel)
+                        // else this.CurrentValue.SetUndefined(repLevel, defLevel)
                         this.SetCurrentValueUndefined(repLevel, defLevel)),
                     // else
                     Expression.Block(
@@ -240,7 +235,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
                         Expression.Assign(dataValue, columnEnumeratorProperty "CurrentDataValue"),
                         // let value = atomicInfo.CreateFromDataValue dataValue
                         Expression.Assign(value, atomicInfo.CreateFromDataValueExpr(dataValue)),
-                        // currentValue.SetValue(repLevel, defLevel, value)
+                        // this.CurrentValue.SetValue(repLevel, defLevel, value)
                         this.SetCurrentLevelsAndValue(repLevel, defLevel, value))),
                 // return true
                 Expression.Label(returnValue, Expression.True)),
@@ -265,8 +260,6 @@ type private ListAssembler(listInfo: ListInfo, maxRepLevel, maxDefLevel, element
 type private RecordAssembler(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, fieldAssemblers: ValueAssembler[]) =
     inherit ValueAssembler(recordInfo.DotnetType)
 
-    let defLevelsRequired = maxDefLevel > 0
-
     override this.CollectColumnEnumeratorVariables() =
         fieldAssemblers
         |> Seq.collect _.CollectColumnEnumeratorVariables()
@@ -282,46 +275,38 @@ type private RecordAssembler(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, f
     override this.TryAssembleNextValue =
         let repLevel = Expression.Variable(typeof<int>, "repLevel")
         let defLevel = Expression.Variable(typeof<int>, "defLevel")
-        let fieldValues =
-            recordInfo.Fields
-            |> Array.map (fun fieldInfo ->
-                Expression.Variable(fieldInfo.ValueInfo.DotnetType, "fieldValue"))
         let record = Expression.Variable(recordInfo.DotnetType, "record")
-        let returnValue = Expression.Label(typeof<bool>)
+        let returnValue = Expression.Label(typeof<bool>, "valueAvailable")
         Expression.Lambda(
             Expression.Block(
-                Array.append [| repLevel; defLevel; record |] fieldValues,
+                [ repLevel; defLevel; record ],
                 seq<Expression> {
-                    // if not fieldAssembler1.TryReadNextValue() then
+                    // if not fieldAssembler1.TryReadNextValue()
+                    //     || not fieldAssembler2.TryReadNextValue()
+                    //     || ... then
                     //     return false
                     yield Expression.IfThen(
-                        Expression.Not(fieldAssemblers[0].TryReadNextValue),
+                        fieldAssemblers
+                        |> Array.map (fun fieldAssembler ->
+                            Expression.Not(Expression.Invoke(fieldAssembler.TryReadNextValue))
+                            :> Expression)
+                        |> Expression.OrElse,
                         Expression.Return(returnValue, Expression.False))
                     // let repLevel = fieldAssembler1.CurrentValue.RepLevel
                     // let defLevel = fieldAssembler1.CurrentValue.DefLevel
                     yield Expression.Assign(repLevel, fieldAssemblers[0].CurrentValueRepLevel)
                     yield Expression.Assign(defLevel, fieldAssemblers[0].CurrentValueDefLevel)
-                    // fieldAssembler2.TryReadNextValue() |> ignore
-                    // fieldAssembler3.TryReadNextValue() |> ignore
-                    // ...
-                    yield! fieldAssemblers[1..] |> Array.map _.TryReadNextValue
-                    // let fieldValue1 = fieldAssembler1.CurrentValue.Value
-                    // let fieldValue2 = fieldAssembler2.CurrentValue.Value
-                    yield! Array.zip fieldValues fieldAssemblers
-                        |> Array.map (fun (fieldValue, fieldAssembler) ->
-                            Expression.Assign(fieldValue, fieldAssembler.CurrentValue)
-                            :> Expression)
                     // let record =
                     //     recordInfo.CreateFromFieldValues(
-                    //         fieldValue1,
-                    //         fieldValue2,
+                    //         fieldAssembler1.CurrentValue.Value,
+                    //         fieldAssembler2.CurrentValue.Value,
                     //         ...)
                     yield Expression.Assign(
                         record,
-                        fieldValues
-                        |> Array.map (fun fieldValue -> fieldValue :> Expression)
+                        fieldAssemblers
+                        |> Array.map (fun fieldAssembler -> fieldAssembler.CurrentValue)
                         |> recordInfo.CreateFromFieldValuesExpr)
-                    // currentValue.SetValue(repLevel, defLevel, value)
+                    // this.CurrentValue.SetValue(repLevel, defLevel, value)
                     yield this.SetCurrentLevelsAndValue(repLevel, defLevel, record)
                     // return true
                     yield Expression.Label(returnValue, Expression.True)
@@ -434,7 +419,7 @@ type internal Assembler<'Record>() =
                             // then records.Add(recordAssembler.CurrentValue)
                             // else break
                             Expression.IfThenElse(
-                                recordAssembler.TryReadNextValue,
+                                Expression.Invoke(recordAssembler.TryReadNextValue),
                                 Expression.Call(records, "Add", [||], recordAssembler.CurrentValue),
                                 Expression.Break(loopBreakLabel)),
                         loopBreakLabel)

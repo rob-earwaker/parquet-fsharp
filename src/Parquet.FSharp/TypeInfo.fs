@@ -100,6 +100,11 @@ module ExpressionExtensions =
             Expression.Equal(value, Expression.Null(value.Type))
             :> Expression
 
+        static member OrElse([<ParamArray>] values: Expression[]) =
+            values
+            |> Array.reduce (fun combined value ->
+                Expression.OrElse(combined, value))
+
         static member AndAlso([<ParamArray>] values: Expression[]) =
             values
             |> Array.reduce (fun combined value ->

@@ -248,11 +248,14 @@ type private ListAssembler(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, 
     override this.TryAssembleNextValue =
         let firstElementRepLevel = Expression.Variable(typeof<int>, "firstElementRepLevel")
         let firstElementDefLevel = Expression.Variable(typeof<int>, "firstElementDefLevel")
-        let elementDotnetType = listInfo.ElementInfo.DotnetType
-        let elementValues = Expression.Variable(typedefof<ResizeArray<_>>.MakeGenericType(elementDotnetType))
+        let elementValues =
+            Expression.Variable(
+                typedefof<ResizeArray<_>>.MakeGenericType(listInfo.ElementInfo.DotnetType),
+                "elementValues")
         let list = Expression.Variable(listInfo.DotnetType, "list")
         let loopBreakLabel = Expression.Label("loopBreak")
         let returnValue = Expression.Label(typeof<bool>, "valueAvailable")
+        // fun () ->
         Expression.Lambda(
             Expression.Block(
                 [ firstElementRepLevel; firstElementDefLevel; elementValues; list ],
@@ -267,8 +270,8 @@ type private ListAssembler(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, 
                     // whether or not to read more elements based on the definition level of this
                     // first element value.
                     // ---
-                    // --- if not elementAssembler.TryReadNextValue() then
-                    // ---    return false
+                    // if not elementAssembler.TryReadNextValue() then
+                    //    return false
                     yield Expression.IfThen(
                         Expression.Not(Expression.Invoke(elementAssembler.TryReadNextValue)),
                         Expression.Return(returnValue, Expression.False))
@@ -281,98 +284,97 @@ type private ListAssembler(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, 
                     // repeated, the repetition level of the first element indicates the repetition
                     // level of the list.
                     // ---
-                    // --- let firstElementRepLevel = elementAssembler.CurrentValue.RepLevel
-                    // --- let firstElementDefLevel = elementAssembler.CurrentValue.DefLevel
+                    // let firstElementRepLevel = elementAssembler.CurrentValue.RepLevel
+                    // let firstElementDefLevel = elementAssembler.CurrentValue.DefLevel
                     yield Expression.Assign(firstElementRepLevel, elementAssembler.CurrentValueRepLevel)
                     yield Expression.Assign(firstElementDefLevel, elementAssembler.CurrentValueDefLevel)
                     yield Expression.IfThenElse(
                         // If the definition level of the first element is equal to the maximum
                         // definition level of the list then the list is DEFINED and empty.
                         // ---
-                        // --- if firstElementDefLevel = maxDefLevel
+                        // if firstElementDefLevel = maxDefLevel
                         Expression.Equal(firstElementDefLevel, Expression.Constant(maxDefLevel)),
-                        // --- then
-                        // ---     this.CurrentValue.SetValue(
-                        // ---         firstElementRepLevel,
-                        // ---         firstElementDefLevel,
-                        // ---         <empty>)
+                        // then
+                        //     this.CurrentValue.SetValue(
+                        //         firstElementRepLevel,
+                        //         firstElementDefLevel,
+                        //         <empty>)
                         this.SetCurrentValue(
                             firstElementRepLevel,
                             firstElementDefLevel,
                             listInfo.CreateEmptyExpr),
-                        // --- else
+                        // else
                         Expression.IfThenElse(
                             // If the list is optional and the definition level of the first element
                             // is one less than the maximum definition level of the list then the
                             // list is DEFINED, but NULL.
                             // ---
-                            // --- if listInfo.IsOptional
-                            // ---     && firstElementDefLevel = maxDefLevel - 1
+                            // if listInfo.IsOptional
+                            //     && firstElementDefLevel = maxDefLevel - 1
                             Expression.And(
                                 Expression.Constant(listInfo.IsOptional),
                                 Expression.Equal(
                                     firstElementDefLevel,
                                     Expression.Constant(maxDefLevel - 1))),
-                            // --- then
-                            // ---     this.CurrentValue.SetValue(
-                            // ---         firstElementRepLevel,
-                            // ---         firstElementDefLevel,
-                            // ---         <null>)
+                            // then
+                            //     this.CurrentValue.SetValue(
+                            //         firstElementRepLevel,
+                            //         firstElementDefLevel,
+                            //         <null>)
                             this.SetCurrentValue(
                                 firstElementRepLevel,
                                 firstElementDefLevel,
                                 listInfo.CreateNullExpr),
-                            // --- else
+                            // else
                             Expression.IfThenElse(
                                 // If the list is not NULL or empty and the definition level of the first
                                 // element is less than the max definition level of the list then the list
                                 // is UNDEFINED.
                                 // ---
-                                // --- if firstElementDefLevel < maxDefLevel
+                                // if firstElementDefLevel < maxDefLevel
                                 Expression.LessThan(firstElementDefLevel, Expression.Constant(maxDefLevel)),
-                                // --- then
-                                // ---     this.CurrentValue.SetUndefined(
-                                // ---         firstElementRepLevel,
-                                // ---         firstElementDefLevel)
+                                // then
+                                //     this.CurrentValue.SetUndefined(
+                                //         firstElementRepLevel,
+                                //         firstElementDefLevel)
                                 this.SetCurrentValueUndefined(firstElementRepLevel, firstElementDefLevel),
-                                // --- else
+                                // else
                                 Expression.Block(
                                     // If the list is not empty, NULL or UNDEFINED then it has one
                                     // or more DEFINED elements, so we need to construct it. Create
                                     // a new collection to hold the element values and add the first
                                     // element.
                                     // ---
-                                    // --- let elementValues = ResizeArray<'Element>()
-                                    // --- elementValues.Add(elementAssembler.CurrentValue.Value)
+                                    // let elementValues = ResizeArray<'Element>()
+                                    // elementValues.Add(elementAssembler.CurrentValue.Value)
                                     Expression.Assign(elementValues, Expression.New(elementValues.Type)),
                                     Expression.Call(elementValues, "Add", [||], elementAssembler.CurrentValue),
                                     // Enumerate subsequent elements until we either reach the end
                                     // of the data set or find an element with a repetition level
-                                    // less than the element maximum repetition level. Add the
-                                    // enumerated values to the collection as we go to build the
+                                    // less than the element maximum repetition level. In the latter
+                                    // case, this final element will form part of another list so we
+                                    // don't want to include it in the current list. For this reason
+                                    // we iterate by peeking the next element and only add it to the
+                                    // collection of element values if it is part of the current
                                     // list.
                                     Expression.Loop(
-                                        // --- while True do
+                                        // while True do
                                         Expression.IfThenElse(
-                                            // --- if not elementAssembler.TryPeekNextValue()
-                                            Expression.Not(Expression.Invoke(elementAssembler.TryPeekNextValue)),
-                                            // --- then break
-                                            Expression.Break(loopBreakLabel),
-                                            // --- else
-                                            Expression.IfThenElse(
-                                                // --- if elementAssembler.CurrentValue.RepLevel < elementMaxRepLevel
+                                            // if not elementAssembler.TryPeekNextValue()
+                                            //     || elementAssembler.CurrentValue.RepLevel < elementMaxRepLevel
+                                            Expression.OrElse(
+                                                Expression.Not(Expression.Invoke(elementAssembler.TryPeekNextValue)),
                                                 Expression.LessThan(
                                                     elementAssembler.CurrentValueRepLevel,
-                                                    Expression.Constant(elementMaxRepLevel)),
-                                                // --- then break
-                                                Expression.Break(loopBreakLabel),
-                                                // --- else
-                                                // ---     elementValues.Add(elementAssembler.CurrentValue.Value)
-                                                // ---     elementAssembler.SkipPeekedValue()
-                                                Expression.Block(
-                                                    Expression.Call(elementValues, "Add", [||], elementAssembler.CurrentValue),
-                                                    elementAssembler.SkipPeekedValue))
-                                            ),
+                                                    Expression.Constant(elementMaxRepLevel))),
+                                            // then break
+                                            Expression.Break(loopBreakLabel),
+                                            // else
+                                            //     elementValues.Add(elementAssembler.CurrentValue.Value)
+                                            //     elementAssembler.SkipPeekedValue()
+                                            Expression.Block(
+                                                Expression.Call(elementValues, "Add", [||], elementAssembler.CurrentValue),
+                                                elementAssembler.SkipPeekedValue)),
                                         loopBreakLabel),
                                     Expression.Assign(list, listInfo.CreateFromElementValuesExpr elementValues),
                                     this.SetCurrentValue(
@@ -405,6 +407,7 @@ type private RecordAssembler(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, f
         let defLevel = Expression.Variable(typeof<int>, "defLevel")
         let record = Expression.Variable(recordInfo.DotnetType, "record")
         let returnValue = Expression.Label(typeof<bool>, "valueAvailable")
+        // fun () ->
         Expression.Lambda(
             Expression.Block(
                 [ repLevel; defLevel; record ],

@@ -221,7 +221,13 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
-    let (|List|_|) (dotnetType: Type) =
+    let (|GenericList|_|) (dotnetType: Type) =
+        if dotnetType.IsGenericType
+            && dotnetType.GetGenericTypeDefinition() = typedefof<ResizeArray<_>>
+        then Option.Some ()
+        else Option.None
+
+    let (|FSharpList|_|) (dotnetType: Type) =
         if dotnetType.IsGenericType
             && dotnetType.GetGenericTypeDefinition() = typedefof<list<_>>
         then Option.Some ()
@@ -641,7 +647,8 @@ module ValueInfo =
                 | DotnetType.String -> ValueInfo.Atomic AtomicInfo.String
                 | DotnetType.Guid -> ValueInfo.Atomic AtomicInfo.Guid
                 | DotnetType.Array1d -> ValueInfo.List (ListInfo.ofArray1d dotnetType)
-                | DotnetType.List -> ValueInfo.List (ListInfo.ofList dotnetType)
+                | DotnetType.GenericList -> ValueInfo.List (ListInfo.ofGenericList dotnetType)
+                | DotnetType.FSharpList -> ValueInfo.List (ListInfo.ofFSharpList dotnetType)
                 | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
                 | DotnetType.Nullable -> ValueInfo.ofNullable dotnetType
                 | DotnetType.Option -> ValueInfo.ofOption dotnetType
@@ -836,7 +843,29 @@ module private ListInfo =
             createFromElementValues createNull
             createNullExpr createEmptyExpr createFromElementValuesExpr
 
-    let ofList (dotnetType: Type) =
+    let ofGenericList (dotnetType: Type) =
+        let isOptional = true
+        let elementDotnetType = dotnetType.GetGenericArguments()[0]
+        let elementInfo = ValueInfo.ofType elementDotnetType
+        let isNull = Expression.EqualsNull
+        let getLength (list: Expression) =
+            Expression.Property(list, "Count")
+            :> Expression
+        let getElement (list: Expression, index: Expression) =
+            Expression.MakeIndex(list, dotnetType.GetProperty("Item"), [ index ])
+            :> Expression
+        let createFromElementValues (elementValues: IList) =
+            failwith "not supported"
+        let createNull = fun () -> null
+        let createNullExpr = Expression.Null(dotnetType)
+        let createEmptyExpr = Expression.New(dotnetType)
+        let createFromElementValuesExpr = id
+        create dotnetType isOptional elementInfo
+            isNull getLength getElement
+            createFromElementValues createNull
+            createNullExpr createEmptyExpr createFromElementValuesExpr
+
+    let ofFSharpList (dotnetType: Type) =
         // TODO: F# lists are not nullable by default, however Parquet.Net
         // does not support list fields that aren't nullable and a nullable
         // list field class can't easily be created since some of the relevant

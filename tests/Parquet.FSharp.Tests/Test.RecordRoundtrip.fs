@@ -5,7 +5,7 @@ open Parquet.FSharp
 open System
 open System.IO
 
-let testRecordRoundtrip<'Record when 'Record : equality> (records: 'Record[]) =
+let testRecordRoundtrip<'Record> (records: 'Record[]) =
     use stream = new MemoryStream()
     ParquetSerializer.Serialize<'Record>(records, stream)
     stream.Seek(0, SeekOrigin.Begin) |> ignore

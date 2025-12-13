@@ -55,7 +55,6 @@ type AtomicInfo = {
     CreateFromDataValue: obj -> obj
     CreateFromDataValueExpr: Expression -> Expression
     CreateNull: unit -> obj
-    // TODO: Rename to CreateNullExpr
     CreateNullExpr: Expression }
 
 type ListInfo = {
@@ -88,7 +87,6 @@ type RecordInfo = {
     CreateFromFieldValues: obj[] -> obj
     CreateFromFieldValuesExpr: Expression[] -> Expression
     CreateNull: unit -> obj
-    // TODO: Rename to CreateNullExpr
     CreateNullExpr: Expression }
 
 // TODO: Move this into separate file!

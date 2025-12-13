@@ -1,7 +1,5 @@
 module Parquet.FSharp.Tests.RecordRoundtrip
 
-open FluentAssertions
-open FluentAssertions.Equivalency
 open FsCheck.Xunit
 open Parquet.FSharp
 open System
@@ -12,13 +10,7 @@ let testRecordRoundtrip<'Record when 'Record : equality> (records: 'Record[]) =
     ParquetSerializer.Serialize<'Record>(records, stream)
     stream.Seek(0, SeekOrigin.Begin) |> ignore
     let roundtrippedRecords = ParquetSerializer.Deserialize<'Record>(stream)
-    let configureEquivalencyOptions (options: EquivalencyOptions<'Record>) =
-        options.AllowingInfiniteRecursion()
-            .WithStrictOrdering()
-            .WithStrictTyping()
-    roundtrippedRecords.Should()
-        .BeEquivalentTo(records, configureEquivalencyOptions)
-    |> ignore
+    Assert.structurallyEqual records roundtrippedRecords
 
 [<Property>]
 let ``bool field`` records =

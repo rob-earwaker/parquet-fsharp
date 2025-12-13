@@ -55,7 +55,8 @@ type AtomicInfo = {
     CreateFromDataValue: obj -> obj
     CreateFromDataValueExpr: Expression -> Expression
     CreateNull: unit -> obj
-    NullExpr: Expression }
+    // TODO: Rename to CreateNullExpr
+    CreateNullExpr: Expression }
 
 type ListInfo = {
     DotnetType: Type
@@ -67,7 +68,10 @@ type ListInfo = {
     GetLength: Expression -> Expression
     GetElement: Expression * Expression -> Expression
     CreateFromElementValues: IList -> obj
-    CreateNull: unit -> obj }
+    CreateNull: unit -> obj
+    CreateNullExpr: Expression
+    CreateEmptyExpr: Expression
+    CreateFromElementValuesExpr: Expression -> Expression }
 
 type FieldInfo = {
     Name: string
@@ -84,7 +88,8 @@ type RecordInfo = {
     CreateFromFieldValues: obj[] -> obj
     CreateFromFieldValuesExpr: Expression[] -> Expression
     CreateNull: unit -> obj
-    NullExpr: Expression }
+    // TODO: Rename to CreateNullExpr
+    CreateNullExpr: Expression }
 
 // TODO: Move this into separate file!
 [<AutoOpen>]
@@ -139,7 +144,7 @@ module private Nullable =
             Expression.New(constructor, value)
             :> Expression
 
-    let nullExpr dotnetType =
+    let createNullExpr dotnetType =
         Expression.Null(dotnetType)
 
 module private Option =
@@ -181,7 +186,7 @@ module private Option =
             Expression.Call(constructorMethod, value)
             :> Expression
 
-    let noneExpr dotnetType =
+    let createNoneExpr dotnetType =
         let noneCase = getNoneCase dotnetType
         let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(noneCase)
         Expression.Call(constructorMethod, [||])
@@ -292,9 +297,9 @@ module ValueInfo =
             fun (fieldValues: Expression[]) ->
                 createSome fieldValues[0]
         let createNull = Option.preComputeCreateNone dotnetType
-        let nullExpr = Option.noneExpr dotnetType
+        let createNullExpr = Option.createNoneExpr dotnetType
         RecordInfo.create dotnetType valueDotnetType isOptional fields
-            isNull getValue createFromFieldValues createFromFieldValuesExpr createNull nullExpr
+            isNull getValue createFromFieldValues createFromFieldValuesExpr createNull createNullExpr
         |> ValueInfo.Record
 
     let private ofOptionInner dotnetType valueInfo =
@@ -430,13 +435,13 @@ module ValueInfo =
             :> Expression
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        let nullExpr =
+        let createNullExpr =
             Expression.Block(
                 Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
                 Expression.Default(dotnetType))
             :> Expression
         AtomicInfo.create dotnetType isOptional dataDotnetType isPrimitive
-            isNull getDataValue createFromDataValue createFromDataValueExpr createNull nullExpr
+            isNull getDataValue createFromDataValue createFromDataValueExpr createNull createNullExpr
         |> ValueInfo.Atomic
 
     let private ofUnionCaseData (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
@@ -457,9 +462,9 @@ module ValueInfo =
             fieldValues :> obj
         let createFromFieldValuesExpr = unionCase.CreateFromFieldValuesExpr
         let createNull = fun () -> null
-        let nullExpr = Expression.Null(dotnetType)
+        let createNullExpr = Expression.Null(dotnetType)
         RecordInfo.create dotnetType valueDotnetType isOptional fields
-            isNull getValue createFromFieldValues createFromFieldValuesExpr createNull nullExpr
+            isNull getValue createFromFieldValues createFromFieldValuesExpr createNull createNullExpr
         |> ValueInfo.Record
 
     let private ofUnionData (unionInfo: UnionInfo) =
@@ -524,9 +529,9 @@ module ValueInfo =
                 Expression.Label(returnLabel))
             :> Expression
         let createNull = fun () -> null
-        let nullExpr = Expression.Null(dotnetType)
+        let createNullExpr = Expression.Null(dotnetType)
         RecordInfo.create dotnetType valueDotnetType isOptional fields
-            isNull' getValue createFromFieldValues createFromFieldValuesExpr createNull nullExpr
+            isNull' getValue createFromFieldValues createFromFieldValuesExpr createNull createNullExpr
         |> ValueInfo.Record
 
     let private ofUnionComplex (unionInfo: UnionInfo) =
@@ -590,13 +595,13 @@ module ValueInfo =
             :> Expression
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        let nullExpr =
+        let createNullExpr =
             Expression.Block(
                 Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
                 Expression.Default(dotnetType))
             :> Expression
         RecordInfo.create dotnetType valueDotnetType isOptional fields
-            isNull getValue createFromFieldValues createFromFieldValuesExpr createNull nullExpr
+            isNull getValue createFromFieldValues createFromFieldValuesExpr createNull createNullExpr
         |> ValueInfo.Record
 
     let private ofUnion dotnetType =
@@ -653,7 +658,7 @@ module ValueInfo =
 module private AtomicInfo =
     let create
         dotnetType isOptional dataDotnetType isPrimitive
-        isNull getDataValue createFromDataValue createFromDataValueExpr createNull nullExpr =
+        isNull getDataValue createFromDataValue createFromDataValueExpr createNull createNullExpr =
         { AtomicInfo.DotnetType = dotnetType
           AtomicInfo.IsOptional = isOptional
           AtomicInfo.DataDotnetType = dataDotnetType
@@ -663,7 +668,7 @@ module private AtomicInfo =
           AtomicInfo.CreateFromDataValue = createFromDataValue
           AtomicInfo.CreateFromDataValueExpr = createFromDataValueExpr
           AtomicInfo.CreateNull = createNull
-          AtomicInfo.NullExpr = nullExpr }
+          AtomicInfo.CreateNullExpr = createNullExpr }
 
     let private ofPrimitive<'Value> =
         let dotnetType = typeof<'Value>
@@ -676,13 +681,13 @@ module private AtomicInfo =
         let createFromDataValueExpr = id
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        let nullExpr =
+        let createNullExpr =
             Expression.Block(
                 Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
                 Expression.Default(dotnetType))
             :> Expression
         create dotnetType isOptional dataDotnetType isPrimitive
-            isNull getDataValue createFromDataValue createFromDataValueExpr createNull nullExpr
+            isNull getDataValue createFromDataValue createFromDataValueExpr createNull createNullExpr
 
     let Bool = ofPrimitive<bool>
     let Int8 = ofPrimitive<int8>
@@ -718,13 +723,13 @@ module private AtomicInfo =
             :> Expression
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        let nullExpr =
+        let createNullExpr =
             Expression.Block(
                 Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
                 Expression.Default(dotnetType))
             :> Expression
         create dotnetType isOptional dataDotnetType isPrimitive
-            isNull getDataValue createFromDataValue createFromDataValueExpr createNull nullExpr
+            isNull getDataValue createFromDataValue createFromDataValueExpr createNull createNullExpr
 
     let String =
         let dotnetType = typeof<string>
@@ -736,9 +741,9 @@ module private AtomicInfo =
         let createFromDataValue = id
         let createFromDataValueExpr = id
         let createNull = fun () -> null
-        let nullExpr = Expression.Null(dotnetType)
+        let createNullExpr = Expression.Null(dotnetType)
         create dotnetType isOptional dataDotnetType isPrimitive
-            isNull getDataValue createFromDataValue createFromDataValueExpr createNull nullExpr
+            isNull getDataValue createFromDataValue createFromDataValueExpr createNull createNullExpr
 
     let ofNullable (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
@@ -759,9 +764,9 @@ module private AtomicInfo =
                 let value = valueInfo.CreateFromDataValueExpr dataValue
                 createValue value
         let createNull = Nullable.createNull
-        let nullExpr = Nullable.nullExpr dotnetType
+        let createNullExpr = Nullable.createNullExpr dotnetType
         create dotnetType isOptional dataDotnetType isPrimitive
-            isNull getDataValue createFromDataValue createFromDataValueExpr createNull nullExpr
+            isNull getDataValue createFromDataValue createFromDataValueExpr createNull createNullExpr
 
     let ofOptionInner (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
@@ -782,15 +787,16 @@ module private AtomicInfo =
                 let value = valueInfo.CreateFromDataValueExpr dataValue
                 createSome value
         let createNull = Option.preComputeCreateNone dotnetType
-        let nullExpr = Option.noneExpr dotnetType
+        let createNullExpr = Option.createNoneExpr dotnetType
         create dotnetType isOptional dataDotnetType isPrimitive
-            isNull getDataValue createFromDataValue createFromDataValueExpr createNull nullExpr
+            isNull getDataValue createFromDataValue createFromDataValueExpr createNull createNullExpr
 
 module private ListInfo =
     let private create
         dotnetType isOptional elementInfo
         isNull getLength getElement
-        createFromElementValues createNull =
+        createFromElementValues createNull
+        createNullExpr createEmptyExpr createFromElementValuesExpr =
         { ListInfo.DotnetType = dotnetType
           ListInfo.IsOptional = isOptional
           ListInfo.ElementInfo = elementInfo
@@ -798,7 +804,10 @@ module private ListInfo =
           ListInfo.GetLength = getLength
           ListInfo.GetElement = getElement
           ListInfo.CreateFromElementValues = createFromElementValues
-          ListInfo.CreateNull = createNull }
+          ListInfo.CreateNull = createNull
+          ListInfo.CreateNullExpr = createNullExpr
+          ListInfo.CreateEmptyExpr = createEmptyExpr
+          ListInfo.CreateFromElementValuesExpr = createFromElementValuesExpr }
 
     let ofArray1d (dotnetType: Type) =
         let isOptional = true
@@ -816,9 +825,16 @@ module private ListInfo =
             elementValues.CopyTo(array, 0)
             array :> obj
         let createNull = fun () -> null
+        let createNullExpr = Expression.Null(dotnetType)
+        let createEmptyExpr =
+            Expression.NewArrayBounds(elementDotnetType, Expression.Constant(0))
+        let createFromElementValuesExpr (elementValues: Expression) =
+            Expression.Call(elementValues, "ToArray", [||], [||])
+            :> Expression
         create dotnetType isOptional elementInfo
             isNull getLength getElement
             createFromElementValues createNull
+            createNullExpr createEmptyExpr createFromElementValuesExpr
 
     let ofList (dotnetType: Type) =
         // TODO: F# lists are not nullable by default, however Parquet.Net
@@ -848,9 +864,25 @@ module private ListInfo =
                 list
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
+        let createNullExpr =
+            Expression.Block(
+                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
+                Expression.Default(dotnetType))
+            :> Expression
+        let createEmptyExpr =
+            Expression.Property(null, dotnetType.GetProperty("Empty"))
+        let createFromElementValuesExpr =
+            let seqModuleType =
+                Assembly.Load("FSharp.Core").GetTypes()
+                |> Array.filter (fun type' -> type'.Name = "SeqModule")
+                |> Array.exactlyOne
+            fun (elementValues: Expression) ->
+                Expression.Call(seqModuleType, "ToList", [| elementDotnetType |], elementValues)
+                :> Expression
         create dotnetType isOptional elementInfo
             isNull getLength getElement
             createFromElementValues createNull
+            createNullExpr createEmptyExpr createFromElementValuesExpr
 
     let ofNullable (dotnetType: Type) (listInfo: ListInfo) =
         let isOptional = true
@@ -868,9 +900,19 @@ module private ListInfo =
                 let listObj = listInfo.CreateFromElementValues elementValues
                 createValue listObj
         let createNull = Nullable.createNull
+        let createNullExpr = Nullable.createNullExpr dotnetType
+        let createEmptyExpr =
+            let createValue = Nullable.createValueExpr dotnetType
+            createValue listInfo.CreateEmptyExpr
+        let createFromElementValuesExpr =
+            let createValue = Nullable.createValueExpr dotnetType
+            fun (elementValues: Expression) ->
+                let list = listInfo.CreateFromElementValuesExpr elementValues
+                createValue list
         create dotnetType isOptional elementInfo
             isNull getLength getElement
             createFromElementValues createNull
+            createNullExpr createEmptyExpr createFromElementValuesExpr
 
     let ofOptionInner (dotnetType: Type) (listInfo: ListInfo) =
         let isOptional = true
@@ -888,9 +930,19 @@ module private ListInfo =
                 let listObj = listInfo.CreateFromElementValues elementValues
                 createSome listObj
         let createNull = Option.preComputeCreateNone dotnetType
+        let createNullExpr = Option.createNoneExpr dotnetType
+        let createEmptyExpr =
+            let createSome = Option.createSomeExpr dotnetType
+            createSome listInfo.CreateEmptyExpr
+        let createFromElementValuesExpr =
+            let createSome = Option.createSomeExpr dotnetType
+            fun (elementValues: Expression) ->
+                let list = listInfo.CreateFromElementValuesExpr elementValues
+                createSome list
         create dotnetType isOptional elementInfo
             isNull getLength getElement
             createFromElementValues createNull
+            createNullExpr createEmptyExpr createFromElementValuesExpr
 
 module private FieldInfo =
     let create name valueInfo getValue =
@@ -909,7 +961,7 @@ module private FieldInfo =
 module private RecordInfo =
     let create
         dotnetType valueDotnetType isOptional fields
-        isNull getValue createFromFieldValues createFromFieldValuesExpr createNull nullExpr =
+        isNull getValue createFromFieldValues createFromFieldValuesExpr createNull createNullExpr =
         { RecordInfo.DotnetType = dotnetType
           RecordInfo.ValueDotnetType = valueDotnetType
           RecordInfo.IsOptional = isOptional
@@ -919,7 +971,7 @@ module private RecordInfo =
           RecordInfo.CreateFromFieldValues = createFromFieldValues
           RecordInfo.CreateFromFieldValuesExpr = createFromFieldValuesExpr
           RecordInfo.CreateNull = createNull
-          RecordInfo.NullExpr = nullExpr }
+          RecordInfo.CreateNullExpr = createNullExpr }
 
     let ofRecord dotnetType =
         let valueDotnetType = dotnetType
@@ -942,13 +994,13 @@ module private RecordInfo =
                 :> Expression
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"
-        let nullExpr =
+        let createNullExpr =
             Expression.Block(
                 Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
                 Expression.Default(dotnetType))
             :> Expression
         create dotnetType valueDotnetType isOptional fields
-            isNull getValue createFromFieldValues createFromFieldValuesExpr createNull nullExpr
+            isNull getValue createFromFieldValues createFromFieldValuesExpr createNull createNullExpr
 
     let ofNullable dotnetType (recordInfo: RecordInfo) =
         let valueDotnetType = recordInfo.DotnetType
@@ -967,9 +1019,9 @@ module private RecordInfo =
                 let record = recordInfo.CreateFromFieldValuesExpr fieldValues
                 createValue record
         let createNull = Nullable.createNull
-        let nullExpr = Nullable.nullExpr dotnetType
+        let createNullExpr = Nullable.createNullExpr dotnetType
         create dotnetType valueDotnetType isOptional fields
-            isNull getValue createFromFieldValues createFromFieldValuesExpr createNull nullExpr
+            isNull getValue createFromFieldValues createFromFieldValuesExpr createNull createNullExpr
 
     let ofOptionInner dotnetType (recordInfo: RecordInfo) =
         let valueDotnetType = recordInfo.DotnetType
@@ -988,6 +1040,6 @@ module private RecordInfo =
                 let record = recordInfo.CreateFromFieldValuesExpr fieldValues
                 createSome record
         let createNull = Option.preComputeCreateNone dotnetType
-        let nullExpr = Option.noneExpr dotnetType
+        let createNullExpr = Option.createNoneExpr dotnetType
         create dotnetType valueDotnetType isOptional fields
-            isNull getValue createFromFieldValues createFromFieldValuesExpr createNull nullExpr
+            isNull getValue createFromFieldValues createFromFieldValuesExpr createNull createNullExpr

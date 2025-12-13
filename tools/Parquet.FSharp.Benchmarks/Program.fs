@@ -51,6 +51,9 @@ module Random =
     let array count (createItem: unit -> 'Item) =
         Array.init count (fun _ -> createItem ())
 
+    let genericList count (createItem: unit -> 'Item) =
+        ResizeArray(Array.init count (fun _ -> createItem ()))
+
 [<CPUUsageDiagnoser>]
 //[<DotNetObjectAllocDiagnoser>]
 //[<DotNetObjectAllocJobConfiguration>]
@@ -79,7 +82,7 @@ type ParquetSerialization() =
 type Record = {
     Field1: bool
     Field2: int
-    Field3: float }
+    Field3: ResizeArray<float> }
 
 [<CPUUsageDiagnoser>]
 //[<DotNetObjectAllocDiagnoser>]
@@ -91,7 +94,7 @@ type ParquetDeserialization() =
         Array.init rowCount (fun _ ->
             { Record.Field1 = Random.bool ()
               Record.Field2 = Random.int ()
-              Record.Field3 = Random.float () })
+              Record.Field3 = Random.genericList 100 Random.float })
     let bytes = ParquetNet.serialize records
 
     [<Benchmark>]

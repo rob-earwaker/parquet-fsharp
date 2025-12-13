@@ -3,7 +3,6 @@
 open Parquet.FSharp
 open System
 open System.IO
-open System.Linq.Expressions
 
 type Alternative =
     | OptionA of value1:int * value2:float

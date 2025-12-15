@@ -217,7 +217,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
                             Expression.Constant(atomicInfo.IsOptional),
                             Expression.Equal(defLevel, Expression.Constant(maxDefLevel - 1))),
                         // then this.CurrentValue.SetValue(repLevel, defLevel, <null>)
-                        this.SetCurrentValue(repLevel, defLevel, atomicInfo.CreateNullExpr),
+                        this.SetCurrentValue(repLevel, defLevel, atomicInfo.CreateNull),
                         // else this.CurrentValue.SetUndefined(repLevel, defLevel)
                         this.SetCurrentValueUndefined(repLevel, defLevel)),
                     // else
@@ -225,7 +225,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
                         // let dataValue = columnEnumerator.CurrentDataValue
                         Expression.Assign(dataValue, columnEnumeratorProperty "CurrentDataValue"),
                         // let value = atomicInfo.CreateFromDataValue dataValue
-                        Expression.Assign(value, atomicInfo.CreateFromDataValueExpr(dataValue)),
+                        Expression.Assign(value, atomicInfo.CreateFromDataValue(dataValue)),
                         // this.CurrentValue.SetValue(repLevel, defLevel, value)
                         this.SetCurrentValue(repLevel, defLevel, value))),
                 // return true
@@ -302,7 +302,7 @@ type private ListAssembler(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, 
                         this.SetCurrentValue(
                             firstElementRepLevel,
                             firstElementDefLevel,
-                            listInfo.CreateEmptyExpr),
+                            listInfo.CreateEmpty),
                         // else
                         Expression.IfThenElse(
                             // If the list is optional and the definition level of the first element
@@ -324,7 +324,7 @@ type private ListAssembler(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, 
                             this.SetCurrentValue(
                                 firstElementRepLevel,
                                 firstElementDefLevel,
-                                listInfo.CreateNullExpr),
+                                listInfo.CreateNull),
                             // else
                             Expression.IfThenElse(
                                 // If the list is not NULL or empty and the definition level of the first
@@ -376,7 +376,7 @@ type private ListAssembler(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, 
                                                 Expression.Call(elementValues, "Add", [||], elementAssembler.CurrentValue),
                                                 elementAssembler.SkipPeekedValue)),
                                         loopBreakLabel),
-                                    Expression.Assign(list, listInfo.CreateFromElementValuesExpr elementValues),
+                                    Expression.Assign(list, listInfo.CreateFromElementValues(elementValues)),
                                     this.SetCurrentValue(
                                         firstElementRepLevel,
                                         firstElementDefLevel,
@@ -438,7 +438,7 @@ type private RecordAssembler(recordInfo: RecordInfo, maxDefLevel, fieldAssembler
                                 Expression.Constant(recordInfo.IsOptional),
                                 Expression.Equal(defLevel, Expression.Constant(maxDefLevel - 1))),
                             // then this.CurrentValue.SetValue(repLevel, defLevel, <null>)
-                            this.SetCurrentValue(repLevel, defLevel, recordInfo.CreateNullExpr),
+                            this.SetCurrentValue(repLevel, defLevel, recordInfo.CreateNull),
                             // else this.CurrentValue.SetUndefined(repLevel, defLevel)
                             this.SetCurrentValueUndefined(repLevel, defLevel)),
                         // else
@@ -452,7 +452,7 @@ type private RecordAssembler(recordInfo: RecordInfo, maxDefLevel, fieldAssembler
                                 record,
                                 fieldAssemblers
                                 |> Array.map (fun fieldAssembler -> fieldAssembler.CurrentValue)
-                                |> recordInfo.CreateFromFieldValuesExpr),
+                                |> recordInfo.CreateFromFieldValues),
                             // this.CurrentValue.SetValue(repLevel, defLevel, value)
                             this.SetCurrentValue(repLevel, defLevel, record)))
                     // return true

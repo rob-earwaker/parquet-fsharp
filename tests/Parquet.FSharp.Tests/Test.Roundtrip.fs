@@ -1883,7 +1883,7 @@ let ``complex union field with decimal case`` records =
         Field1: ComplexUnionWithDecimalCase |}>
         records
 
-[<Property>]
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
 let ``complex union field with date time case`` records =
     testRoundtrip<{|
         Field1: ComplexUnionWithDateTimeCase |}>
@@ -2015,7 +2015,7 @@ let ``complex union field with nullable decimal case`` records =
         Field1: ComplexUnionWithNullableDecimalCase |}>
         records
 
-[<Property>]
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
 let ``complex union field with nullable date time case`` records =
     testRoundtrip<{|
         Field1: ComplexUnionWithNullableDateTimeCase |}>
@@ -2123,7 +2123,7 @@ let ``complex union field with option decimal case`` records =
         Field1: ComplexUnionWithOptionDecimalCase |}>
         records
 
-[<Property>]
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
 let ``complex union field with option date time case`` records =
     testRoundtrip<{|
         Field1: ComplexUnionWithOptionDateTimeCase |}>
@@ -2644,7 +2644,7 @@ let ``nullable complex union field with decimal case`` records =
         Field1: Nullable<ComplexUnionWithDecimalCase> |}>
         records
 
-[<Property>]
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
 let ``nullable complex union field with date time case`` records =
     testRoundtrip<{|
         Field1: Nullable<ComplexUnionWithDateTimeCase> |}>
@@ -2776,7 +2776,7 @@ let ``nullable complex union field with nullable decimal case`` records =
         Field1: Nullable<ComplexUnionWithNullableDecimalCase> |}>
         records
 
-[<Property>]
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
 let ``nullable complex union field with nullable date time case`` records =
     testRoundtrip<{|
         Field1: Nullable<ComplexUnionWithNullableDateTimeCase> |}>
@@ -2884,7 +2884,7 @@ let ``nullable complex union field with option decimal case`` records =
         Field1: Nullable<ComplexUnionWithOptionDecimalCase> |}>
         records
 
-[<Property>]
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
 let ``nullable complex union field with option date time case`` records =
     testRoundtrip<{|
         Field1: Nullable<ComplexUnionWithOptionDateTimeCase> |}>
@@ -4748,7 +4748,7 @@ let ``option complex union field with decimal case`` records =
         Field1: option<ComplexUnionWithDecimalCase> |}>
         records
 
-[<Property>]
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
 let ``option complex union field with date time case`` records =
     testRoundtrip<{|
         Field1: option<ComplexUnionWithDateTimeCase> |}>
@@ -4880,7 +4880,7 @@ let ``option complex union field with nullable decimal case`` records =
         Field1: option<ComplexUnionWithNullableDecimalCase> |}>
         records
 
-[<Property>]
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
 let ``option complex union field with nullable date time case`` records =
     testRoundtrip<{|
         Field1: option<ComplexUnionWithNullableDateTimeCase> |}>
@@ -4988,7 +4988,7 @@ let ``option complex union field with option decimal case`` records =
         Field1: option<ComplexUnionWithOptionDecimalCase> |}>
         records
 
-[<Property>]
+[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
 let ``option complex union field with option date time case`` records =
     testRoundtrip<{|
         Field1: option<ComplexUnionWithOptionDateTimeCase> |}>

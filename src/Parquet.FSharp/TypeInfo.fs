@@ -466,7 +466,7 @@ module ValueInfo =
             fieldValues :> obj
         let createFromFieldValuesExpr = unionCase.CreateFromFieldValuesExpr
         let createNull = fun () -> null
-        let createNullExpr = Expression.Null(dotnetType)
+        let createNullExpr = Expression.Default(dotnetType)
         RecordInfo.create dotnetType valueDotnetType isOptional fields
             isNull getValue createFromFieldValues createFromFieldValuesExpr createNull createNullExpr
         |> ValueInfo.Record
@@ -526,14 +526,19 @@ module ValueInfo =
                     (fun (ifFalse: Expression) (caseInfo, fieldValue) ->
                         // TODO: Should technically use the 'IsNull' function from the
                         // relevant field here instead checking directly.
-                        let test = Expression.EqualsNull(fieldValue)
+                        // TODO: Slightly hacky to box before checking for null. This gets around
+                        // the fact that null is not a proper value for a union.
+                        let test =
+                            Expression.Not(
+                                Expression.EqualsNull(
+                                    Expression.Convert(fieldValue, typeof<obj>)))
                         let ifTrue = Expression.Return(returnLabel, fieldValue)
                         Expression.IfThenElse(test, ifTrue, ifFalse))
                     failWithAllCaseDataNull,
-                Expression.Label(returnLabel))
+                Expression.Label(returnLabel, Expression.Default(returnLabel.Type)))
             :> Expression
         let createNull = fun () -> null
-        let createNullExpr = Expression.Null(dotnetType)
+        let createNullExpr = Expression.Default(dotnetType)
         RecordInfo.create dotnetType valueDotnetType isOptional fields
             isNull' getValue createFromFieldValues createFromFieldValuesExpr createNull createNullExpr
         |> ValueInfo.Record
@@ -584,9 +589,14 @@ module ValueInfo =
                 Expression.Assign(caseName, fieldValues[0]),
                 Expression.Assign(caseData, fieldValues[1]),
                 Expression.IfThenElse(
-                    Expression.Not(Expression.EqualsNull(caseData)),
+                    // TODO: Should technically use the 'IsNull' function from the
+                    // relevant field here instead checking directly.
+                    // TODO: Slightly hacky to box before checking for null. This gets around
+                    // the fact that null is not a proper value for a union.
+                    Expression.Not(Expression.EqualsNull(Expression.Convert(caseData, typeof<obj>))),
                     Expression.Return(returnLabel, caseData),
                     unionInfo.UnionCases
+                    |> Array.filter (fun caseInfo -> caseInfo.Fields.Length = 0)
                     |> Array.rev
                     |> Array.fold
                         (fun (ifFalse: Expression) caseInfo ->
@@ -595,7 +605,7 @@ module ValueInfo =
                             let ifTrue = Expression.Return(returnLabel, union)
                             Expression.IfThenElse(test, ifTrue, ifFalse))
                         failWithInvalidName),
-                Expression.Label(returnLabel))
+                Expression.Label(returnLabel, Expression.Default(returnLabel.Type)))
             :> Expression
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"

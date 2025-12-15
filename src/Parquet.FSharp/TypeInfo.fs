@@ -332,7 +332,7 @@ module ValueInfo =
         UnionCases: UnionCaseInfo[] }
 
     type private UnionCaseInfo = {
-        UnionDotnetType: Type
+        DotnetType: Type
         Tag: Expression
         Name: string
         Fields: PropertyInfo[]
@@ -352,7 +352,11 @@ module ValueInfo =
                         fun (fieldValues: Expression[]) ->
                             Expression.Call(constructorMethod, fieldValues)
                             :> Expression
-                    { UnionCaseInfo.UnionDotnetType = dotnetType
+                    let dotnetType =
+                        match unionCase.GetFields() with
+                        | [||] -> dotnetType
+                        | fields -> fields[0].DeclaringType
+                    { UnionCaseInfo.DotnetType = dotnetType
                       UnionCaseInfo.Tag = Expression.Constant(unionCase.Tag)
                       UnionCaseInfo.Name = unionCase.Name
                       UnionCaseInfo.Fields = unionCase.GetFields()
@@ -449,8 +453,8 @@ module ValueInfo =
         |> ValueInfo.Atomic
 
     let private ofUnionCaseData (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
-        let dotnetType = unionCase.UnionDotnetType
-        let valueDotnetType = unionCase.UnionDotnetType
+        let dotnetType = unionInfo.DotnetType
+        let valueDotnetType = unionCase.DotnetType
         // Each union case is treated as optional. Only one case from the union
         // can be set, so the others will be NULL.
         let isOptional = true
@@ -458,7 +462,9 @@ module ValueInfo =
         let isNull (union: Expression) =
             Expression.NotEqual(unionInfo.GetTag union, unionCase.Tag)
             :> Expression
-        let getValue = id
+        let getValue (union: Expression) =
+            Expression.Convert(union, unionCase.DotnetType)
+            :> Expression
         // The union object is created by the root union record, so just pass
         // the field values up to the parent union data record so they can be
         // passed through to the root.

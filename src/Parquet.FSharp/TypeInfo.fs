@@ -46,7 +46,6 @@ type AtomicInfo = {
     DotnetType: Type
     IsOptional: bool
     DataDotnetType: Type
-    IsPrimitive: bool
     IsNull: Expression -> Expression
     GetDataValue: Expression -> Expression
     CreateFromDataValueExpr: Expression -> Expression
@@ -355,7 +354,6 @@ module ValueInfo =
         // value is not optional despite being a string value.
         let isOptional = false
         let dataDotnetType = typeof<string>
-        let isPrimitive = false
         let isNull = fun (union: Expression) -> Expression.False
         let getDataValue = unionInfo.GetCaseName
         let createFromDataValueExpr (caseName: Expression) =
@@ -379,7 +377,7 @@ module ValueInfo =
                 Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
                 Expression.Default(dotnetType))
             :> Expression
-        AtomicInfo.create dotnetType isOptional dataDotnetType isPrimitive
+        AtomicInfo.create dotnetType isOptional dataDotnetType
             isNull getDataValue createFromDataValueExpr createNullExpr
         |> ValueInfo.Atomic
 
@@ -577,12 +575,11 @@ module ValueInfo =
 
 module private AtomicInfo =
     let create
-        dotnetType isOptional dataDotnetType isPrimitive
+        dotnetType isOptional dataDotnetType
         isNull getDataValue createFromDataValueExpr createNullExpr =
         { AtomicInfo.DotnetType = dotnetType
           AtomicInfo.IsOptional = isOptional
           AtomicInfo.DataDotnetType = dataDotnetType
-          AtomicInfo.IsPrimitive = isPrimitive
           AtomicInfo.IsNull = isNull
           AtomicInfo.GetDataValue = getDataValue
           AtomicInfo.CreateFromDataValueExpr = createFromDataValueExpr
@@ -592,7 +589,6 @@ module private AtomicInfo =
         let dotnetType = typeof<'Value>
         let isOptional = false
         let dataDotnetType = dotnetType
-        let isPrimitive = true
         let isNull = fun (value: Expression) -> Expression.False
         let getDataValue = id
         let createFromDataValueExpr = id
@@ -601,7 +597,7 @@ module private AtomicInfo =
                 Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
                 Expression.Default(dotnetType))
             :> Expression
-        create dotnetType isOptional dataDotnetType isPrimitive
+        create dotnetType isOptional dataDotnetType
             isNull getDataValue createFromDataValueExpr createNullExpr
 
     let Bool = ofPrimitive<bool>
@@ -623,7 +619,6 @@ module private AtomicInfo =
         let dotnetType = typeof<DateTimeOffset>
         let isOptional = false
         let dataDotnetType = typeof<DateTime>
-        let isPrimitive = false
         let isNull = fun (value: Expression) -> Expression.False
         let getDataValue (value: Expression) =
             Expression.Property(value, "UtcDateTime")
@@ -638,25 +633,23 @@ module private AtomicInfo =
                 Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
                 Expression.Default(dotnetType))
             :> Expression
-        create dotnetType isOptional dataDotnetType isPrimitive
+        create dotnetType isOptional dataDotnetType
             isNull getDataValue createFromDataValueExpr createNullExpr
 
     let String =
         let dotnetType = typeof<string>
         let isOptional = true
         let dataDotnetType = dotnetType
-        let isPrimitive = true
         let isNull = Expression.IsNull
         let getDataValue = id
         let createFromDataValueExpr = id
         let createNullExpr = Expression.Null(dotnetType)
-        create dotnetType isOptional dataDotnetType isPrimitive
+        create dotnetType isOptional dataDotnetType
             isNull getDataValue createFromDataValueExpr createNullExpr
 
     let ofNullable (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
         let dataDotnetType = valueInfo.DataDotnetType
-        let isPrimitive = false
         let isNull = Nullable.isNull
         let getDataValue (nullableValue: Expression) =
             let value = Nullable.getValue nullableValue
@@ -667,13 +660,12 @@ module private AtomicInfo =
                 let value = valueInfo.CreateFromDataValueExpr dataValue
                 createValue value
         let createNullExpr = Nullable.createNullExpr dotnetType
-        create dotnetType isOptional dataDotnetType isPrimitive
+        create dotnetType isOptional dataDotnetType
             isNull getDataValue createFromDataValueExpr createNullExpr
 
     let ofOptionInner (dotnetType: Type) (valueInfo: AtomicInfo) =
         let isOptional = true
         let dataDotnetType = valueInfo.DataDotnetType
-        let isPrimitive = false
         let isNull = Option.isNoneExpr valueInfo.DotnetType
         let getDataValue (valueOption: Expression) =
             let value = Option.getValue valueOption
@@ -684,7 +676,7 @@ module private AtomicInfo =
                 let value = valueInfo.CreateFromDataValueExpr dataValue
                 createSome value
         let createNullExpr = Option.createNoneExpr dotnetType
-        create dotnetType isOptional dataDotnetType isPrimitive
+        create dotnetType isOptional dataDotnetType
             isNull getDataValue createFromDataValueExpr createNullExpr
 
 module private ListInfo =

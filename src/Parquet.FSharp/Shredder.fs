@@ -85,15 +85,12 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
                 Expression.Constant(maxDefLevel),
                 Expression.Constant(field)))
 
-    let addValue(repLevel, defLevel, value) : Expression =
-        if atomicInfo.IsPrimitive
-        then Expression.Call(columnBuilder, "AddDataValue", [||], repLevel, defLevel, value)
-        else
-            let dataValue = Expression.Variable(atomicInfo.DataDotnetType, "dataValue")
-            Expression.Block(
-                [ dataValue ],
-                Expression.Assign(dataValue, atomicInfo.GetDataValue value),
-                Expression.Call(columnBuilder, "AddDataValue", [||], repLevel, defLevel, dataValue))
+    let addValue(repLevel, defLevel, value) =
+        let dataValue = Expression.Variable(atomicInfo.DataDotnetType, "dataValue")
+        Expression.Block(
+            [ dataValue ],
+            Expression.Assign(dataValue, atomicInfo.GetDataValue value),
+            Expression.Call(columnBuilder, "AddDataValue", [||], repLevel, defLevel, dataValue))
 
     override this.CollectColumnBuilderVariables() =
         Seq.singleton columnBuilder

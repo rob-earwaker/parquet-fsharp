@@ -4,7 +4,6 @@
 
 open FSharp.Reflection
 open System
-open System.Collections
 open System.Collections.Generic
 open System.Linq.Expressions
 open System.Reflection
@@ -82,35 +81,6 @@ type RecordInfo = {
     GetValue: Expression -> Expression
     CreateFromFieldValuesExpr: Expression[] -> Expression
     CreateNullExpr: Expression }
-
-// TODO: Move this into separate file!
-[<AutoOpen>]
-module ExpressionExtensions =
-    type Expression with
-        static member Null(type') =
-            Expression.Constant(null, type')
-            :> Expression
-
-        static member False = Expression.Constant(false) :> Expression
-        static member True = Expression.Constant(true) :> Expression
-
-        static member EqualsNull(value: Expression) =
-            Expression.Equal(value, Expression.Null(value.Type))
-            :> Expression
-
-        static member OrElse([<ParamArray>] values: Expression[]) =
-            values
-            |> Array.reduce (fun combined value ->
-                Expression.OrElse(combined, value))
-
-        static member AndAlso([<ParamArray>] values: Expression[]) =
-            values
-            |> Array.reduce (fun combined value ->
-                Expression.AndAlso(combined, value))
-
-        static member FailWith(message: string) =
-            Expression.Throw(Expression.Constant(exn(message)))
-            :> Expression
 
 module private Nullable =
     let isNull (nullableValue: Expression) =
@@ -482,7 +452,7 @@ module ValueInfo =
                         // the fact that null is not a proper value for a union.
                         let test =
                             Expression.Not(
-                                Expression.EqualsNull(
+                                Expression.IsNull(
                                     Expression.Convert(fieldValue, typeof<obj>)))
                         let ifTrue = Expression.Return(returnLabel, fieldValue)
                         Expression.IfThenElse(test, ifTrue, ifFalse))
@@ -532,7 +502,7 @@ module ValueInfo =
                     // relevant field here instead checking directly.
                     // TODO: Slightly hacky to box before checking for null. This gets around
                     // the fact that null is not a proper value for a union.
-                    Expression.Not(Expression.EqualsNull(Expression.Convert(caseData, typeof<obj>))),
+                    Expression.Not(Expression.IsNull(Expression.Convert(caseData, typeof<obj>))),
                     Expression.Return(returnLabel, caseData),
                     unionInfo.UnionCases
                     |> Array.filter (fun caseInfo -> caseInfo.Fields.Length = 0)
@@ -678,7 +648,7 @@ module private AtomicInfo =
         let isOptional = true
         let dataDotnetType = dotnetType
         let isPrimitive = true
-        let isNull = Expression.EqualsNull
+        let isNull = Expression.IsNull
         let getDataValue = id
         let createFromDataValueExpr = id
         let createNullExpr = Expression.Null(dotnetType)
@@ -738,7 +708,7 @@ module private ListInfo =
         let isOptional = true
         let elementDotnetType = dotnetType.GetElementType()
         let elementInfo = ValueInfo.ofType elementDotnetType
-        let isNull = Expression.EqualsNull
+        let isNull = Expression.IsNull
         let getLength (array: Expression) =
             Expression.Property(array, "Length")
             :> Expression
@@ -759,7 +729,7 @@ module private ListInfo =
         let isOptional = true
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementInfo = ValueInfo.ofType elementDotnetType
-        let isNull = Expression.EqualsNull
+        let isNull = Expression.IsNull
         let getLength (list: Expression) =
             Expression.Property(list, "Count")
             :> Expression

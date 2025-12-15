@@ -1,0 +1,30 @@
+module [<AutoOpen>] internal Parquet.FSharp.ExpressionExtensions
+
+open System
+open System.Linq.Expressions
+
+type Expression with
+    static member Null(dotnetType) =
+        Expression.Constant(null, dotnetType)
+        :> Expression
+
+    static member False = Expression.Constant(false) :> Expression
+    static member True = Expression.Constant(true) :> Expression
+
+    static member IsNull(value: Expression) =
+        Expression.Equal(value, Expression.Null(value.Type))
+        :> Expression
+
+    static member OrElse([<ParamArray>] values: Expression[]) =
+        values
+        |> Array.reduce (fun combined value ->
+            Expression.OrElse(combined, value))
+
+    static member AndAlso([<ParamArray>] values: Expression[]) =
+        values
+        |> Array.reduce (fun combined value ->
+            Expression.AndAlso(combined, value))
+
+    static member FailWith(message: string) =
+        Expression.Throw(Expression.Constant(exn(message)))
+        :> Expression

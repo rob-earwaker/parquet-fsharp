@@ -435,7 +435,7 @@ module ValueInfo =
                         let ifTrue = Expression.Return(returnLabel, caseInfo.CreateFromFieldValuesExpr [||])
                         Expression.IfThenElse(test, ifTrue, ifFalse))
                     failWithInvalidName,
-                Expression.Label(returnLabel))
+                Expression.Label(returnLabel, Expression.Default(dotnetType)))
             :> Expression
         let createNull () =
             failwith $"type '{dotnetType.FullName}' is not optional"

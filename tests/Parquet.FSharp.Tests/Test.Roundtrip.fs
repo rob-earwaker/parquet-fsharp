@@ -5,6 +5,85 @@ open Parquet.FSharp
 open System
 open System.IO
 
+[<Struct>]
+type EnumUnion =
+    | CaseA
+    | CaseB
+    | CaseC
+
+[<Struct>]
+type ComplexUnion =
+    | CaseA
+    | CaseB of field1:int
+    | CaseC of field2:float * field3:bool
+    | CaseD of bool
+    | CaseE of int * decimal
+
+type [<Struct>] ComplexUnionWithBoolCase = Case1 of field1:bool
+type [<Struct>] ComplexUnionWithInt8Case = Case1 of field1:int8
+type [<Struct>] ComplexUnionWithInt16Case = Case1 of field1:int16
+type [<Struct>] ComplexUnionWithInt32Case = Case1 of field1:int
+type [<Struct>] ComplexUnionWithInt64Case = Case1 of field1:int64
+type [<Struct>] ComplexUnionWithUInt8Case = Case1 of field1:uint8
+type [<Struct>] ComplexUnionWithUInt16Case = Case1 of field1:uint16
+type [<Struct>] ComplexUnionWithUInt32Case = Case1 of field1:uint
+type [<Struct>] ComplexUnionWithUInt64Case = Case1 of field1:uint64
+type [<Struct>] ComplexUnionWithFloat32Case = Case1 of field1:float32
+type [<Struct>] ComplexUnionWithFloat64Case = Case1 of field1:float
+type [<Struct>] ComplexUnionWithDecimalCase = Case1 of field1:decimal
+type [<Struct>] ComplexUnionWithDateTimeCase = Case1 of field1:DateTime
+type [<Struct>] ComplexUnionWithDateTimeOffsetCase = Case1 of field1:DateTimeOffset
+type [<Struct>] ComplexUnionWithStringCase = Case1 of field1:string
+type [<Struct>] ComplexUnionWithGuidCase = Case1 of field1:Guid
+type [<Struct>] ComplexUnionWithArrayCase = Case1 of field1:array<int>
+type [<Struct>] ComplexUnionWithGenericListCase = Case1 of field1:ResizeArray<int>
+type [<Struct>] ComplexUnionWithFSharpListCase = Case1 of field1:list<int>
+type [<Struct>] ComplexUnionWithRecordCase = Case1 of field1:{| Field1: int |}
+type [<Struct>] ComplexUnionWithEnumUnionCase = Case1 of field1:EnumUnion
+type [<Struct>] ComplexUnionWithComplexUnionCase = Case1 of field1:ComplexUnion
+type [<Struct>] ComplexUnionWithNullableBoolCase = Case1 of field1:Nullable<bool>
+type [<Struct>] ComplexUnionWithNullableInt8Case = Case1 of field1:Nullable<int8>
+type [<Struct>] ComplexUnionWithNullableInt16Case = Case1 of field1:Nullable<int16>
+type [<Struct>] ComplexUnionWithNullableInt32Case = Case1 of field1:Nullable<int>
+type [<Struct>] ComplexUnionWithNullableInt64Case = Case1 of field1:Nullable<int64>
+type [<Struct>] ComplexUnionWithNullableUInt8Case = Case1 of field1:Nullable<uint8>
+type [<Struct>] ComplexUnionWithNullableUInt16Case = Case1 of field1:Nullable<uint16>
+type [<Struct>] ComplexUnionWithNullableUInt32Case = Case1 of field1:Nullable<uint>
+type [<Struct>] ComplexUnionWithNullableUInt64Case = Case1 of field1:Nullable<uint64>
+type [<Struct>] ComplexUnionWithNullableFloat32Case = Case1 of field1:Nullable<float32>
+type [<Struct>] ComplexUnionWithNullableFloat64Case = Case1 of field1:Nullable<float>
+type [<Struct>] ComplexUnionWithNullableDecimalCase = Case1 of field1:Nullable<decimal>
+type [<Struct>] ComplexUnionWithNullableDateTimeCase = Case1 of field1:Nullable<DateTime>
+type [<Struct>] ComplexUnionWithNullableDateTimeOffsetCase = Case1 of field1:Nullable<DateTimeOffset>
+type [<Struct>] ComplexUnionWithNullableGuidCase = Case1 of field1:Nullable<Guid>
+type [<Struct>] ComplexUnionWithNullableRecordCase = Case1 of field1:Nullable<struct {| Field1: int |}>
+type [<Struct>] ComplexUnionWithNullableEnumUnionCase = Case1 of field1:Nullable<EnumUnion>
+type [<Struct>] ComplexUnionWithNullableComplexUnionCase = Case1 of field1:Nullable<ComplexUnion>
+type [<Struct>] ComplexUnionWithOptionBoolCase = Case1 of field1:option<bool>
+type [<Struct>] ComplexUnionWithOptionInt8Case = Case1 of field1:option<int8>
+type [<Struct>] ComplexUnionWithOptionInt16Case = Case1 of field1:option<int16>
+type [<Struct>] ComplexUnionWithOptionInt32Case = Case1 of field1:option<int>
+type [<Struct>] ComplexUnionWithOptionInt64Case = Case1 of field1:option<int64>
+type [<Struct>] ComplexUnionWithOptionUInt8Case = Case1 of field1:option<uint8>
+type [<Struct>] ComplexUnionWithOptionUInt16Case = Case1 of field1:option<uint16>
+type [<Struct>] ComplexUnionWithOptionUInt32Case = Case1 of field1:option<uint>
+type [<Struct>] ComplexUnionWithOptionUInt64Case = Case1 of field1:option<uint64>
+type [<Struct>] ComplexUnionWithOptionFloat32Case = Case1 of field1:option<float32>
+type [<Struct>] ComplexUnionWithOptionFloat64Case = Case1 of field1:option<float>
+type [<Struct>] ComplexUnionWithOptionDecimalCase = Case1 of field1:option<decimal>
+type [<Struct>] ComplexUnionWithOptionDateTimeCase = Case1 of field1:option<DateTime>
+type [<Struct>] ComplexUnionWithOptionDateTimeOffsetCase = Case1 of field1:option<DateTimeOffset>
+type [<Struct>] ComplexUnionWithOptionStringCase = Case1 of field1:option<string>
+type [<Struct>] ComplexUnionWithOptionGuidCase = Case1 of field1:option<Guid>
+type [<Struct>] ComplexUnionWithOptionArrayCase = Case1 of field1:option<array<int>>
+type [<Struct>] ComplexUnionWithOptionGenericListCase = Case1 of field1:option<ResizeArray<int>>
+type [<Struct>] ComplexUnionWithOptionFSharpListCase = Case1 of field1:option<list<int>>
+type [<Struct>] ComplexUnionWithOptionRecordCase = Case1 of field1:option<{| Field1: int |}>
+type [<Struct>] ComplexUnionWithOptionEnumUnionCase = Case1 of field1:option<EnumUnion>
+type [<Struct>] ComplexUnionWithOptionComplexUnionCase = Case1 of field1:option<ComplexUnion>
+type [<Struct>] ComplexUnionWithOptionNullableCase = Case1 of field1:option<Nullable<int>>
+type [<Struct>] ComplexUnionWithOptionOptionCase = Case1 of field1:option<option<int>>
+
 let testRoundtrip<'Record> (records: 'Record[]) =
     use stream = new MemoryStream()
     ParquetSerializer.Serialize<'Record>(records, stream)
@@ -230,6 +309,18 @@ let ``array field with record elements`` records =
         records
 
 [<Property>]
+let ``array field with enum union elements`` records =
+    testRoundtrip<{|
+        Field1: array<EnumUnion> |}>
+        records
+
+[<Property>]
+let ``array field with complex union elements`` records =
+    testRoundtrip<{|
+        Field1: array<ComplexUnion> |}>
+        records
+
+[<Property>]
 let ``array field with nullable bool elements`` records =
     testRoundtrip<{|
         Field1: array<Nullable<bool>> |}>
@@ -324,6 +415,18 @@ let ``array field with nullable record elements`` records =
     testRoundtrip<{|
         Field1: array<Nullable<struct {|
             Field2: int |}>> |}>
+        records
+
+[<Property>]
+let ``array field with nullable enum union elements`` records =
+    testRoundtrip<{|
+        Field1: array<Nullable<EnumUnion>> |}>
+        records
+
+[<Property>]
+let ``array field with nullable complex union elements`` records =
+    testRoundtrip<{|
+        Field1: array<Nullable<ComplexUnion>> |}>
         records
 
 [<Property>]
@@ -445,6 +548,18 @@ let ``array field with option record elements`` records =
     testRoundtrip<{|
         Field1: array<option<{|
             Field2: int |}>> |}>
+        records
+
+[<Property>]
+let ``array field with option enum union elements`` records =
+    testRoundtrip<{|
+        Field1: array<option<EnumUnion>> |}>
+        records
+
+[<Property>]
+let ``array field with option complex union elements`` records =
+    testRoundtrip<{|
+        Field1: array<option<ComplexUnion>> |}>
         records
 
 [<Property>]
@@ -581,6 +696,18 @@ let ``generic list field with record elements`` records =
         records
 
 [<Property>]
+let ``generic list field with enum union elements`` records =
+    testRoundtrip<{|
+        Field1: ResizeArray<EnumUnion> |}>
+        records
+
+[<Property>]
+let ``generic list field with complex union elements`` records =
+    testRoundtrip<{|
+        Field1: ResizeArray<ComplexUnion> |}>
+        records
+
+[<Property>]
 let ``generic list field with nullable bool elements`` records =
     testRoundtrip<{|
         Field1: ResizeArray<Nullable<bool>> |}>
@@ -675,6 +802,18 @@ let ``generic list field with nullable record elements`` records =
     testRoundtrip<{|
         Field1: ResizeArray<Nullable<struct {|
             Field2: int |}>> |}>
+        records
+
+[<Property>]
+let ``generic list field with nullable enum union elements`` records =
+    testRoundtrip<{|
+        Field1: ResizeArray<Nullable<EnumUnion>> |}>
+        records
+
+[<Property>]
+let ``generic list field with nullable complex union elements`` records =
+    testRoundtrip<{|
+        Field1: ResizeArray<Nullable<ComplexUnion>> |}>
         records
 
 [<Property>]
@@ -796,6 +935,18 @@ let ``generic list field with option record elements`` records =
     testRoundtrip<{|
         Field1: ResizeArray<option<{|
             Field2: int |}>> |}>
+        records
+
+[<Property>]
+let ``generic list field with option enum union elements`` records =
+    testRoundtrip<{|
+        Field1: ResizeArray<option<EnumUnion>> |}>
+        records
+
+[<Property>]
+let ``generic list field with option complex union elements`` records =
+    testRoundtrip<{|
+        Field1: ResizeArray<option<ComplexUnion>> |}>
         records
 
 [<Property>]
@@ -932,6 +1083,18 @@ let ``fsharp list field with record elements`` records =
         records
 
 [<Property>]
+let ``fsharp list field with enum union elements`` records =
+    testRoundtrip<{|
+        Field1: list<EnumUnion> |}>
+        records
+
+[<Property>]
+let ``fsharp list field with complex union elements`` records =
+    testRoundtrip<{|
+        Field1: list<ComplexUnion> |}>
+        records
+
+[<Property>]
 let ``fsharp list field with nullable bool elements`` records =
     testRoundtrip<{|
         Field1: list<Nullable<bool>> |}>
@@ -1026,6 +1189,18 @@ let ``fsharp list field with nullable record elements`` records =
     testRoundtrip<{|
         Field1: list<Nullable<struct {|
             Field2: int |}>> |}>
+        records
+
+[<Property>]
+let ``fsharp list field with nullable enum union elements`` records =
+    testRoundtrip<{|
+        Field1: list<Nullable<EnumUnion>> |}>
+        records
+
+[<Property>]
+let ``fsharp list field with nullable complex union elements`` records =
+    testRoundtrip<{|
+        Field1: list<Nullable<ComplexUnion>> |}>
         records
 
 [<Property>]
@@ -1147,6 +1322,18 @@ let ``fsharp list field with option record elements`` records =
     testRoundtrip<{|
         Field1: list<option<{|
             Field2: int |}>> |}>
+        records
+
+[<Property>]
+let ``fsharp list field with option enum union elements`` records =
+    testRoundtrip<{|
+        Field1: list<option<EnumUnion>> |}>
+        records
+
+[<Property>]
+let ``fsharp list field with option complex union elements`` records =
+    testRoundtrip<{|
+        Field1: list<option<ComplexUnion>> |}>
         records
 
 [<Property>]
@@ -1303,6 +1490,20 @@ let ``record field with record field`` records =
         records
 
 [<Property>]
+let ``record field with enum union field`` records =
+    testRoundtrip<{|
+        Field1: {|
+            Field2: EnumUnion |} |}>
+        records
+
+[<Property>]
+let ``record field with complex union field`` records =
+    testRoundtrip<{|
+        Field1: {|
+            Field2: ComplexUnion |} |}>
+        records
+
+[<Property>]
 let ``record field with nullable bool field`` records =
     testRoundtrip<{|
         Field1: {|
@@ -1413,6 +1614,20 @@ let ``record field with nullable record field`` records =
         Field1: {|
             Field2: Nullable<struct {|
                 Field3: int |}> |} |}>
+        records
+
+[<Property>]
+let ``record field with nullable enum union field`` records =
+    testRoundtrip<{|
+        Field1: {|
+            Field2: Nullable<EnumUnion> |} |}>
+        records
+
+[<Property>]
+let ``record field with nullable complex union field`` records =
+    testRoundtrip<{|
+        Field1: {|
+            Field2: Nullable<ComplexUnion> |} |}>
         records
 
 [<Property>]
@@ -1557,6 +1772,20 @@ let ``record field with option record field`` records =
         records
 
 [<Property>]
+let ``record field with option enum union field`` records =
+    testRoundtrip<{|
+        Field1: {|
+            Field2: option<EnumUnion> |} |}>
+        records
+
+[<Property>]
+let ``record field with option complex union field`` records =
+    testRoundtrip<{|
+        Field1: {|
+            Field2: option<ComplexUnion> |} |}>
+        records
+
+[<Property>]
 let ``record field with option nullable field`` records =
     testRoundtrip<{|
         Field1: {|
@@ -1568,6 +1797,402 @@ let ``record field with option option field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<option<int>> |} |}>
+        records
+
+[<Property>]
+let ``enum union field`` records =
+    testRoundtrip<{|
+        Field1: EnumUnion |}>
+        records
+
+[<Property>]
+let ``complex union field`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnion |}>
+        records
+
+[<Property>]
+let ``complex union field with bool case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithBoolCase |}>
+        records
+
+[<Property>]
+let ``complex union field with int8 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithInt8Case |}>
+        records
+
+[<Property>]
+let ``complex union field with int16 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithInt16Case |}>
+        records
+
+[<Property>]
+let ``complex union field with int32 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithInt32Case |}>
+        records
+
+[<Property>]
+let ``complex union field with int64 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithInt64Case |}>
+        records
+
+[<Property>]
+let ``complex union field with uint8 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithUInt8Case |}>
+        records
+
+[<Property>]
+let ``complex union field with uint16 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithUInt16Case |}>
+        records
+
+[<Property>]
+let ``complex union field with uint32 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithUInt32Case |}>
+        records
+
+[<Property>]
+let ``complex union field with uint64 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithUInt64Case |}>
+        records
+
+[<Property>]
+let ``complex union field with float32 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithFloat32Case |}>
+        records
+
+[<Property>]
+let ``complex union field with float64 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithFloat64Case |}>
+        records
+
+[<Property>]
+let ``complex union field with decimal case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithDecimalCase |}>
+        records
+
+[<Property>]
+let ``complex union field with date time case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithDateTimeCase |}>
+        records
+
+[<Property>]
+let ``complex union field with date time offset case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithDateTimeOffsetCase |}>
+        records
+
+[<Property>]
+let ``complex union field with string case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithStringCase |}>
+        records
+
+[<Property>]
+let ``complex union field with guid case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithGuidCase |}>
+        records
+
+[<Property>]
+let ``complex union field with array case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithArrayCase |}>
+        records
+
+[<Property>]
+let ``complex union field with generic list case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithGenericListCase |}>
+        records
+
+[<Property>]
+let ``complex union field with fsharp list case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithFSharpListCase |}>
+        records
+
+[<Property>]
+let ``complex union field with record case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithRecordCase |}>
+        records
+
+[<Property>]
+let ``complex union field with enum union case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithEnumUnionCase |}>
+        records
+
+[<Property>]
+let ``complex union field with complex union case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithComplexUnionCase |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable bool case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableBoolCase |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable int8 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableInt8Case |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable int16 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableInt16Case |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable int32 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableInt32Case |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable int64 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableInt64Case |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable uint8 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableUInt8Case |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable uint16 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableUInt16Case |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable uint32 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableUInt32Case |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable uint64 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableUInt64Case |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable float32 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableFloat32Case |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable float64 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableFloat64Case |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable decimal case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableDecimalCase |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable date time case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableDateTimeCase |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable date time offset case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableDateTimeOffsetCase |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable guid case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableGuidCase |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable record case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableRecordCase |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable enum union case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableEnumUnionCase |}>
+        records
+
+[<Property>]
+let ``complex union field with nullable complex union case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithNullableComplexUnionCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option bool case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionBoolCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option int8 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionInt8Case |}>
+        records
+
+[<Property>]
+let ``complex union field with option int16 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionInt16Case |}>
+        records
+
+[<Property>]
+let ``complex union field with option int32 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionInt32Case |}>
+        records
+
+[<Property>]
+let ``complex union field with option int64 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionInt64Case |}>
+        records
+
+[<Property>]
+let ``complex union field with option uint8 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionUInt8Case |}>
+        records
+
+[<Property>]
+let ``complex union field with option uint16 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionUInt16Case |}>
+        records
+
+[<Property>]
+let ``complex union field with option uint32 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionUInt32Case |}>
+        records
+
+[<Property>]
+let ``complex union field with option uint64 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionUInt64Case |}>
+        records
+
+[<Property>]
+let ``complex union field with option float32 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionFloat32Case |}>
+        records
+
+[<Property>]
+let ``complex union field with option float64 case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionFloat64Case |}>
+        records
+
+[<Property>]
+let ``complex union field with option decimal case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionDecimalCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option date time case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionDateTimeCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option date time offset case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionDateTimeOffsetCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option string case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionStringCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option guid case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionGuidCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option array case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionArrayCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option generic list case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionGenericListCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option fsharp list case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionFSharpListCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option record case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionRecordCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option enum union case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionEnumUnionCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option complex union case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionComplexUnionCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option nullable case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionNullableCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option option case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionOptionCase |}>
         records
 
 [<Property>]
@@ -1795,6 +2420,20 @@ let ``nullable record field with record field`` records =
         records
 
 [<Property>]
+let ``nullable record field with enum union field`` records =
+    testRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: EnumUnion |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with complex union field`` records =
+    testRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: ComplexUnion |}> |}>
+        records
+
+[<Property>]
 let ``nullable record field with nullable bool field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
@@ -1905,6 +2544,416 @@ let ``nullable record field with nullable record field`` records =
         Field1: Nullable<struct {|
             Field2: Nullable<struct {|
                 Field3: int |}> |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with nullable enum union field`` records =
+    testRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: Nullable<EnumUnion> |}> |}>
+        records
+
+[<Property>]
+let ``nullable record field with nullable complex union field`` records =
+    testRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: Nullable<ComplexUnion> |}> |}>
+        records
+
+[<Property>]
+let ``nullable enum union field`` records =
+    testRoundtrip<{|
+        Field1: Nullable<EnumUnion> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnion> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with bool case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithBoolCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with int8 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithInt8Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with int16 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithInt16Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with int32 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithInt32Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with int64 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithInt64Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with uint8 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithUInt8Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with uint16 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithUInt16Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with uint32 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithUInt32Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with uint64 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithUInt64Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with float32 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithFloat32Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with float64 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithFloat64Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with decimal case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithDecimalCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with date time case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithDateTimeCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with date time offset case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithDateTimeOffsetCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with string case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithStringCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with guid case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithGuidCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with array case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithArrayCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with generic list case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithGenericListCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with fsharp list case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithFSharpListCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with record case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithRecordCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with enum union case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithEnumUnionCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with complex union case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithComplexUnionCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable bool case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableBoolCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable int8 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableInt8Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable int16 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableInt16Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable int32 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableInt32Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable int64 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableInt64Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable uint8 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableUInt8Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable uint16 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableUInt16Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable uint32 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableUInt32Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable uint64 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableUInt64Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable float32 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableFloat32Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable float64 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableFloat64Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable decimal case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableDecimalCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable date time case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableDateTimeCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable date time offset case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableDateTimeOffsetCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable guid case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableGuidCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable record case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableRecordCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable enum union case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableEnumUnionCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with nullable complex union case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithNullableComplexUnionCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option bool case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionBoolCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option int8 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionInt8Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option int16 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionInt16Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option int32 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionInt32Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option int64 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionInt64Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option uint8 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionUInt8Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option uint16 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionUInt16Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option uint32 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionUInt32Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option uint64 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionUInt64Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option float32 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionFloat32Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option float64 case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionFloat64Case> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option decimal case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionDecimalCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option date time case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionDateTimeCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option date time offset case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionDateTimeOffsetCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option string case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionStringCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option guid case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionGuidCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option array case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionArrayCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option generic list case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionGenericListCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option fsharp list case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionFSharpListCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option record case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionRecordCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option enum union case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionEnumUnionCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option complex union case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionComplexUnionCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option nullable case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionNullableCase> |}>
+        records
+
+[<Property>]
+let ``nullable complex union field with option option case`` records =
+    testRoundtrip<{|
+        Field1: Nullable<ComplexUnionWithOptionOptionCase> |}>
         records
 
 [<Property>]
@@ -2125,6 +3174,18 @@ let ``option array field with record elements`` records =
         records
 
 [<Property>]
+let ``option array field with enum union elements`` records =
+    testRoundtrip<{|
+        Field1: option<array<EnumUnion>> |}>
+        records
+
+[<Property>]
+let ``option array field with complex union elements`` records =
+    testRoundtrip<{|
+        Field1: option<array<ComplexUnion>> |}>
+        records
+
+[<Property>]
 let ``option array field with nullable bool elements`` records =
     testRoundtrip<{|
         Field1: option<array<Nullable<bool>>> |}>
@@ -2219,6 +3280,18 @@ let ``option array field with nullable record elements`` records =
     testRoundtrip<{|
         Field1: option<array<Nullable<struct {|
             Field2: int |}>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable enum union elements`` records =
+    testRoundtrip<{|
+        Field1: option<array<Nullable<EnumUnion>>> |}>
+        records
+
+[<Property>]
+let ``option array field with nullable complex union elements`` records =
+    testRoundtrip<{|
+        Field1: option<array<Nullable<ComplexUnion>>> |}>
         records
 
 [<Property>]
@@ -2340,6 +3413,18 @@ let ``option array field with option record elements`` records =
     testRoundtrip<{|
         Field1: option<array<option<{|
             Field2: int |}>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option enum union elements`` records =
+    testRoundtrip<{|
+        Field1: option<array<option<EnumUnion>>> |}>
+        records
+
+[<Property>]
+let ``option array field with option complex union elements`` records =
+    testRoundtrip<{|
+        Field1: option<array<option<ComplexUnion>>> |}>
         records
 
 [<Property>]
@@ -2476,6 +3561,18 @@ let ``option generic list field with record elements`` records =
         records
 
 [<Property>]
+let ``option generic list field with enum union elements`` records =
+    testRoundtrip<{|
+        Field1: option<ResizeArray<EnumUnion>> |}>
+        records
+
+[<Property>]
+let ``option generic list field with complex union elements`` records =
+    testRoundtrip<{|
+        Field1: option<ResizeArray<ComplexUnion>> |}>
+        records
+
+[<Property>]
 let ``option generic list field with nullable bool elements`` records =
     testRoundtrip<{|
         Field1: option<ResizeArray<Nullable<bool>>> |}>
@@ -2570,6 +3667,18 @@ let ``option generic list field with nullable record elements`` records =
     testRoundtrip<{|
         Field1: option<ResizeArray<Nullable<struct {|
             Field2: int |}>>> |}>
+        records
+
+[<Property>]
+let ``option generic list field with nullable enum union elements`` records =
+    testRoundtrip<{|
+        Field1: option<ResizeArray<Nullable<EnumUnion>>> |}>
+        records
+
+[<Property>]
+let ``option generic list field with nullable complex union elements`` records =
+    testRoundtrip<{|
+        Field1: option<ResizeArray<Nullable<ComplexUnion>>> |}>
         records
 
 [<Property>]
@@ -2691,6 +3800,18 @@ let ``option generic list field with option record elements`` records =
     testRoundtrip<{|
         Field1: option<ResizeArray<option<{|
             Field2: int |}>>> |}>
+        records
+
+[<Property>]
+let ``option generic list field with option enum union elements`` records =
+    testRoundtrip<{|
+        Field1: option<ResizeArray<option<EnumUnion>>> |}>
+        records
+
+[<Property>]
+let ``option generic list field with option complex union elements`` records =
+    testRoundtrip<{|
+        Field1: option<ResizeArray<option<ComplexUnion>>> |}>
         records
 
 [<Property>]
@@ -2827,6 +3948,18 @@ let ``option fsharp list field with record elements`` records =
         records
 
 [<Property>]
+let ``option fsharp list field with enum union elements`` records =
+    testRoundtrip<{|
+        Field1: option<list<EnumUnion>> |}>
+        records
+
+[<Property>]
+let ``option fsharp list field with complex union elements`` records =
+    testRoundtrip<{|
+        Field1: option<list<ComplexUnion>> |}>
+        records
+
+[<Property>]
 let ``option fsharp list field with nullable bool elements`` records =
     testRoundtrip<{|
         Field1: option<list<Nullable<bool>>> |}>
@@ -2921,6 +4054,18 @@ let ``option fsharp list field with nullable record elements`` records =
     testRoundtrip<{|
         Field1: option<list<Nullable<struct {|
             Field2: int |}>>> |}>
+        records
+
+[<Property>]
+let ``option fsharp list field with nullable enum union elements`` records =
+    testRoundtrip<{|
+        Field1: option<list<Nullable<EnumUnion>>> |}>
+        records
+
+[<Property>]
+let ``option fsharp list field with nullable complex union elements`` records =
+    testRoundtrip<{|
+        Field1: option<list<Nullable<ComplexUnion>>> |}>
         records
 
 [<Property>]
@@ -3042,6 +4187,18 @@ let ``option fsharp list field with option record elements`` records =
     testRoundtrip<{|
         Field1: option<list<option<{|
             Field2: int |}>>> |}>
+        records
+
+[<Property>]
+let ``option fsharp list field with option enum union elements`` records =
+    testRoundtrip<{|
+        Field1: option<list<option<EnumUnion>>> |}>
+        records
+
+[<Property>]
+let ``option fsharp list field with option complex union elements`` records =
+    testRoundtrip<{|
+        Field1: option<list<option<ComplexUnion>>> |}>
         records
 
 [<Property>]
@@ -3198,6 +4355,20 @@ let ``option record field with record field`` records =
         records
 
 [<Property>]
+let ``option record field with enum union field`` records =
+    testRoundtrip<{|
+        Field1: option<{|
+            Field2: EnumUnion |}> |}>
+        records
+
+[<Property>]
+let ``option record field with complex union field`` records =
+    testRoundtrip<{|
+        Field1: option<{|
+            Field2: ComplexUnion |}> |}>
+        records
+
+[<Property>]
 let ``option record field with nullable bool field`` records =
     testRoundtrip<{|
         Field1: option<{|
@@ -3308,6 +4479,20 @@ let ``option record field with nullable record field`` records =
         Field1: option<{|
             Field2: Nullable<struct {|
                 Field3: int |}> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with nullable enum union field`` records =
+    testRoundtrip<{|
+        Field1: option<{|
+            Field2: Nullable<EnumUnion> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with nullable complex union field`` records =
+    testRoundtrip<{|
+        Field1: option<{|
+            Field2: Nullable<ComplexUnion> |}> |}>
         records
 
 [<Property>]
@@ -3452,6 +4637,20 @@ let ``option record field with option record field`` records =
         records
 
 [<Property>]
+let ``option record field with option enum union field`` records =
+    testRoundtrip<{|
+        Field1: option<{|
+            Field2: option<EnumUnion> |}> |}>
+        records
+
+[<Property>]
+let ``option record field with option complex union field`` records =
+    testRoundtrip<{|
+        Field1: option<{|
+            Field2: option<ComplexUnion> |}> |}>
+        records
+
+[<Property>]
 let ``option record field with option nullable field`` records =
     testRoundtrip<{|
         Field1: option<{|
@@ -3463,6 +4662,402 @@ let ``option record field with option option field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<option<int>> |}> |}>
+        records
+
+[<Property>]
+let ``option enum union field`` records =
+    testRoundtrip<{|
+        Field1: option<EnumUnion> |}>
+        records
+
+[<Property>]
+let ``option complex union field`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnion> |}>
+        records
+
+[<Property>]
+let ``option complex union field with bool case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithBoolCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with int8 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithInt8Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with int16 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithInt16Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with int32 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithInt32Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with int64 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithInt64Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with uint8 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithUInt8Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with uint16 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithUInt16Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with uint32 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithUInt32Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with uint64 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithUInt64Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with float32 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithFloat32Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with float64 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithFloat64Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with decimal case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithDecimalCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with date time case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithDateTimeCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with date time offset case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithDateTimeOffsetCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with string case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithStringCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with guid case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithGuidCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with array case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithArrayCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with generic list case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithGenericListCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with fsharp list case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithFSharpListCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with record case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithRecordCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with enum union case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithEnumUnionCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with complex union case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithComplexUnionCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable bool case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableBoolCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable int8 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableInt8Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable int16 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableInt16Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable int32 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableInt32Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable int64 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableInt64Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable uint8 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableUInt8Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable uint16 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableUInt16Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable uint32 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableUInt32Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable uint64 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableUInt64Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable float32 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableFloat32Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable float64 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableFloat64Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable decimal case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableDecimalCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable date time case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableDateTimeCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable date time offset case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableDateTimeOffsetCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable guid case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableGuidCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable record case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableRecordCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable enum union case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableEnumUnionCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with nullable complex union case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithNullableComplexUnionCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option bool case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionBoolCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option int8 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionInt8Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option int16 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionInt16Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option int32 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionInt32Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option int64 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionInt64Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option uint8 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionUInt8Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option uint16 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionUInt16Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option uint32 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionUInt32Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option uint64 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionUInt64Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option float32 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionFloat32Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option float64 case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionFloat64Case> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option decimal case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionDecimalCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option date time case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionDateTimeCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option date time offset case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionDateTimeOffsetCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option string case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionStringCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option guid case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionGuidCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option array case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionArrayCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option generic list case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionGenericListCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option fsharp list case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionFSharpListCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option record case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionRecordCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option enum union case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionEnumUnionCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option complex union case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionComplexUnionCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option nullable case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionNullableCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option option case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionOptionCase> |}>
         records
 
 [<Property>]

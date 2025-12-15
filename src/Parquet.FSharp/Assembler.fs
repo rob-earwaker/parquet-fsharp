@@ -387,7 +387,7 @@ type private ListAssembler(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, 
             "tryAssembleNextList",
             [||])
 
-type private RecordAssembler(recordInfo: RecordInfo, maxRepLevel, maxDefLevel, fieldAssemblers: ValueAssembler[]) =
+type private RecordAssembler(recordInfo: RecordInfo, maxDefLevel, fieldAssemblers: ValueAssembler[]) =
     inherit ValueAssembler(recordInfo.DotnetType)
 
     override this.CollectColumnEnumeratorVariables() =
@@ -495,7 +495,7 @@ module private rec ValueAssembler =
             recordInfo.Fields
             |> Array.map (fun fieldInfo ->
                 ValueAssembler.forValue fieldInfo.ValueInfo maxRepLevel maxDefLevel)
-        RecordAssembler(recordInfo, maxRepLevel, maxDefLevel, fieldAssemblers)
+        RecordAssembler(recordInfo, maxDefLevel, fieldAssemblers)
         :> ValueAssembler
 
     let forValue (valueInfo: ValueInfo) parentMaxRepLevel parentMaxDefLevel =

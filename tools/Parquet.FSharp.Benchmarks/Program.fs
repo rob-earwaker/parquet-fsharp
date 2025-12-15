@@ -48,64 +48,69 @@ module Random =
     let float () =
         BitConverter.ToDouble(bytes 8)
 
+    let decimal () =
+        decimal (Random.NextDouble() * 10. ** Random.Next(0, 16))
+
+    let guid () =
+        Guid.NewGuid()
+
     let array count (createItem: unit -> 'Item) =
         Array.init count (fun _ -> createItem ())
 
     let genericList count (createItem: unit -> 'Item) =
         ResizeArray(Array.init count (fun _ -> createItem ()))
 
-[<CPUUsageDiagnoser>]
-//[<DotNetObjectAllocDiagnoser>]
-//[<DotNetObjectAllocJobConfiguration>]
-[<MemoryDiagnoser>]
-type ParquetSerialization() =
-    let rowCount = 1_000
-    let records =
-        Array.init rowCount (fun _ ->
-            {| Field1 = Random.bool ()
-               Field2 = Random.int ()
-               Field3 = Random.float ()
-               Field4 = Random.array 100 (fun () ->
-                {| Field41 = Random.bool ()
-                   Field42 = Random.int ()
-                   Field43 = Random.float () |})|})
-
-    [<Benchmark>]
-    member this.ParquetNet() =
-        ParquetNet.serialize records
-
-    [<Benchmark>]
-    member this.ParquetFSharp() =
-        ParquetFSharp.serialize records
+[<CLIMutable>]
+type Inner = {
+    Field1: bool
+    Field2: int }
 
 [<CLIMutable>]
 type Record = {
     Field1: bool
     Field2: int
-    Field3: ResizeArray<float> }
+    Field3: float
+    Field4: decimal
+    Field5: Guid
+    Field6: ResizeArray<int>
+    Field7: ResizeArray<Inner> }
+
+let RowCount = 100_000
+
+let Records =
+    Array.init RowCount (fun _ ->
+        { Record.Field1 = Random.bool ()
+          Record.Field2 = Random.int ()
+          Record.Field3 = Random.float ()
+          Record.Field4 = Random.decimal ()
+          Record.Field5 = Random.guid ()
+          Record.Field6 = Random.genericList 100 Random.int
+          Record.Field7 = Random.genericList 10 (fun () ->
+            { Inner.Field1 = Random.bool ()
+              Inner.Field2 = Random.int () }) })
+
+let Bytes = ParquetNet.serialize Records
 
 [<CPUUsageDiagnoser>]
-//[<DotNetObjectAllocDiagnoser>]
-//[<DotNetObjectAllocJobConfiguration>]
 [<MemoryDiagnoser>]
-type ParquetDeserialization() =
-    let rowCount = 100_000
-    let records =
-        Array.init rowCount (fun _ ->
-            { Record.Field1 = Random.bool ()
-              Record.Field2 = Random.int ()
-              Record.Field3 = Random.genericList 100 Random.float })
-    let bytes = ParquetNet.serialize records
+type Benchmarks() =
+    [<Benchmark>]
+    member this.Serialize_ParquetNet() =
+        ParquetNet.serialize Records
 
     [<Benchmark>]
-    member this.ParquetNet() =
-        ParquetNet.deserialize<Record> bytes
+    member this.Serialize_ParquetFSharp() =
+        ParquetFSharp.serialize Records
 
     [<Benchmark>]
-    member this.ParquetFSharp() =
-        ParquetFSharp.deserialize<Record> bytes
+    member this.Deserialize_ParquetNet() =
+        ParquetNet.deserialize<Record> Bytes
+
+    [<Benchmark>]
+    member this.Deserialize_ParquetFSharp() =
+        ParquetFSharp.deserialize<Record> Bytes
 
 [<EntryPoint>]
 let main _ =
-    let summary = BenchmarkRunner.Run<ParquetDeserialization>()
+    let summary = BenchmarkRunner.Run<Benchmarks>()
     0

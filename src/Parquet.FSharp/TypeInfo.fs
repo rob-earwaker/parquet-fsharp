@@ -1,6 +1,4 @@
 ﻿namespace rec Parquet.FSharp
-// Ignore warning about recursive field definitions.
-#nowarn 40
 
 open FSharp.Reflection
 open System

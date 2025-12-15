@@ -1,4 +1,5 @@
 module [<AutoOpen>] internal Parquet.FSharp.ExpressionExtensions
+// TODO: Should eventually be able to move this below TypeInfo.fs
 
 open System
 open System.Linq.Expressions

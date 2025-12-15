@@ -275,8 +275,6 @@ module ValueInfo =
         Tag: Expression
         Name: string
         Fields: PropertyInfo[]
-        GetFieldValues: obj -> obj[]
-        CreateFromFieldValues: obj[] -> obj
         CreateFromFieldValuesExpr: Expression[] -> Expression  }
 
     module private UnionInfo =
@@ -284,8 +282,6 @@ module ValueInfo =
             let unionCases =
                 FSharpType.GetUnionCases(dotnetType)
                 |> Array.map (fun unionCase ->
-                    let getFieldValues = FSharpValue.PreComputeUnionReader(unionCase)
-                    let createFromFieldValues = FSharpValue.PreComputeUnionConstructor(unionCase)
                     let createFromFieldValuesExpr =
                         let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(unionCase)
                         fun (fieldValues: Expression[]) ->
@@ -299,8 +295,6 @@ module ValueInfo =
                       UnionCaseInfo.Tag = Expression.Constant(unionCase.Tag)
                       UnionCaseInfo.Name = unionCase.Name
                       UnionCaseInfo.Fields = unionCase.GetFields()
-                      UnionCaseInfo.GetFieldValues = getFieldValues
-                      UnionCaseInfo.CreateFromFieldValues = createFromFieldValues
                       UnionCaseInfo.CreateFromFieldValuesExpr = createFromFieldValuesExpr })
             let getTag =
                 // TODO: Can some of these options be removed in practice? Do we even

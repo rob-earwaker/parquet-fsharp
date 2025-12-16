@@ -32,6 +32,7 @@ type ComplexUnionWithDecimalCase = Case1 of field1:decimal
 type ComplexUnionWithDateTimeCase = Case1 of field1:DateTime
 type ComplexUnionWithDateTimeOffsetCase = Case1 of field1:DateTimeOffset
 type ComplexUnionWithStringCase = Case1 of field1:string
+type ComplexUnionWithByteArrayCase = Case1 of field1:byte[]
 type ComplexUnionWithGuidCase = Case1 of field1:Guid
 type ComplexUnionWithArrayCase = Case1 of field1:array<int>
 type ComplexUnionWithGenericListCase = Case1 of field1:ResizeArray<int>
@@ -70,6 +71,7 @@ type ComplexUnionWithOptionDecimalCase = Case1 of field1:option<decimal>
 type ComplexUnionWithOptionDateTimeCase = Case1 of field1:option<DateTime>
 type ComplexUnionWithOptionDateTimeOffsetCase = Case1 of field1:option<DateTimeOffset>
 type ComplexUnionWithOptionStringCase = Case1 of field1:option<string>
+type ComplexUnionWithOptionByteArrayCase = Case1 of field1:option<byte[]>
 type ComplexUnionWithOptionGuidCase = Case1 of field1:option<Guid>
 type ComplexUnionWithOptionArrayCase = Case1 of field1:option<array<int>>
 type ComplexUnionWithOptionGenericListCase = Case1 of field1:option<ResizeArray<int>>
@@ -178,6 +180,12 @@ let ``string field`` records =
         records
 
 [<Property>]
+let ``byte array field`` records =
+    testRoundtrip<{|
+        Field1: byte[] |}>
+        records
+
+[<Property>]
 let ``guid field`` records =
     testRoundtrip<{|
         Field1: Guid |}>
@@ -271,6 +279,12 @@ let ``array field with date time offset elements`` records =
 let ``array field with string elements`` records =
     testRoundtrip<{|
         Field1: array<string> |}>
+        records
+
+[<Property>]
+let ``array field with byte array elements`` records =
+    testRoundtrip<{|
+        Field1: array<byte[]> |}>
         records
 
 [<Property>]
@@ -504,6 +518,12 @@ let ``array field with option string elements`` records =
         records
 
 [<Property>]
+let ``array field with option byte array elements`` records =
+    testRoundtrip<{|
+        Field1: array<option<byte[]>> |}>
+        records
+
+[<Property>]
 let ``array field with option guid elements`` records =
     testRoundtrip<{|
         Field1: array<option<Guid>> |}>
@@ -646,6 +666,12 @@ let ``generic list field with date time offset elements`` records =
 let ``generic list field with string elements`` records =
     testRoundtrip<{|
         Field1: ResizeArray<string> |}>
+        records
+
+[<Property>]
+let ``generic list field with byte array elements`` records =
+    testRoundtrip<{|
+        Field1: ResizeArray<byte[]> |}>
         records
 
 [<Property>]
@@ -879,6 +905,12 @@ let ``generic list field with option string elements`` records =
         records
 
 [<Property>]
+let ``generic list field with option byte array elements`` records =
+    testRoundtrip<{|
+        Field1: ResizeArray<option<byte[]>> |}>
+        records
+
+[<Property>]
 let ``generic list field with option guid elements`` records =
     testRoundtrip<{|
         Field1: ResizeArray<option<Guid>> |}>
@@ -1021,6 +1053,12 @@ let ``fsharp list field with date time offset elements`` records =
 let ``fsharp list field with string elements`` records =
     testRoundtrip<{|
         Field1: list<string> |}>
+        records
+
+[<Property>]
+let ``fsharp list field with byte array elements`` records =
+    testRoundtrip<{|
+        Field1: list<byte[]> |}>
         records
 
 [<Property>]
@@ -1254,6 +1292,12 @@ let ``fsharp list field with option string elements`` records =
         records
 
 [<Property>]
+let ``fsharp list field with option byte array elements`` records =
+    testRoundtrip<{|
+        Field1: list<option<byte[]>> |}>
+        records
+
+[<Property>]
 let ``fsharp list field with option guid elements`` records =
     testRoundtrip<{|
         Field1: list<option<Guid>> |}>
@@ -1411,6 +1455,13 @@ let ``record field with string field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: string |} |}>
+        records
+
+[<Property>]
+let ``record field with byte array field`` records =
+    testRoundtrip<{|
+        Field1: {|
+            Field2: byte[] |} |}>
         records
 
 [<Property>]
@@ -1682,6 +1733,13 @@ let ``record field with option string field`` records =
         records
 
 [<Property>]
+let ``record field with option byte array field`` records =
+    testRoundtrip<{|
+        Field1: {|
+            Field2: option<byte[]> |} |}>
+        records
+
+[<Property>]
 let ``record field with option guid field`` records =
     testRoundtrip<{|
         Field1: {|
@@ -1845,6 +1903,12 @@ let ``complex union field with date time offset case`` records =
 let ``complex union field with string case`` records =
     testRoundtrip<{|
         Field1: ComplexUnionWithStringCase |}>
+        records
+
+[<Property>]
+let ``complex union field with byte array case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithByteArrayCase |}>
         records
 
 [<Property>]
@@ -2073,6 +2137,12 @@ let ``complex union field with option date time offset case`` records =
 let ``complex union field with option string case`` records =
     testRoundtrip<{|
         Field1: ComplexUnionWithOptionStringCase |}>
+        records
+
+[<Property>]
+let ``complex union field with option byte array case`` records =
+    testRoundtrip<{|
+        Field1: ComplexUnionWithOptionByteArrayCase |}>
         records
 
 [<Property>]
@@ -2325,6 +2395,13 @@ let ``nullable record field with string field`` records =
         records
 
 [<Property>]
+let ``nullable record field with byte array field`` records =
+    testRoundtrip<{|
+        Field1: Nullable<struct {|
+            Field2: byte[] |}> |}>
+        records
+
+[<Property>]
 let ``nullable record field with guid field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
@@ -2557,6 +2634,12 @@ let ``option string field`` records =
         records
 
 [<Property>]
+let ``option byte array field`` records =
+    testRoundtrip<{|
+        Field1: option<byte[]> |}>
+        records
+
+[<Property>]
 let ``option guid field`` records =
     testRoundtrip<{|
         Field1: option<Guid> |}>
@@ -2650,6 +2733,12 @@ let ``option array field with date time offset elements`` records =
 let ``option array field with string elements`` records =
     testRoundtrip<{|
         Field1: option<array<string>> |}>
+        records
+
+[<Property>]
+let ``option array field with byte array elements`` records =
+    testRoundtrip<{|
+        Field1: option<array<byte[]>> |}>
         records
 
 [<Property>]
@@ -2883,6 +2972,12 @@ let ``option array field with option string elements`` records =
         records
 
 [<Property>]
+let ``option array field with option byte array elements`` records =
+    testRoundtrip<{|
+        Field1: option<array<option<byte[]>>> |}>
+        records
+
+[<Property>]
 let ``option array field with option guid elements`` records =
     testRoundtrip<{|
         Field1: option<array<option<Guid>>> |}>
@@ -3025,6 +3120,12 @@ let ``option generic list field with date time offset elements`` records =
 let ``option generic list field with string elements`` records =
     testRoundtrip<{|
         Field1: option<ResizeArray<string>> |}>
+        records
+
+[<Property>]
+let ``option generic list field with byte array elements`` records =
+    testRoundtrip<{|
+        Field1: option<ResizeArray<byte[]>> |}>
         records
 
 [<Property>]
@@ -3258,6 +3359,12 @@ let ``option generic list field with option string elements`` records =
         records
 
 [<Property>]
+let ``option generic list field with option byte array elements`` records =
+    testRoundtrip<{|
+        Field1: option<ResizeArray<option<byte[]>>> |}>
+        records
+
+[<Property>]
 let ``option generic list field with option guid elements`` records =
     testRoundtrip<{|
         Field1: option<ResizeArray<option<Guid>>> |}>
@@ -3400,6 +3507,12 @@ let ``option fsharp list field with date time offset elements`` records =
 let ``option fsharp list field with string elements`` records =
     testRoundtrip<{|
         Field1: option<list<string>> |}>
+        records
+
+[<Property>]
+let ``option fsharp list field with byte array elements`` records =
+    testRoundtrip<{|
+        Field1: option<list<byte[]>> |}>
         records
 
 [<Property>]
@@ -3633,6 +3746,12 @@ let ``option fsharp list field with option string elements`` records =
         records
 
 [<Property>]
+let ``option fsharp list field with option byte array elements`` records =
+    testRoundtrip<{|
+        Field1: option<list<option<byte[]>>> |}>
+        records
+
+[<Property>]
 let ``option fsharp list field with option guid elements`` records =
     testRoundtrip<{|
         Field1: option<list<option<Guid>>> |}>
@@ -3790,6 +3909,13 @@ let ``option record field with string field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: string |}> |}>
+        records
+
+[<Property>]
+let ``option record field with byte array field`` records =
+    testRoundtrip<{|
+        Field1: option<{|
+            Field2: byte[] |}> |}>
         records
 
 [<Property>]
@@ -4061,6 +4187,13 @@ let ``option record field with option string field`` records =
         records
 
 [<Property>]
+let ``option record field with option byte array field`` records =
+    testRoundtrip<{|
+        Field1: option<{|
+            Field2: option<byte[]> |}> |}>
+        records
+
+[<Property>]
 let ``option record field with option guid field`` records =
     testRoundtrip<{|
         Field1: option<{|
@@ -4224,6 +4357,12 @@ let ``option complex union field with date time offset case`` records =
 let ``option complex union field with string case`` records =
     testRoundtrip<{|
         Field1: option<ComplexUnionWithStringCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with byte array case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithByteArrayCase> |}>
         records
 
 [<Property>]
@@ -4452,6 +4591,12 @@ let ``option complex union field with option date time offset case`` records =
 let ``option complex union field with option string case`` records =
     testRoundtrip<{|
         Field1: option<ComplexUnionWithOptionStringCase> |}>
+        records
+
+[<Property>]
+let ``option complex union field with option byte array case`` records =
+    testRoundtrip<{|
+        Field1: option<ComplexUnionWithOptionByteArrayCase> |}>
         records
 
 [<Property>]

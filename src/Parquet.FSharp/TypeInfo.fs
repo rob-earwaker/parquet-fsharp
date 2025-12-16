@@ -34,10 +34,10 @@ type ValueInfo =
 //     - DateTime
 //     - string
 //     - Guid
+//     - byte[]
 
 //   Not implemented:
 //     - BigInteger
-//     - byte[]
 //     - DateOnly, TimeOnly
 //     - TimeSpan, Interval
 //     - Enums?
@@ -156,6 +156,7 @@ module private DotnetType =
     let (|Guid|_|) = ActivePatternTypeMatch<Guid>
     let (|DateTime|_|) = ActivePatternTypeMatch<DateTime>
     let (|DateTimeOffset|_|) = ActivePatternTypeMatch<DateTimeOffset>
+    let (|ByteArray|_|) = ActivePatternTypeMatch<byte[]>
     
     let private ActivePatternGenericTypeMatch<'GenericType> (dotnetType: Type) =
         if dotnetType.IsGenericType
@@ -541,6 +542,10 @@ module ValueInfo =
                 | DotnetType.DateTimeOffset -> ValueInfo.Atomic AtomicInfo.DateTimeOffset
                 | DotnetType.String -> ValueInfo.Atomic AtomicInfo.String
                 | DotnetType.Guid -> ValueInfo.Atomic AtomicInfo.Guid
+                // This must come before the generic array type since byte
+                // arrays are supported as a primitive type in Parquet and are
+                // therefore handled as atomic values rather than lists.
+                | DotnetType.ByteArray -> ValueInfo.Atomic AtomicInfo.ByteArray
                 | DotnetType.Array1d -> ValueInfo.List (ListInfo.ofArray1d dotnetType)
                 | DotnetType.GenericList -> ValueInfo.List (ListInfo.ofGenericList dotnetType)
                 | DotnetType.FSharpList -> ValueInfo.List (ListInfo.ofFSharpList dotnetType)
@@ -622,6 +627,17 @@ module private AtomicInfo =
 
     let String =
         let dotnetType = typeof<string>
+        let isOptional = true
+        let dataDotnetType = dotnetType
+        let isNull = Expression.IsNull
+        let getDataValue = id
+        let createFromDataValue = id
+        let createNull = Expression.Null(dotnetType)
+        create dotnetType isOptional dataDotnetType
+            isNull getDataValue createFromDataValue createNull
+
+    let ByteArray =
+        let dotnetType = typeof<byte[]>
         let isOptional = true
         let dataDotnetType = dotnetType
         let isNull = Expression.IsNull

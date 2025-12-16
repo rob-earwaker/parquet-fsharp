@@ -156,22 +156,21 @@ module private DotnetType =
     let (|Guid|_|) = ActivePatternTypeMatch<Guid>
     let (|DateTime|_|) = ActivePatternTypeMatch<DateTime>
     let (|DateTimeOffset|_|) = ActivePatternTypeMatch<DateTimeOffset>
+    
+    let private ActivePatternGenericTypeMatch<'GenericType> (dotnetType: Type) =
+        if dotnetType.IsGenericType
+            && dotnetType.GetGenericTypeDefinition() = typedefof<'GenericType>
+        then Option.Some ()
+        else Option.None
+
+    let (|GenericList|_|) = ActivePatternGenericTypeMatch<ResizeArray<_>>
+    let (|FSharpList|_|) = ActivePatternGenericTypeMatch<list<_>>
+    let (|Nullable|_|) = ActivePatternGenericTypeMatch<Nullable<_>>
+    let (|Option|_|) = ActivePatternGenericTypeMatch<option<_>>
 
     let (|Array1d|_|) (dotnetType: Type) =
         if dotnetType.IsArray
             && dotnetType.GetArrayRank() = 1
-        then Option.Some ()
-        else Option.None
-
-    let (|GenericList|_|) (dotnetType: Type) =
-        if dotnetType.IsGenericType
-            && dotnetType.GetGenericTypeDefinition() = typedefof<ResizeArray<_>>
-        then Option.Some ()
-        else Option.None
-
-    let (|FSharpList|_|) (dotnetType: Type) =
-        if dotnetType.IsGenericType
-            && dotnetType.GetGenericTypeDefinition() = typedefof<list<_>>
         then Option.Some ()
         else Option.None
 
@@ -183,18 +182,6 @@ module private DotnetType =
 
     let (|Union|_|) dotnetType =
         if FSharpType.IsUnion(dotnetType)
-        then Option.Some ()
-        else Option.None
-
-    let (|Nullable|_|) (dotnetType: Type) =
-        if dotnetType.IsGenericType
-            && dotnetType.GetGenericTypeDefinition() = typedefof<Nullable<_>>
-        then Option.Some ()
-        else Option.None
-
-    let (|Option|_|) (dotnetType: Type) =
-        if dotnetType.IsGenericType
-            && dotnetType.GetGenericTypeDefinition() = typedefof<Option<_>>
         then Option.Some ()
         else Option.None
 
@@ -230,6 +217,7 @@ module ValueInfo =
         let isOptional = true
         let fields =
             let valueField =
+                // TODO: The name of this field could be configurable via an attribute.
                 let name = "Value"
                 let getValue = Option.getValue
                 FieldInfo.create name valueInfo getValue
@@ -463,12 +451,14 @@ module ValueInfo =
         let isOptional = true
         let fields =
             let unionCaseField =
+                // TODO: The name of this field could be configurable via an attribute.
                 let name = "UnionCase"
                 // TODO: This should really be a non-optional string like for the union enum
                 let valueInfo = AtomicInfo.String |> ValueInfo.Atomic
                 let getValue = unionInfo.GetCaseName
                 FieldInfo.create name valueInfo getValue
             let dataField =
+                // TODO: The name of this field could be configurable via an attribute.
                 let name = "Data"
                 let valueInfo = ValueInfo.ofUnionData unionInfo
                 let getValue = id

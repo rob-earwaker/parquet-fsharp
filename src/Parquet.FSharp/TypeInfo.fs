@@ -26,7 +26,7 @@ type ValueInfo =
 
     member this.IsOptional =
         match this with
-        | ValueInfo.Atomic atomicInfo -> atomicInfo.IsOptional
+        | ValueInfo.Atomic atomicInfo -> false
         | ValueInfo.List listInfo -> listInfo.IsOptional
         | ValueInfo.Record recordInfo -> recordInfo.IsOptional
         | ValueInfo.Option optionInfo -> true
@@ -52,12 +52,9 @@ type ValueInfo =
 
 type AtomicInfo = {
     DotnetType: Type
-    IsOptional: bool
     DataDotnetType: Type
-    IsNull: Expression -> Expression
     GetDataValue: Expression -> Expression
-    CreateFromDataValue: Expression -> Expression
-    CreateNull: Expression }
+    CreateFromDataValue: Expression -> Expression }
 
 type ListInfo = {
     DotnetType: Type
@@ -216,31 +213,39 @@ module ValueInfo =
             Cache[dotnetType] <- valueInfo)
 
     let private atomicInfo
-        dotnetType isOptional dataDotnetType
-        isNull getDataValue createFromDataValue createNull =
+        dotnetType dataDotnetType getDataValue createFromDataValue =
         ValueInfo.Atomic {
             AtomicInfo.DotnetType = dotnetType
-            AtomicInfo.IsOptional = isOptional
             AtomicInfo.DataDotnetType = dataDotnetType
-            AtomicInfo.IsNull = isNull
             AtomicInfo.GetDataValue = getDataValue
-            AtomicInfo.CreateFromDataValue = createFromDataValue
-            AtomicInfo.CreateNull = createNull }
+            AtomicInfo.CreateFromDataValue = createFromDataValue }
+
+    let private optionInfo
+        dotnetType valueInfo isNull getValue createNull createFromValue =
+        ValueInfo.Option {
+            OptionInfo.DotnetType = dotnetType
+            OptionInfo.ValueInfo = valueInfo
+            OptionInfo.IsNull = isNull
+            OptionInfo.GetValue = getValue
+            OptionInfo.CreateNull = createNull
+            OptionInfo.CreateFromValue = createFromValue }
+
+    let private ofReferenceType (valueInfo: ValueInfo) =
+        let dotnetType = valueInfo.DotnetType
+        let isNull = Expression.IsNull
+        let getValue = id
+        let createNull = Expression.Null(dotnetType)
+        let createFromValue = id
+        ValueInfo.optionInfo
+            dotnetType valueInfo isNull getValue createNull createFromValue
 
     let private ofPrimitive<'Value> =
         let dotnetType = typeof<'Value>
-        let isOptional = false
         let dataDotnetType = dotnetType
-        let isNull = fun (value: Expression) -> Expression.False
         let getDataValue = id
         let createFromDataValue = id
-        let createNull =
-            Expression.Block(
-                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
-                Expression.Default(dotnetType))
-            :> Expression
-        ValueInfo.atomicInfo dotnetType isOptional dataDotnetType
-            isNull getDataValue createFromDataValue createNull
+        ValueInfo.atomicInfo
+            dotnetType dataDotnetType getDataValue createFromDataValue
 
     let Bool = ofPrimitive<bool>
     let Int8 = ofPrimitive<int8>
@@ -259,9 +264,7 @@ module ValueInfo =
 
     let DateTimeOffset =
         let dotnetType = typeof<DateTimeOffset>
-        let isOptional = false
         let dataDotnetType = typeof<DateTime>
-        let isNull = fun (value: Expression) -> Expression.False
         let getDataValue (value: Expression) =
             Expression.Property(value, "UtcDateTime")
             :> Expression
@@ -270,43 +273,34 @@ module ValueInfo =
                 typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
                 Expression.Call(dataValue, "ToUniversalTime", [||], [||]))
             :> Expression
-        let createNull =
-            Expression.Block(
-                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
-                Expression.Default(dotnetType))
-            :> Expression
-        ValueInfo.atomicInfo dotnetType isOptional dataDotnetType
-            isNull getDataValue createFromDataValue createNull
+        ValueInfo.atomicInfo
+            dotnetType dataDotnetType getDataValue createFromDataValue
 
     let String =
         let dotnetType = typeof<string>
-        let isOptional = true
         let dataDotnetType = dotnetType
-        let isNull = Expression.IsNull
         let getDataValue = id
         let createFromDataValue = id
-        let createNull = Expression.Null(dotnetType)
-        ValueInfo.atomicInfo dotnetType isOptional dataDotnetType
-            isNull getDataValue createFromDataValue createNull
+        ValueInfo.atomicInfo
+            dotnetType dataDotnetType getDataValue createFromDataValue
+        |> ValueInfo.ofReferenceType
 
     let ByteArray =
         let dotnetType = typeof<byte[]>
-        let isOptional = true
         let dataDotnetType = dotnetType
-        let isNull = Expression.IsNull
         let getDataValue = id
         let createFromDataValue = id
-        let createNull = Expression.Null(dotnetType)
-        ValueInfo.atomicInfo dotnetType isOptional dataDotnetType
-            isNull getDataValue createFromDataValue createNull
+        ValueInfo.atomicInfo
+            dotnetType dataDotnetType getDataValue createFromDataValue
+        |> ValueInfo.ofReferenceType
 
     let private ofNullableInner dotnetType (valueInfo: ValueInfo) =
         let isNull = Nullable.isNull
         let getValue = Nullable.getValue
         let createNull = Nullable.createNull dotnetType
         let createFromValue = Nullable.createValue dotnetType
-        OptionInfo.create dotnetType valueInfo isNull getValue createNull createFromValue
-        |> ValueInfo.Option
+        ValueInfo.optionInfo
+            dotnetType valueInfo isNull getValue createNull createFromValue
 
     let private ofNullableOuter (dotnetType: Type) (valueInfo: ValueInfo) =
         let dotnetType = dotnetType
@@ -345,8 +339,8 @@ module ValueInfo =
         let getValue = Option.getValue
         let createNull = Option.createNone dotnetType
         let createFromValue = Option.createSome dotnetType
-        OptionInfo.create dotnetType valueInfo isNull getValue createNull createFromValue
-        |> ValueInfo.Option
+        ValueInfo.optionInfo
+            dotnetType valueInfo isNull getValue createNull createFromValue
 
     let private ofOptionOuter (dotnetType: Type) (valueInfo: ValueInfo) =
         let dotnetType = dotnetType
@@ -458,10 +452,8 @@ module ValueInfo =
         // We represent unions that are equivalent to enums, i.e. all cases have
         // zero fields, as a string value containing the case name. Since a
         // union value can't be null and must be one of the possible cases, this
-        // value is not optional despite being a string value.
-        let isOptional = false
+        // value is not optional despite being represented as a string value.
         let dataDotnetType = typeof<string>
-        let isNull = fun (union: Expression) -> Expression.False
         let getDataValue = unionInfo.GetCaseName
         let createFromDataValue (caseName: Expression) =
             let failWithInvalidName =
@@ -479,13 +471,8 @@ module ValueInfo =
                     failWithInvalidName,
                 Expression.Label(returnLabel, Expression.Default(dotnetType)))
             :> Expression
-        let createNull =
-            Expression.Block(
-                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
-                Expression.Default(dotnetType))
-            :> Expression
-        ValueInfo.atomicInfo dotnetType isOptional dataDotnetType
-            isNull getDataValue createFromDataValue createNull
+        ValueInfo.atomicInfo
+            dotnetType dataDotnetType getDataValue createFromDataValue
 
     let private ofUnionCaseData (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
         let dotnetType = unionInfo.DotnetType
@@ -828,21 +815,3 @@ module private RecordInfo =
             :> Expression
         create dotnetType valueDotnetType isOptional fields
             isNull getValue createFromFieldValues createNull
-
-module private OptionInfo =
-    let create dotnetType valueInfo isNull getValue createNull createFromValue =
-        { OptionInfo.DotnetType = dotnetType
-          OptionInfo.ValueInfo = valueInfo
-          OptionInfo.IsNull = isNull
-          OptionInfo.GetValue = getValue
-          OptionInfo.CreateNull = createNull
-          OptionInfo.CreateFromValue = createFromValue }
-
-    // TODO: Use this to simplify optional reference types like array1d and generic list.
-    let ofReferenceType (valueInfo: ValueInfo) =
-        let dotnetType = valueInfo.DotnetType
-        let isNull = Expression.IsNull
-        let getValue = id
-        let createNull = Expression.Null(dotnetType)
-        let createFromValue = id
-        OptionInfo.create dotnetType valueInfo isNull getValue createNull createFromValue

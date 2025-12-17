@@ -208,18 +208,8 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
                 Expression.IfThenElse(
                     // if defLevel < maxDefLevel
                     Expression.LessThan(defLevel, Expression.Constant(maxDefLevel)),
-                    // then
-                    Expression.IfThenElse(
-                        // TODO: Use >>> before pseudo code so we can also add normal comments?
-                        // if atomicInfo.IsOptional
-                        //     && defLevel = maxDefLevel - 1
-                        Expression.And(
-                            Expression.Constant(atomicInfo.IsOptional),
-                            Expression.Equal(defLevel, Expression.Constant(maxDefLevel - 1))),
-                        // then this.CurrentValue.SetValue(repLevel, defLevel, <null>)
-                        this.SetCurrentValue(repLevel, defLevel, atomicInfo.CreateNull),
-                        // else this.CurrentValue.SetUndefined(repLevel, defLevel)
-                        this.SetCurrentValueUndefined(repLevel, defLevel)),
+                    // then this.CurrentValue.SetUndefined(repLevel, defLevel)
+                    this.SetCurrentValueUndefined(repLevel, defLevel),
                     // else
                     Expression.Block(
                         // let dataValue = columnEnumerator.CurrentDataValue
@@ -519,10 +509,7 @@ type private OptionAssembler(optionInfo: OptionInfo, maxDefLevel, valueAssembler
 module private rec ValueAssembler =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxRepLevel parentMaxDefLevel =
         let maxRepLevel = parentMaxRepLevel
-        let maxDefLevel =
-            if atomicInfo.IsOptional
-            then parentMaxDefLevel + 1
-            else parentMaxDefLevel
+        let maxDefLevel = parentMaxDefLevel
         AtomicAssembler(atomicInfo, maxRepLevel, maxDefLevel)
         :> ValueAssembler
 

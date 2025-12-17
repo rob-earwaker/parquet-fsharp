@@ -86,13 +86,6 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
                 Expression.Constant(maxDefLevel),
                 Expression.Constant(field)))
 
-    let addValue(repLevel, defLevel, value) =
-        let dataValue = Expression.Variable(atomicInfo.DataDotnetType, "dataValue")
-        Expression.Block(
-            [ dataValue ],
-            Expression.Assign(dataValue, atomicInfo.GetDataValue(value)),
-            Expression.Call(columnBuilder, "AddDataValue", [||], repLevel, defLevel, dataValue))
-
     override this.CollectColumnBuilderVariables() =
         Seq.singleton columnBuilder
 
@@ -103,23 +96,14 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
         Expression.Call(columnBuilder, "AddNull", [||], repLevel, defLevel)
 
     override this.ShredValue(parentRepLevel, parentDefLevel, value) =
-        if atomicInfo.IsOptional
-        then
-            Expression.IfThenElse(
-                // The value is OPTIONAL, so check for NULL.
-                atomicInfo.IsNull(value),
-                // If the value is NULL, add a NULL value using the parent
-                // levels to indicate the last definition level at which a value
-                // was present.
-                this.AddNull(parentRepLevel, parentDefLevel),
-                // If the value is NOTNULL, add the value at the max definition
-                // level. In practice this should be one more than the parent
-                // definition level.
-                addValue(parentRepLevel, Expression.Constant(maxDefLevel), value))
-        else
-            // The value is REQUIRED. The definition level will be the same as
-            // the parent, so just add the value using the parent levels.
-            addValue(parentRepLevel, parentDefLevel, value)
+        // The value is REQUIRED. The definition level will be the same as
+        // the parent, so just add the value using the parent levels.
+        let dataValue = Expression.Variable(atomicInfo.DataDotnetType, "dataValue")
+        Expression.Block(
+            [ dataValue ],
+            Expression.Assign(dataValue, atomicInfo.GetDataValue(value)),
+            Expression.Call(
+                columnBuilder, "AddDataValue", [||], parentRepLevel, parentDefLevel, dataValue))
 
 type private ListShredder(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, elementShredder: ValueShredder) =
     inherit ValueShredder()
@@ -321,10 +305,7 @@ type private OptionShredder(optionInfo: OptionInfo, maxDefLevel, valueShredder: 
 module private rec ValueShredder =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxRepLevel parentMaxDefLevel dataField =
         let maxRepLevel = parentMaxRepLevel
-        let maxDefLevel =
-            if atomicInfo.IsOptional
-            then parentMaxDefLevel + 1
-            else parentMaxDefLevel
+        let maxDefLevel = parentMaxDefLevel
         AtomicShredder(atomicInfo, maxRepLevel, maxDefLevel, dataField)
         :> ValueShredder
 

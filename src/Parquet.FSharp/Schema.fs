@@ -7,7 +7,13 @@ let private getValueSchema fieldName valueInfo =
     | ValueInfo.Atomic atomicInfo ->
         // TODO: Should we use some of the custom DataField types here, e.g. DecimalDataField?
         let dataType = atomicInfo.DataDotnetType
-        let isNullable = atomicInfo.IsOptional
+        // Nullability in the schema is handled at the {OptionInfo} level, so
+        // despite some atomic values being nullable, e.g. {string} and
+        // {byte[]}, we specify as not nullable here. Note that if nullability
+        // is not explicitly specified then it will be inferred from the data
+        // type as part of the {DataField} constructor, so always specify as
+        // {false} to avoid this.
+        let isNullable = false
         DataField(fieldName, dataType, isNullable) :> Field
     | ValueInfo.List listInfo ->
         let element = getValueSchema ListField.ElementName listInfo.ElementInfo

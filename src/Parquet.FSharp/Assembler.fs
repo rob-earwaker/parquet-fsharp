@@ -461,6 +461,61 @@ type private RecordAssembler(recordInfo: RecordInfo, maxDefLevel, fieldAssembler
             "tryAssembleNextRecord",
             [||])
 
+type private OptionAssembler(optionInfo: OptionInfo, maxDefLevel, valueAssembler: ValueAssembler) =
+    inherit ValueAssembler(optionInfo.DotnetType)
+
+    override this.CollectColumnEnumeratorVariables() =
+        valueAssembler.CollectColumnEnumeratorVariables()
+
+    override this.CollectColumnEnumeratorInitializers() =
+        valueAssembler.CollectColumnEnumeratorInitializers()
+
+    override this.CollectChildCurrentValueVariables() =
+        valueAssembler.CollectCurrentValueVariables()
+
+    override this.TryAssembleNextValue =
+        let repLevel = Expression.Variable(typeof<int>, "repLevel")
+        let defLevel = Expression.Variable(typeof<int>, "defLevel")
+        let value = Expression.Variable(optionInfo.ValueInfo.DotnetType, "value")
+        let optionalValue = Expression.Variable(optionInfo.DotnetType, "optionalValue")
+        let returnValue = Expression.Label(typeof<bool>, "valueAvailable")
+        // fun () ->
+        Expression.Lambda(
+            Expression.Block(
+                [ repLevel; defLevel; value; optionalValue ],
+                // if not valueAssembler.TryReadNextValue() then
+                //     return false
+                Expression.IfThen(
+                    Expression.Not(Expression.Invoke(valueAssembler.TryReadNextValue)),
+                    Expression.Return(returnValue, Expression.False)),
+                // let repLevel = valueAssembler.CurrentValue.RepLevel
+                // let defLevel = valueAssembler.CurrentValue.DefLevel
+                Expression.Assign(repLevel, valueAssembler.CurrentValueRepLevel),
+                Expression.Assign(defLevel, valueAssembler.CurrentValueDefLevel),
+                Expression.IfThenElse(
+                    // if defLevel < maxDefLevel
+                    Expression.LessThan(defLevel, Expression.Constant(maxDefLevel)),
+                    // then
+                    Expression.IfThenElse(
+                        // if defLevel = maxDefLevel - 1
+                        Expression.Equal(defLevel, Expression.Constant(maxDefLevel - 1)),
+                        // then this.CurrentValue.SetValue(repLevel, defLevel, <null>)
+                        this.SetCurrentValue(repLevel, defLevel, optionInfo.CreateNull),
+                        // else this.CurrentValue.SetUndefined(repLevel, defLevel)
+                        this.SetCurrentValueUndefined(repLevel, defLevel)),
+                    // else
+                    Expression.Block(
+                        // let value = valueAssembler.CurrentValue.Value
+                        Expression.Assign(value, valueAssembler.CurrentValue),
+                        // let optionalValue = optionInfo.CreateFromValue(value)
+                        Expression.Assign(optionalValue, optionInfo.CreateFromValue(value)),
+                        // this.CurrentValue.SetValue(repLevel, defLevel, value)
+                        this.SetCurrentValue(repLevel, defLevel, optionalValue))),
+                // return true
+                Expression.Label(returnValue, Expression.True)),
+            "tryAssembleNextOption",
+            [||])
+
 module private rec ValueAssembler =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxRepLevel parentMaxDefLevel =
         let maxRepLevel = parentMaxRepLevel
@@ -498,6 +553,13 @@ module private rec ValueAssembler =
         RecordAssembler(recordInfo, maxDefLevel, fieldAssemblers)
         :> ValueAssembler
 
+    let forOption (optionInfo: OptionInfo) parentMaxRepLevel parentMaxDefLevel =
+        let maxRepLevel = parentMaxRepLevel
+        let maxDefLevel = parentMaxDefLevel + 1
+        let valueAssembler = ValueAssembler.forValue optionInfo.ValueInfo maxRepLevel maxDefLevel
+        OptionAssembler(optionInfo, maxDefLevel, valueAssembler)
+        :> ValueAssembler
+
     let forValue (valueInfo: ValueInfo) parentMaxRepLevel parentMaxDefLevel =
         match valueInfo with
         | ValueInfo.Atomic atomicInfo ->
@@ -506,6 +568,8 @@ module private rec ValueAssembler =
             ValueAssembler.forList listInfo parentMaxRepLevel parentMaxDefLevel
         | ValueInfo.Record recordInfo ->
             ValueAssembler.forRecord recordInfo parentMaxRepLevel parentMaxDefLevel
+        | ValueInfo.Option optionInfo ->
+            ValueAssembler.forOption optionInfo parentMaxRepLevel parentMaxDefLevel
 
 type internal Assembler<'Record>() =
     // TODO: Currently only supports F# records but we probably want it to

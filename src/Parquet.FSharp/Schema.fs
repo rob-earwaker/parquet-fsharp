@@ -15,6 +15,16 @@ let private getValueSchema fieldName valueInfo =
     | ValueInfo.Record recordInfo ->
         let fields = getRecordFields recordInfo
         StructField(fieldName, fields) :> Field
+    | ValueInfo.Option optionInfo ->
+        // TODO: Is there a better way to deal with this nesting?
+        let valueField = getValueSchema fieldName optionInfo.ValueInfo
+        if valueField.IsNullable
+        then valueField
+        else
+            match valueField with
+            | :? DataField as dataField ->
+                DataField(dataField.Name, dataField.ClrType, isNullable = true)
+            | _ -> failwith "not implemented"
 
 let private getRecordFields (recordInfo: RecordInfo) =
     recordInfo.Fields

@@ -64,6 +64,7 @@ type private ValueShredder() =
     abstract member AddNull
         : repLevel:Expression * defLevel:Expression
         -> Expression
+    // TODO: Would it be clearer if these were lambda expressions?
     abstract member ShredValue
         : parentRepLevel:Expression * parentDefLevel:Expression * value:Expression
         -> Expression
@@ -286,6 +287,37 @@ type private RecordShredder(recordInfo: RecordInfo, maxDefLevel, fieldShredders:
             // the parent, so use the parent levels when shredding the fields.
             shredFields(parentRepLevel, parentDefLevel, record)
 
+type private OptionShredder(optionInfo: OptionInfo, maxDefLevel, valueShredder: ValueShredder) =
+    inherit ValueShredder()
+
+    override this.CollectColumnBuilderVariables() =
+        valueShredder.CollectColumnBuilderVariables()
+
+    override this.CollectColumnBuilderInitializers() =
+        valueShredder.CollectColumnBuilderInitializers()
+
+    override this.AddNull(repLevel, defLevel) =
+        valueShredder.AddNull(repLevel, defLevel)
+
+    override this.ShredValue(parentRepLevel, parentDefLevel, optionalValue) =
+        let value = Expression.Variable(optionInfo.ValueInfo.DotnetType, "value")
+        Expression.IfThenElse(
+            // The value is OPTIONAL, so check for NULL.
+            optionInfo.IsNull(optionalValue),
+            // If the value is NULL, add a NULL value using the parent levels to
+            // indicate the last definition level at which a value was present.
+            this.AddNull(parentRepLevel, parentDefLevel),
+            // If the value is NOTNULL, get the value and pass it through to the
+            // value shredder at the max definition level. In practice this
+            // should be one more than the parent definition level.
+            Expression.Block(
+                [ value ],
+                Expression.Assign(value, optionInfo.GetValue(optionalValue)),
+                valueShredder.ShredValue(
+                    parentRepLevel,
+                    Expression.Constant(maxDefLevel),
+                    value)))
+
 module private rec ValueShredder =
     let forAtomic (atomicInfo: AtomicInfo) parentMaxRepLevel parentMaxDefLevel dataField =
         let maxRepLevel = parentMaxRepLevel
@@ -324,6 +356,14 @@ module private rec ValueShredder =
         RecordShredder(recordInfo, maxDefLevel, fieldShredders)
         :> ValueShredder
 
+    let forOption (optionInfo: OptionInfo) parentMaxRepLevel parentMaxDefLevel field =
+        let maxRepLevel = parentMaxRepLevel
+        let maxDefLevel = parentMaxDefLevel + 1
+        let valueShredder =
+            ValueShredder.forValue optionInfo.ValueInfo maxRepLevel maxDefLevel field
+        OptionShredder(optionInfo, maxDefLevel, valueShredder)
+        :> ValueShredder
+
     let forValue (valueInfo: ValueInfo) parentMaxRepLevel parentMaxDefLevel (field: Field) =
         match valueInfo with
         | ValueInfo.Atomic atomicInfo ->
@@ -335,6 +375,8 @@ module private rec ValueShredder =
         | ValueInfo.Record recordInfo ->
             let structField = field :?> StructField
             ValueShredder.forRecord recordInfo parentMaxRepLevel parentMaxDefLevel structField.Fields
+        | ValueInfo.Option optionInfo ->
+            ValueShredder.forOption optionInfo parentMaxRepLevel parentMaxDefLevel field
 
 type private Shredder<'Record>() =
     // TODO: Currently only supports F# records but we probably want it to

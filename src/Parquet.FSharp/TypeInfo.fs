@@ -215,6 +215,91 @@ module ValueInfo =
         lock Cache (fun () ->
             Cache[dotnetType] <- valueInfo)
 
+    let private atomicInfo
+        dotnetType isOptional dataDotnetType
+        isNull getDataValue createFromDataValue createNull =
+        ValueInfo.Atomic {
+            AtomicInfo.DotnetType = dotnetType
+            AtomicInfo.IsOptional = isOptional
+            AtomicInfo.DataDotnetType = dataDotnetType
+            AtomicInfo.IsNull = isNull
+            AtomicInfo.GetDataValue = getDataValue
+            AtomicInfo.CreateFromDataValue = createFromDataValue
+            AtomicInfo.CreateNull = createNull }
+
+    let private ofPrimitive<'Value> =
+        let dotnetType = typeof<'Value>
+        let isOptional = false
+        let dataDotnetType = dotnetType
+        let isNull = fun (value: Expression) -> Expression.False
+        let getDataValue = id
+        let createFromDataValue = id
+        let createNull =
+            Expression.Block(
+                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
+                Expression.Default(dotnetType))
+            :> Expression
+        ValueInfo.atomicInfo dotnetType isOptional dataDotnetType
+            isNull getDataValue createFromDataValue createNull
+
+    let Bool = ofPrimitive<bool>
+    let Int8 = ofPrimitive<int8>
+    let Int16 = ofPrimitive<int16>
+    let Int32 = ofPrimitive<int>
+    let Int64 = ofPrimitive<int64>
+    let UInt8 = ofPrimitive<uint8>
+    let UInt16 = ofPrimitive<uint16>
+    let UInt32 = ofPrimitive<uint32>
+    let UInt64 = ofPrimitive<uint64>
+    let Float32 = ofPrimitive<float32>
+    let Float64 = ofPrimitive<float>
+    let Decimal = ofPrimitive<decimal>
+    let DateTime = ofPrimitive<DateTime>
+    let Guid = ofPrimitive<Guid>
+
+    let DateTimeOffset =
+        let dotnetType = typeof<DateTimeOffset>
+        let isOptional = false
+        let dataDotnetType = typeof<DateTime>
+        let isNull = fun (value: Expression) -> Expression.False
+        let getDataValue (value: Expression) =
+            Expression.Property(value, "UtcDateTime")
+            :> Expression
+        let createFromDataValue (dataValue: Expression) =
+            Expression.New(
+                typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
+                Expression.Call(dataValue, "ToUniversalTime", [||], [||]))
+            :> Expression
+        let createNull =
+            Expression.Block(
+                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
+                Expression.Default(dotnetType))
+            :> Expression
+        ValueInfo.atomicInfo dotnetType isOptional dataDotnetType
+            isNull getDataValue createFromDataValue createNull
+
+    let String =
+        let dotnetType = typeof<string>
+        let isOptional = true
+        let dataDotnetType = dotnetType
+        let isNull = Expression.IsNull
+        let getDataValue = id
+        let createFromDataValue = id
+        let createNull = Expression.Null(dotnetType)
+        ValueInfo.atomicInfo dotnetType isOptional dataDotnetType
+            isNull getDataValue createFromDataValue createNull
+
+    let ByteArray =
+        let dotnetType = typeof<byte[]>
+        let isOptional = true
+        let dataDotnetType = dotnetType
+        let isNull = Expression.IsNull
+        let getDataValue = id
+        let createFromDataValue = id
+        let createNull = Expression.Null(dotnetType)
+        ValueInfo.atomicInfo dotnetType isOptional dataDotnetType
+            isNull getDataValue createFromDataValue createNull
+
     let private ofNullableInner dotnetType (valueInfo: ValueInfo) =
         let isNull = Nullable.isNull
         let getValue = Nullable.getValue
@@ -399,9 +484,8 @@ module ValueInfo =
                 Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
                 Expression.Default(dotnetType))
             :> Expression
-        AtomicInfo.create dotnetType isOptional dataDotnetType
+        ValueInfo.atomicInfo dotnetType isOptional dataDotnetType
             isNull getDataValue createFromDataValue createNull
-        |> ValueInfo.Atomic
 
     let private ofUnionCaseData (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
         let dotnetType = unionInfo.DotnetType
@@ -494,7 +578,7 @@ module ValueInfo =
                 // TODO: The name of this field could be configurable via an attribute.
                 let name = "UnionCase"
                 // TODO: This should really be a non-optional string like for the union enum
-                let valueInfo = AtomicInfo.String |> ValueInfo.Atomic
+                let valueInfo = ValueInfo.String
                 let getValue = unionInfo.GetCaseName
                 FieldInfo.create name valueInfo getValue
             let dataField =
@@ -565,26 +649,26 @@ module ValueInfo =
         | Option.None ->
             let valueInfo =
                 match dotnetType with
-                | DotnetType.Bool -> ValueInfo.Atomic AtomicInfo.Bool
-                | DotnetType.Int8 -> ValueInfo.Atomic AtomicInfo.Int8
-                | DotnetType.Int16 -> ValueInfo.Atomic AtomicInfo.Int16
-                | DotnetType.Int32 -> ValueInfo.Atomic AtomicInfo.Int32
-                | DotnetType.Int64 -> ValueInfo.Atomic AtomicInfo.Int64
-                | DotnetType.UInt8 -> ValueInfo.Atomic AtomicInfo.UInt8
-                | DotnetType.UInt16 -> ValueInfo.Atomic AtomicInfo.UInt16
-                | DotnetType.UInt32 -> ValueInfo.Atomic AtomicInfo.UInt32
-                | DotnetType.UInt64 -> ValueInfo.Atomic AtomicInfo.UInt64
-                | DotnetType.Float32 -> ValueInfo.Atomic AtomicInfo.Float32
-                | DotnetType.Float64 -> ValueInfo.Atomic AtomicInfo.Float64
-                | DotnetType.Decimal -> ValueInfo.Atomic AtomicInfo.Decimal
-                | DotnetType.DateTime -> ValueInfo.Atomic AtomicInfo.DateTime
-                | DotnetType.DateTimeOffset -> ValueInfo.Atomic AtomicInfo.DateTimeOffset
-                | DotnetType.String -> ValueInfo.Atomic AtomicInfo.String
-                | DotnetType.Guid -> ValueInfo.Atomic AtomicInfo.Guid
+                | DotnetType.Bool -> ValueInfo.Bool
+                | DotnetType.Int8 -> ValueInfo.Int8
+                | DotnetType.Int16 -> ValueInfo.Int16
+                | DotnetType.Int32 -> ValueInfo.Int32
+                | DotnetType.Int64 -> ValueInfo.Int64
+                | DotnetType.UInt8 -> ValueInfo.UInt8
+                | DotnetType.UInt16 -> ValueInfo.UInt16
+                | DotnetType.UInt32 -> ValueInfo.UInt32
+                | DotnetType.UInt64 -> ValueInfo.UInt64
+                | DotnetType.Float32 -> ValueInfo.Float32
+                | DotnetType.Float64 -> ValueInfo.Float64
+                | DotnetType.Decimal -> ValueInfo.Decimal
+                | DotnetType.DateTime -> ValueInfo.DateTime
+                | DotnetType.DateTimeOffset -> ValueInfo.DateTimeOffset
+                | DotnetType.String -> ValueInfo.String
+                | DotnetType.Guid -> ValueInfo.Guid
                 // This must come before the generic array type since byte
                 // arrays are supported as a primitive type in Parquet and are
                 // therefore handled as atomic values rather than lists.
-                | DotnetType.ByteArray -> ValueInfo.Atomic AtomicInfo.ByteArray
+                | DotnetType.ByteArray -> ValueInfo.ByteArray
                 | DotnetType.Array1d -> ValueInfo.List (ListInfo.ofArray1d dotnetType)
                 | DotnetType.GenericList -> ValueInfo.List (ListInfo.ofGenericList dotnetType)
                 | DotnetType.FSharpList -> ValueInfo.List (ListInfo.ofFSharpList dotnetType)
@@ -600,91 +684,6 @@ module ValueInfo =
 
     let of'<'Value> =
         ofType typeof<'Value>
-
-module private AtomicInfo =
-    let create
-        dotnetType isOptional dataDotnetType
-        isNull getDataValue createFromDataValue createNull =
-        { AtomicInfo.DotnetType = dotnetType
-          AtomicInfo.IsOptional = isOptional
-          AtomicInfo.DataDotnetType = dataDotnetType
-          AtomicInfo.IsNull = isNull
-          AtomicInfo.GetDataValue = getDataValue
-          AtomicInfo.CreateFromDataValue = createFromDataValue
-          AtomicInfo.CreateNull = createNull }
-
-    let private ofPrimitive<'Value> =
-        let dotnetType = typeof<'Value>
-        let isOptional = false
-        let dataDotnetType = dotnetType
-        let isNull = fun (value: Expression) -> Expression.False
-        let getDataValue = id
-        let createFromDataValue = id
-        let createNull =
-            Expression.Block(
-                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
-                Expression.Default(dotnetType))
-            :> Expression
-        create dotnetType isOptional dataDotnetType
-            isNull getDataValue createFromDataValue createNull
-
-    let Bool = ofPrimitive<bool>
-    let Int8 = ofPrimitive<int8>
-    let Int16 = ofPrimitive<int16>
-    let Int32 = ofPrimitive<int>
-    let Int64 = ofPrimitive<int64>
-    let UInt8 = ofPrimitive<uint8>
-    let UInt16 = ofPrimitive<uint16>
-    let UInt32 = ofPrimitive<uint32>
-    let UInt64 = ofPrimitive<uint64>
-    let Float32 = ofPrimitive<float32>
-    let Float64 = ofPrimitive<float>
-    let Decimal = ofPrimitive<decimal>
-    let DateTime = ofPrimitive<DateTime>
-    let Guid = ofPrimitive<Guid>
-
-    let DateTimeOffset =
-        let dotnetType = typeof<DateTimeOffset>
-        let isOptional = false
-        let dataDotnetType = typeof<DateTime>
-        let isNull = fun (value: Expression) -> Expression.False
-        let getDataValue (value: Expression) =
-            Expression.Property(value, "UtcDateTime")
-            :> Expression
-        let createFromDataValue (dataValue: Expression) =
-            Expression.New(
-                typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
-                Expression.Call(dataValue, "ToUniversalTime", [||], [||]))
-            :> Expression
-        let createNull =
-            Expression.Block(
-                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
-                Expression.Default(dotnetType))
-            :> Expression
-        create dotnetType isOptional dataDotnetType
-            isNull getDataValue createFromDataValue createNull
-
-    let String =
-        let dotnetType = typeof<string>
-        let isOptional = true
-        let dataDotnetType = dotnetType
-        let isNull = Expression.IsNull
-        let getDataValue = id
-        let createFromDataValue = id
-        let createNull = Expression.Null(dotnetType)
-        create dotnetType isOptional dataDotnetType
-            isNull getDataValue createFromDataValue createNull
-
-    let ByteArray =
-        let dotnetType = typeof<byte[]>
-        let isOptional = true
-        let dataDotnetType = dotnetType
-        let isNull = Expression.IsNull
-        let getDataValue = id
-        let createFromDataValue = id
-        let createNull = Expression.Null(dotnetType)
-        create dotnetType isOptional dataDotnetType
-            isNull getDataValue createFromDataValue createNull
 
 module private ListInfo =
     let private create

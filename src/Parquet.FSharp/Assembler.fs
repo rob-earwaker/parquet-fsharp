@@ -420,17 +420,8 @@ type private RecordAssembler(recordInfo: RecordInfo, maxDefLevel, fieldAssembler
                     yield Expression.IfThenElse(
                         // if defLevel < maxDefLevel
                         Expression.LessThan(defLevel, Expression.Constant(maxDefLevel)),
-                        // then
-                        Expression.IfThenElse(
-                            // if recordInfo.IsOptional
-                            //     && defLevel = maxDefLevel - 1
-                            Expression.And(
-                                Expression.Constant(recordInfo.IsOptional),
-                                Expression.Equal(defLevel, Expression.Constant(maxDefLevel - 1))),
-                            // then this.CurrentValue.SetValue(repLevel, defLevel, <null>)
-                            this.SetCurrentValue(repLevel, defLevel, recordInfo.CreateNull),
-                            // else this.CurrentValue.SetUndefined(repLevel, defLevel)
-                            this.SetCurrentValueUndefined(repLevel, defLevel)),
+                        // then this.CurrentValue.SetUndefined(repLevel, defLevel)
+                        this.SetCurrentValueUndefined(repLevel, defLevel),
                         // else
                         Expression.Block(
                             // let record =
@@ -529,10 +520,7 @@ module private rec ValueAssembler =
 
     let forRecord (recordInfo: RecordInfo) parentMaxRepLevel parentMaxDefLevel =
         let maxRepLevel = parentMaxRepLevel
-        let maxDefLevel =
-            if recordInfo.IsOptional
-            then parentMaxDefLevel + 1
-            else parentMaxDefLevel
+        let maxDefLevel = parentMaxDefLevel
         let fieldAssemblers =
             recordInfo.Fields
             |> Array.map (fun fieldInfo ->
@@ -563,12 +551,15 @@ type internal Assembler<'Record>() =
     // support other type as well, e.g. classes, structs, C# records.
     let recordInfo =
         match ValueInfo.of'<'Record> with
-        | ValueInfo.Record recordInfo ->
-            // TODO: The root record is never optional, so update the record info
-            // in case this is a nullable record type.
-            { recordInfo with IsOptional = false }
-        | _ ->
-            failwith $"type {typeof<'Record>.FullName} is not a record"
+        | ValueInfo.Record recordInfo -> recordInfo
+        // TODO: F# records are currently treated as optional for compatability
+        // with Parquet.Net, but the root record should never be optional.
+        // Unwrap the record info to remove this optionality.
+        | ValueInfo.Option optionInfo ->
+            match optionInfo.ValueInfo with
+            | ValueInfo.Record recordInfo -> recordInfo
+            | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
+        | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
 
     let schema = Schema.ofRecordInfo recordInfo
 

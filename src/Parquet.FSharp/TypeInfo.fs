@@ -28,7 +28,7 @@ type ValueInfo =
         match this with
         | ValueInfo.Atomic atomicInfo -> false
         | ValueInfo.List listInfo -> listInfo.IsOptional
-        | ValueInfo.Record recordInfo -> recordInfo.IsOptional
+        | ValueInfo.Record recordInfo -> false
         | ValueInfo.Option optionInfo -> true
 
 // TODO: Types supported by Parquet.Net:
@@ -76,12 +76,8 @@ type FieldInfo = {
 
 type RecordInfo = {
     DotnetType: Type
-    ValueDotnetType: Type
-    IsOptional: bool
     Fields: FieldInfo[]
-    IsNull: Expression -> Expression
-    CreateFromFieldValues: Expression[] -> Expression
-    CreateNull: Expression }
+    CreateFromFieldValues: Expression[] -> Expression }
 
 type OptionInfo = {
     DotnetType: Type
@@ -91,6 +87,7 @@ type OptionInfo = {
     CreateNull: Expression
     CreateFromValue: Expression -> Expression }
 
+// TODO: Can we inline some of this?
 module private Nullable =
     let isNull (nullableValue: Expression) =
         Expression.Not(
@@ -111,6 +108,7 @@ module private Nullable =
     let createNull dotnetType =
         Expression.Null(dotnetType)
 
+// TODO: Can we inline some of this?
 module private Option =
     let private getSomeCase dotnetType =
         let unionCases = FSharpType.GetUnionCases(dotnetType)
@@ -295,17 +293,11 @@ module ValueInfo =
             AtomicInfo.GetDataValue = getDataValue
             AtomicInfo.CreateFromDataValue = createFromDataValue }
 
-    let private recordInfo
-        dotnetType valueDotnetType isOptional fields
-        isNull createFromFieldValues createNull =
+    let private recordInfo dotnetType fields createFromFieldValues =
         ValueInfo.Record {
             RecordInfo.DotnetType = dotnetType
-            RecordInfo.ValueDotnetType = valueDotnetType
-            RecordInfo.IsOptional = isOptional
             RecordInfo.Fields = fields
-            RecordInfo.IsNull = isNull
-            RecordInfo.CreateFromFieldValues = createFromFieldValues
-            RecordInfo.CreateNull = createNull }
+            RecordInfo.CreateFromFieldValues = createFromFieldValues }
 
     let private optionInfo
         dotnetType valueInfo isNull getValue createNull createFromValue =
@@ -331,7 +323,10 @@ module ValueInfo =
         let isNull = fun value -> Expression.False
         let getValue = id
         let createNull =
-            Expression.FailWith($"type '{dotnetType.FullName}' is not nullable")
+            Expression.Block(
+                Expression.FailWith($"type '{dotnetType.FullName}' is not nullable"),
+                Expression.Default(dotnetType))
+            :> Expression
         let createFromValue = id
         ValueInfo.optionInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
@@ -392,29 +387,21 @@ module ValueInfo =
         |> ValueInfo.ofReferenceType
 
     let private ofRecord dotnetType =
-        let valueDotnetType = dotnetType
-        // TODO: F# records are not nullable by default, however Parquet.Net
-        // does not support struct fields that aren't nullable and a nullable
-        // struct field class can't easily be created since some of the relevant
-        // properties are internal. For now, treat all records as optional, even
-        // though in practice they will never be null.
-        let isOptional = true
         let fields =
             FSharpType.GetRecordFields(dotnetType)
             |> Array.map FieldInfo.ofProperty
-        let isNull = fun (record: Expression) -> Expression.False
         let createFromFieldValues =
             let constructor = FSharpValue.PreComputeRecordConstructorInfo(dotnetType)
             fun (fieldValues: Expression[]) ->
                 Expression.New(constructor, fieldValues)
                 :> Expression
-        let createNull =
-            Expression.Block(
-                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
-                Expression.Default(dotnetType))
-            :> Expression
-        ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
-            isNull createFromFieldValues createNull
+        // TODO: F# records are not nullable by default, however Parquet.Net
+        // does not support struct fields that aren't nullable and a nullable
+        // struct field class can't easily be created since some of the relevant
+        // properties are internal. For now, wrap as a non-nullable reference
+        // type.
+        ValueInfo.recordInfo dotnetType fields createFromFieldValues
+        |> ValueInfo.ofNonNullableReferenceType
 
     let private ofNullableInner dotnetType (valueInfo: ValueInfo) =
         let isNull = Nullable.isNull
@@ -425,24 +412,19 @@ module ValueInfo =
             dotnetType valueInfo isNull getValue createNull createFromValue
 
     let private ofNullableOuter (dotnetType: Type) (valueInfo: ValueInfo) =
-        let dotnetType = dotnetType
-        let valueDotnetType = dotnetType
-        let isOptional = true
         let fields =
             let valueField =
                 // TODO: The name of this field could be configurable via an attribute.
                 let name = "Value"
-                let getValue = Nullable.getValue
+                let getValue = id
                 FieldInfo.create name valueInfo getValue
             [| valueField |]
-        let isNull = Nullable.isNull
-        let createFromFieldValues =
-            let createValue = Nullable.createValue dotnetType
-            fun (fieldValues: Expression[]) ->
-                createValue fieldValues[0]
-        let createNull = Nullable.createNull dotnetType
-        ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
-            isNull createFromFieldValues createNull
+        let createFromFieldValues (fieldValues: Expression[]) =
+            fieldValues[0]
+        ValueInfo.recordInfo valueInfo.DotnetType fields createFromFieldValues
+        // TODO: Inner and Outer probably aren't the best
+        // names, particularly given this use case!
+        |> ValueInfo.ofNullableInner dotnetType
 
     let private ofNullable (dotnetType: Type) =
         let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
@@ -463,24 +445,19 @@ module ValueInfo =
             dotnetType valueInfo isNull getValue createNull createFromValue
 
     let private ofOptionOuter (dotnetType: Type) (valueInfo: ValueInfo) =
-        let dotnetType = dotnetType
-        let valueDotnetType = dotnetType
-        let isOptional = true
         let fields =
             let valueField =
                 // TODO: The name of this field could be configurable via an attribute.
                 let name = "Value"
-                let getValue = Option.getValue
+                let getValue = id
                 FieldInfo.create name valueInfo getValue
             [| valueField |]
-        let isNull = Option.isNone valueInfo.DotnetType
-        let createFromFieldValues =
-            let createSome = Option.createSome dotnetType
-            fun (fieldValues: Expression[]) ->
-                createSome fieldValues[0]
-        let createNull = Option.createNone dotnetType
-        ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
-            isNull createFromFieldValues createNull
+        let createFromFieldValues (fieldValues: Expression[]) =
+            fieldValues[0]
+        ValueInfo.recordInfo valueInfo.DotnetType fields createFromFieldValues
+        // TODO: Inner and Outer probably aren't the best
+        // names, particularly given this use case!
+        |> ValueInfo.ofOptionInner dotnetType
 
     let private ofOption (dotnetType: Type) =
         let valueDotnetType = dotnetType.GetGenericArguments()[0]
@@ -504,6 +481,7 @@ module ValueInfo =
             let returnLabel = Expression.Label(dotnetType, "union")
             Expression.Block(
                 unionInfo.UnionCases
+                // TODO: Maybe just use an if-then-return pattern rather than nesting them?
                 |> Array.rev
                 |> Array.fold
                     (fun (ifFalse: Expression) caseInfo ->
@@ -517,38 +495,72 @@ module ValueInfo =
             dotnetType dataDotnetType getDataValue createFromDataValue
 
     let private ofUnionCaseData (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
+        // Union case data is represented as an optional record containing the
+        // field values for that case. The record needs to be optional since
+        // only one case from the union can be set and the others will be NULL.
         let dotnetType = unionInfo.DotnetType
-        let valueDotnetType = unionCase.DotnetType
-        // Each union case is treated as optional. Only one case from the union
-        // can be set, so the others will be NULL.
-        let isOptional = true
-        let fields = unionCase.Fields |> Array.map (FieldInfo.ofUnionCaseField unionCase)
+        let valueInfo =
+            let dotnetType = unionInfo.DotnetType
+            let fields = unionCase.Fields |> Array.map (FieldInfo.ofUnionCaseField unionCase)
+            let createFromFieldValues = unionCase.CreateFromFieldValues
+            ValueInfo.recordInfo dotnetType fields createFromFieldValues
+        // The data for this case is NULL if the union tag does not match the
+        // tag for this case.
         let isNull (union: Expression) =
             Expression.NotEqual(unionInfo.GetTag union, unionCase.Tag)
             :> Expression
-        let createFromFieldValues = unionCase.CreateFromFieldValues
+        let getValue = id
+        // We can't use {Expression.Null} here because union types are not
+        // nullable, however they do still have {null} as their default value
+        // because they are reference types.
         let createNull = Expression.Default(dotnetType) :> Expression
-        ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
-            isNull createFromFieldValues createNull
+        let createFromValue = id
+        ValueInfo.optionInfo
+            dotnetType valueInfo isNull getValue createNull createFromValue
 
     let private ofUnionData (unionInfo: UnionInfo) =
-        let dotnetType = unionInfo.DotnetType
-        let valueDotnetType = unionInfo.DotnetType
         // Some union cases might not have any associated data fields. When
         // representing these cases we want to be able to set the data to NULL,
         // so this virtual record type must be optional.
-        let isOptional = true
+        let dotnetType = unionInfo.DotnetType
         let unionCasesWithFields =
             unionInfo.UnionCases
             |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
-        let fields =
-            unionCasesWithFields
-            |> Array.map (fun unionCase ->
-                let name = unionCase.Name
-                let valueInfo = ValueInfo.ofUnionCaseData unionInfo unionCase
-                let getValue = id
-                FieldInfo.create name valueInfo getValue)
-        let isNull' (union: Expression) =
+        let valueInfo =
+            let dotnetType = unionInfo.DotnetType
+            let fields =
+                unionCasesWithFields
+                |> Array.map (fun unionCase ->
+                    let name = unionCase.Name
+                    let valueInfo = ValueInfo.ofUnionCaseData unionInfo unionCase
+                    let getValue = id
+                    FieldInfo.create name valueInfo getValue)
+            let createFromFieldValues (fieldValues: Expression[]) =
+                let failWithAllCaseDataNull =
+                    Expression.FailWith(
+                        $"all case data fields are null for union of type '{dotnetType.FullName}'")
+                let returnLabel = Expression.Label(dotnetType, "union")
+                Expression.Block(
+                    fieldValues
+                    |> Array.rev
+                    // TODO: Maybe just use an if-then-return pattern rather than nesting them?
+                    |> Array.fold
+                        (fun (ifFalse: Expression) fieldValue ->
+                            // TODO: Should technically use the 'IsNull' function from the
+                            // relevant field here instead checking directly.
+                            // TODO: Slightly hacky to box before checking for null. This gets around
+                            // the fact that null is not a proper value for a union.
+                            let test =
+                                Expression.Not(
+                                    Expression.IsNull(
+                                        Expression.Convert(fieldValue, typeof<obj>)))
+                            let ifTrue = Expression.Return(returnLabel, fieldValue)
+                            Expression.IfThenElse(test, ifTrue, ifFalse))
+                        failWithAllCaseDataNull,
+                    Expression.Label(returnLabel, Expression.Default(returnLabel.Type)))
+                :> Expression
+            ValueInfo.recordInfo dotnetType fields createFromFieldValues
+        let isNull (union: Expression) =
             // TODO: This whole thing could almost certainly be made more elegant
             // and performant by implementing a UnionShredder and UnionAssembler
             // but this would require big changes!
@@ -558,44 +570,20 @@ module ValueInfo =
                 Expression.Assign(tag, unionInfo.GetTag union),
                 unionCasesWithFields
                 |> Array.map (fun unionCase ->
-                    Expression.NotEqual(tag, unionCase.Tag)
-                    :> Expression)
+                    Expression.NotEqual(tag, unionCase.Tag) :> Expression)
                 |> Expression.AndAlso)
             :> Expression
-        let createFromFieldValues (fieldValues: Expression[]) =
-            let failWithAllCaseDataNull =
-                Expression.FailWith(
-                    $"all case data fields are null for union of type '{dotnetType.FullName}'")
-            let returnLabel = Expression.Label(dotnetType, "union")
-            Expression.Block(
-                Array.zip unionCasesWithFields fieldValues
-                |> Array.rev
-                |> Array.fold
-                    (fun (ifFalse: Expression) (caseInfo, fieldValue) ->
-                        // TODO: Should technically use the 'IsNull' function from the
-                        // relevant field here instead checking directly.
-                        // TODO: Slightly hacky to box before checking for null. This gets around
-                        // the fact that null is not a proper value for a union.
-                        let test =
-                            Expression.Not(
-                                Expression.IsNull(
-                                    Expression.Convert(fieldValue, typeof<obj>)))
-                        let ifTrue = Expression.Return(returnLabel, fieldValue)
-                        Expression.IfThenElse(test, ifTrue, ifFalse))
-                    failWithAllCaseDataNull,
-                Expression.Label(returnLabel, Expression.Default(returnLabel.Type)))
-            :> Expression
-        let createNull = Expression.Default(dotnetType)
-        ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
-            isNull' createFromFieldValues createNull
+        let getValue = id
+        // We can't use {Expression.Null} here because union types are not
+        // nullable, however they do still have {null} as their default value
+        // because they are reference types.
+        let createNull = Expression.Default(dotnetType) :> Expression
+        let createFromValue = id
+        ValueInfo.optionInfo
+            dotnetType valueInfo isNull getValue createNull createFromValue
 
     let private ofUnionComplex (unionInfo: UnionInfo) =
         let dotnetType = unionInfo.DotnetType
-        let valueDotnetType = unionInfo.DotnetType
-        // TODO: F# unions are not nullable by default, however we are mapping
-        // to a struct and Parquet.Net does not support struct fields that
-        // aren't nullable.
-        let isOptional = true
         let fields =
             let unionCaseField =
                 // TODO: The name of this field could be configurable via an attribute.
@@ -611,7 +599,6 @@ module ValueInfo =
                 let getValue = id
                 FieldInfo.create name valueInfo getValue
             [| unionCaseField; dataField |]
-        let isNull = fun (union: Expression) -> Expression.False
         let createFromFieldValues (fieldValues: Expression[]) =
             let caseName = Expression.Variable(typeof<string>, "caseName")
             let caseData = Expression.Variable(dotnetType, "caseData")
@@ -632,6 +619,7 @@ module ValueInfo =
                     Expression.Return(returnLabel, caseData),
                     unionInfo.UnionCases
                     |> Array.filter (fun caseInfo -> caseInfo.Fields.Length = 0)
+                    // TODO: Maybe just use an if-then-return pattern rather than nesting them?
                     |> Array.rev
                     |> Array.fold
                         (fun (ifFalse: Expression) caseInfo ->
@@ -642,13 +630,11 @@ module ValueInfo =
                         failWithInvalidName),
                 Expression.Label(returnLabel, Expression.Default(returnLabel.Type)))
             :> Expression
-        let createNull =
-            Expression.Block(
-                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
-                Expression.Default(dotnetType))
-            :> Expression
-        ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
-            isNull createFromFieldValues createNull
+        // TODO: F# unions are not nullable by default, however we are mapping
+        // to a struct and Parquet.Net does not support struct fields that
+        // aren't nullable, so wrap as a non-nullable reference type.
+        ValueInfo.recordInfo dotnetType fields createFromFieldValues
+        |> ValueInfo.ofNonNullableReferenceType
 
     let private ofUnion dotnetType =
         // Unions are represented in one of two ways. For unions where none of

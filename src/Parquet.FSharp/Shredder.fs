@@ -202,7 +202,7 @@ type private ListShredder(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, e
             // the parent, so use the parent levels when shredding the elements.
             shredElements(parentRepLevel, parentDefLevel, list)
 
-type private RecordShredder(recordInfo: RecordInfo, maxDefLevel, fieldShredders: ValueShredder[]) =
+type private RecordShredder(recordInfo: RecordInfo, fieldShredders: ValueShredder[]) =
     inherit ValueShredder()
 
     let shredFieldLambdas =
@@ -219,13 +219,6 @@ type private RecordShredder(recordInfo: RecordInfo, maxDefLevel, fieldShredders:
                     fieldShredder.ShredValue(recordRepLevel, recordDefLevel, fieldValue)),
                 "shredField",
                 [ recordRepLevel; recordDefLevel; record ]))
-
-    let shredFields(recordRepLevel, recordDefLevel, record) =
-        Expression.Block(
-            shredFieldLambdas
-            |> Array.map (fun shredField ->
-                Expression.Invoke(shredField, recordRepLevel, recordDefLevel, record)
-                :> Expression))
 
     override this.CollectColumnBuilderVariables() =
         fieldShredders
@@ -248,23 +241,13 @@ type private RecordShredder(recordInfo: RecordInfo, maxDefLevel, fieldShredders:
                 |> Array.map _.AddNull(repLevel, defLevel))
 
     override this.ShredValue(parentRepLevel, parentDefLevel, record) =
-        if recordInfo.IsOptional
-        then
-            Expression.IfThenElse(
-                // The record is OPTIONAL, so check for NULL.
-                recordInfo.IsNull(record),
-                // If the record is NULL, add a NULL value using the parent
-                // levels to indicate the last definition level at which a value
-                // was present.
-                this.AddNull(parentRepLevel, parentDefLevel),
-                // If the record is NOTNULL, update the definition level to the
-                // max definition level of the record before shredding the
-                // fields.
-                shredFields(parentRepLevel, Expression.Constant(maxDefLevel), record))
-        else
-            // The record is REQUIRED. The definition level will be the same as
-            // the parent, so use the parent levels when shredding the fields.
-            shredFields(parentRepLevel, parentDefLevel, record)
+        // The record is REQUIRED. The definition level will be the same as
+        // the parent, so use the parent levels when shredding the fields.
+        Expression.Block(
+            shredFieldLambdas
+            |> Array.map (fun shredField ->
+                Expression.Invoke(shredField, parentRepLevel, parentDefLevel, record)
+                :> Expression))
 
 type private OptionShredder(optionInfo: OptionInfo, maxDefLevel, valueShredder: ValueShredder) =
     inherit ValueShredder()
@@ -320,16 +303,13 @@ module private rec ValueShredder =
 
     let forRecord (recordInfo: RecordInfo) parentMaxRepLevel parentMaxDefLevel (fields: Field seq) =
         let maxRepLevel = parentMaxRepLevel
-        let maxDefLevel =
-            if recordInfo.IsOptional
-            then parentMaxDefLevel + 1
-            else parentMaxDefLevel
+        let maxDefLevel = parentMaxDefLevel
         let fieldShredders =
             Seq.zip recordInfo.Fields fields
             |> Seq.map (fun (fieldInfo, field) ->
                 ValueShredder.forValue fieldInfo.ValueInfo maxRepLevel maxDefLevel field)
             |> Array.ofSeq
-        RecordShredder(recordInfo, maxDefLevel, fieldShredders)
+        RecordShredder(recordInfo, fieldShredders)
         :> ValueShredder
 
     let forOption (optionInfo: OptionInfo) parentMaxRepLevel parentMaxDefLevel field =
@@ -359,15 +339,15 @@ type private Shredder<'Record>() =
     // support other type as well, e.g. classes, structs, C# records.
     let recordInfo =
         match ValueInfo.of'<'Record> with
-        | ValueInfo.Record recordInfo ->
-            // Update the root record info to be non-optional. This ensures the
-            // definition levels for the schema are set correctly when
-            // generating the schema and when initializing the shredder.
-            // TODO: If this is an optional record we should check for null before
-            // shredding each record and raise an exception if a null record is encountered.
-            { recordInfo with IsOptional = false }
-        | _ ->
-            failwith $"type {typeof<'Record>.FullName} is not a record"
+        | ValueInfo.Record recordInfo -> recordInfo
+        // TODO: F# records are currently treated as optional for compatability
+        // with Parquet.Net, but the root record should never be optional.
+        // Unwrap the record info to remove this optionality.
+        | ValueInfo.Option optionInfo ->
+            match optionInfo.ValueInfo with
+            | ValueInfo.Record recordInfo -> recordInfo
+            | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
+        | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
 
     let schema = Schema.ofRecordInfo recordInfo
 

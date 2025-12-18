@@ -220,6 +220,19 @@ module ValueInfo =
             AtomicInfo.GetDataValue = getDataValue
             AtomicInfo.CreateFromDataValue = createFromDataValue }
 
+    let recordInfo
+        dotnetType valueDotnetType isOptional fields
+        isNull getValue createFromFieldValues createNull =
+        ValueInfo.Record {
+            RecordInfo.DotnetType = dotnetType
+            RecordInfo.ValueDotnetType = valueDotnetType
+            RecordInfo.IsOptional = isOptional
+            RecordInfo.Fields = fields
+            RecordInfo.IsNull = isNull
+            RecordInfo.GetValue = getValue
+            RecordInfo.CreateFromFieldValues = createFromFieldValues
+            RecordInfo.CreateNull = createNull }
+
     let private optionInfo
         dotnetType valueInfo isNull getValue createNull createFromValue =
         ValueInfo.Option {
@@ -235,6 +248,16 @@ module ValueInfo =
         let isNull = Expression.IsNull
         let getValue = id
         let createNull = Expression.Null(dotnetType)
+        let createFromValue = id
+        ValueInfo.optionInfo
+            dotnetType valueInfo isNull getValue createNull createFromValue
+
+    let private ofNonNullableReferenceType (valueInfo: ValueInfo) =
+        let dotnetType = valueInfo.DotnetType
+        let isNull = fun value -> Expression.False
+        let getValue = id
+        let createNull =
+            Expression.FailWith($"type '{dotnetType.FullName}' is not nullable")
         let createFromValue = id
         ValueInfo.optionInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
@@ -294,6 +317,32 @@ module ValueInfo =
             dotnetType dataDotnetType getDataValue createFromDataValue
         |> ValueInfo.ofReferenceType
 
+    let ofRecord dotnetType =
+        let valueDotnetType = dotnetType
+        // TODO: F# records are not nullable by default, however Parquet.Net
+        // does not support struct fields that aren't nullable and a nullable
+        // struct field class can't easily be created since some of the relevant
+        // properties are internal. For now, treat all records as optional, even
+        // though in practice they will never be null.
+        let isOptional = true
+        let fields =
+            FSharpType.GetRecordFields(dotnetType)
+            |> Array.map FieldInfo.ofProperty
+        let isNull = fun (record: Expression) -> Expression.False
+        let getValue = id
+        let createFromFieldValues =
+            let constructor = FSharpValue.PreComputeRecordConstructorInfo(dotnetType)
+            fun (fieldValues: Expression[]) ->
+                Expression.New(constructor, fieldValues)
+                :> Expression
+        let createNull =
+            Expression.Block(
+                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
+                Expression.Default(dotnetType))
+            :> Expression
+        ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
+            isNull getValue createFromFieldValues createNull
+
     let private ofNullableInner dotnetType (valueInfo: ValueInfo) =
         let isNull = Nullable.isNull
         let getValue = Nullable.getValue
@@ -320,9 +369,8 @@ module ValueInfo =
             fun (fieldValues: Expression[]) ->
                 createValue fieldValues[0]
         let createNull = Nullable.createNull dotnetType
-        RecordInfo.create dotnetType valueDotnetType isOptional fields
+        ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
             isNull getValue createFromFieldValues createNull
-        |> ValueInfo.Record
 
     let private ofNullable (dotnetType: Type) =
         let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
@@ -360,9 +408,8 @@ module ValueInfo =
             fun (fieldValues: Expression[]) ->
                 createSome fieldValues[0]
         let createNull = Option.createNone dotnetType
-        RecordInfo.create dotnetType valueDotnetType isOptional fields
+        ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
             isNull getValue createFromFieldValues createNull
-        |> ValueInfo.Record
 
     let private ofOption (dotnetType: Type) =
         let valueDotnetType = dotnetType.GetGenericArguments()[0]
@@ -489,9 +536,8 @@ module ValueInfo =
             :> Expression
         let createFromFieldValues = unionCase.CreateFromFieldValues
         let createNull = Expression.Default(dotnetType) :> Expression
-        RecordInfo.create dotnetType valueDotnetType isOptional fields
+        ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
             isNull getValue createFromFieldValues createNull
-        |> ValueInfo.Record
 
     let private ofUnionData (unionInfo: UnionInfo) =
         let dotnetType = unionInfo.DotnetType
@@ -549,9 +595,8 @@ module ValueInfo =
                 Expression.Label(returnLabel, Expression.Default(returnLabel.Type)))
             :> Expression
         let createNull = Expression.Default(dotnetType)
-        RecordInfo.create dotnetType valueDotnetType isOptional fields
+        ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
             isNull' getValue createFromFieldValues createNull
-        |> ValueInfo.Record
 
     let private ofUnionComplex (unionInfo: UnionInfo) =
         let dotnetType = unionInfo.DotnetType
@@ -612,9 +657,8 @@ module ValueInfo =
                 Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
                 Expression.Default(dotnetType))
             :> Expression
-        RecordInfo.create dotnetType valueDotnetType isOptional fields
+        ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
             isNull getValue createFromFieldValues createNull
-        |> ValueInfo.Record
 
     let private ofUnion dotnetType =
         // Unions are represented in one of two ways. For unions where none of
@@ -659,7 +703,7 @@ module ValueInfo =
                 | DotnetType.Array1d -> ValueInfo.List (ListInfo.ofArray1d dotnetType)
                 | DotnetType.GenericList -> ValueInfo.List (ListInfo.ofGenericList dotnetType)
                 | DotnetType.FSharpList -> ValueInfo.List (ListInfo.ofFSharpList dotnetType)
-                | DotnetType.Record -> ValueInfo.Record (RecordInfo.ofRecord dotnetType)
+                | DotnetType.Record -> ValueInfo.ofRecord dotnetType
                 | DotnetType.Nullable -> ValueInfo.ofNullable dotnetType
                 | DotnetType.Option -> ValueInfo.ofOption dotnetType
                 // This must come after the option type since option types are
@@ -776,42 +820,3 @@ module private FieldInfo =
             Expression.Property(record, field)
             :> Expression
         create name valueInfo getValue
-
-module private RecordInfo =
-    let create
-        dotnetType valueDotnetType isOptional fields
-        isNull getValue createFromFieldValues createNull =
-        { RecordInfo.DotnetType = dotnetType
-          RecordInfo.ValueDotnetType = valueDotnetType
-          RecordInfo.IsOptional = isOptional
-          RecordInfo.Fields = fields
-          RecordInfo.IsNull = isNull
-          RecordInfo.GetValue = getValue
-          RecordInfo.CreateFromFieldValues = createFromFieldValues
-          RecordInfo.CreateNull = createNull }
-
-    let ofRecord dotnetType =
-        let valueDotnetType = dotnetType
-        // TODO: F# records are not nullable by default, however Parquet.Net
-        // does not support struct fields that aren't nullable and a nullable
-        // struct field class can't easily be created since some of the relevant
-        // properties are internal. For now, treat all records as optional, even
-        // though in practice they will never be null.
-        let isOptional = true
-        let fields =
-            FSharpType.GetRecordFields(dotnetType)
-            |> Array.map FieldInfo.ofProperty
-        let isNull = fun (record: Expression) -> Expression.False
-        let getValue = id
-        let createFromFieldValues =
-            let constructor = FSharpValue.PreComputeRecordConstructorInfo(dotnetType)
-            fun (fieldValues: Expression[]) ->
-                Expression.New(constructor, fieldValues)
-                :> Expression
-        let createNull =
-            Expression.Block(
-                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
-                Expression.Default(dotnetType))
-            :> Expression
-        create dotnetType valueDotnetType isOptional fields
-            isNull getValue createFromFieldValues createNull

@@ -80,7 +80,6 @@ type RecordInfo = {
     IsOptional: bool
     Fields: FieldInfo[]
     IsNull: Expression -> Expression
-    GetValue: Expression -> Expression
     CreateFromFieldValues: Expression[] -> Expression
     CreateNull: Expression }
 
@@ -146,6 +145,82 @@ module private Option =
         let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(noneCase)
         Expression.Call(constructorMethod, [||])
         :> Expression
+
+type private UnionInfo = {
+    DotnetType: Type
+    GetTag: Expression -> Expression
+    GetCaseName: Expression -> Expression
+    UnionCases: UnionCaseInfo[] }
+
+type private UnionCaseInfo = {
+    DotnetType: Type
+    Tag: Expression
+    Name: string
+    Fields: PropertyInfo[]
+    CreateFromFieldValues: Expression[] -> Expression  }
+
+module private UnionInfo =
+    let ofUnion dotnetType =
+        let unionCases =
+            FSharpType.GetUnionCases(dotnetType)
+            |> Array.map (fun unionCase ->
+                let createFromFieldValues =
+                    let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(unionCase)
+                    fun (fieldValues: Expression[]) ->
+                        Expression.Call(constructorMethod, fieldValues)
+                        :> Expression
+                let dotnetType =
+                    match unionCase.GetFields() with
+                    | [||] -> dotnetType
+                    | fields -> fields[0].DeclaringType
+                { UnionCaseInfo.DotnetType = dotnetType
+                  UnionCaseInfo.Tag = Expression.Constant(unionCase.Tag)
+                  UnionCaseInfo.Name = unionCase.Name
+                  UnionCaseInfo.Fields = unionCase.GetFields()
+                  UnionCaseInfo.CreateFromFieldValues = createFromFieldValues })
+        let getTag =
+            // TODO: Can some of these options be removed in practice? Do we even
+            // need to precompute if there's only one option?
+            match FSharpValue.PreComputeUnionTagMemberInfo(dotnetType) with
+            | :? MethodInfo as methodInfo ->
+                if methodInfo.IsStatic
+                then
+                    fun (union: Expression) ->
+                        Expression.Call(methodInfo, union)
+                        :> Expression
+                else
+                    fun (union: Expression) ->
+                        Expression.Call(union, methodInfo)
+                        :> Expression
+            | :? PropertyInfo as propertyInfo ->
+                fun (union: Expression) ->
+                    Expression.Property(union, propertyInfo)
+                    :> Expression
+            | memberInfo ->
+                failwith $"unsupported tag member info type '{memberInfo.GetType().FullName}'"
+        let getCaseName (union: Expression) =
+            let tag = Expression.Variable(typeof<int>, "tag")
+            let failWithInvalidTag =
+                Expression.FailWith(
+                    $"union of type '{dotnetType.FullName}' has invalid tag value")
+            let returnLabel = Expression.Label(typeof<string>, "caseName")
+            Expression.Block(
+                [ tag ],
+                Expression.Assign(tag, getTag union),
+                unionCases
+                |> Array.rev
+                |> Array.fold
+                    (fun (ifFalse: Expression) caseInfo ->
+                        let test = Expression.Equal(tag, caseInfo.Tag)
+                        let ifTrue = Expression.Return(returnLabel, Expression.Constant(caseInfo.Name))
+                        Expression.IfThenElse(test, ifTrue, ifFalse))
+                    failWithInvalidTag,
+                Expression.Label(returnLabel, Expression.Constant(null, typeof<string>)))
+            :> Expression
+        { UnionInfo.DotnetType = dotnetType
+          UnionInfo.GetTag = getTag
+          UnionInfo.GetCaseName = getCaseName
+          UnionInfo.UnionCases = unionCases }
 
 module private DotnetType =
     let private ActivePatternTypeMatch<'Type> dotnetType =
@@ -220,16 +295,15 @@ module ValueInfo =
             AtomicInfo.GetDataValue = getDataValue
             AtomicInfo.CreateFromDataValue = createFromDataValue }
 
-    let recordInfo
+    let private recordInfo
         dotnetType valueDotnetType isOptional fields
-        isNull getValue createFromFieldValues createNull =
+        isNull createFromFieldValues createNull =
         ValueInfo.Record {
             RecordInfo.DotnetType = dotnetType
             RecordInfo.ValueDotnetType = valueDotnetType
             RecordInfo.IsOptional = isOptional
             RecordInfo.Fields = fields
             RecordInfo.IsNull = isNull
-            RecordInfo.GetValue = getValue
             RecordInfo.CreateFromFieldValues = createFromFieldValues
             RecordInfo.CreateNull = createNull }
 
@@ -270,22 +344,22 @@ module ValueInfo =
         ValueInfo.atomicInfo
             dotnetType dataDotnetType getDataValue createFromDataValue
 
-    let Bool = ofPrimitive<bool>
-    let Int8 = ofPrimitive<int8>
-    let Int16 = ofPrimitive<int16>
-    let Int32 = ofPrimitive<int>
-    let Int64 = ofPrimitive<int64>
-    let UInt8 = ofPrimitive<uint8>
-    let UInt16 = ofPrimitive<uint16>
-    let UInt32 = ofPrimitive<uint32>
-    let UInt64 = ofPrimitive<uint64>
-    let Float32 = ofPrimitive<float32>
-    let Float64 = ofPrimitive<float>
-    let Decimal = ofPrimitive<decimal>
-    let DateTime = ofPrimitive<DateTime>
-    let Guid = ofPrimitive<Guid>
+    let private Bool = ofPrimitive<bool>
+    let private Int8 = ofPrimitive<int8>
+    let private Int16 = ofPrimitive<int16>
+    let private Int32 = ofPrimitive<int>
+    let private Int64 = ofPrimitive<int64>
+    let private UInt8 = ofPrimitive<uint8>
+    let private UInt16 = ofPrimitive<uint16>
+    let private UInt32 = ofPrimitive<uint32>
+    let private UInt64 = ofPrimitive<uint64>
+    let private Float32 = ofPrimitive<float32>
+    let private Float64 = ofPrimitive<float>
+    let private Decimal = ofPrimitive<decimal>
+    let private DateTime = ofPrimitive<DateTime>
+    let private Guid = ofPrimitive<Guid>
 
-    let DateTimeOffset =
+    let private DateTimeOffset =
         let dotnetType = typeof<DateTimeOffset>
         let dataDotnetType = typeof<DateTime>
         let getDataValue (value: Expression) =
@@ -299,7 +373,7 @@ module ValueInfo =
         ValueInfo.atomicInfo
             dotnetType dataDotnetType getDataValue createFromDataValue
 
-    let String =
+    let private String =
         let dotnetType = typeof<string>
         let dataDotnetType = dotnetType
         let getDataValue = id
@@ -308,7 +382,7 @@ module ValueInfo =
             dotnetType dataDotnetType getDataValue createFromDataValue
         |> ValueInfo.ofReferenceType
 
-    let ByteArray =
+    let private ByteArray =
         let dotnetType = typeof<byte[]>
         let dataDotnetType = dotnetType
         let getDataValue = id
@@ -317,7 +391,7 @@ module ValueInfo =
             dotnetType dataDotnetType getDataValue createFromDataValue
         |> ValueInfo.ofReferenceType
 
-    let ofRecord dotnetType =
+    let private ofRecord dotnetType =
         let valueDotnetType = dotnetType
         // TODO: F# records are not nullable by default, however Parquet.Net
         // does not support struct fields that aren't nullable and a nullable
@@ -329,7 +403,6 @@ module ValueInfo =
             FSharpType.GetRecordFields(dotnetType)
             |> Array.map FieldInfo.ofProperty
         let isNull = fun (record: Expression) -> Expression.False
-        let getValue = id
         let createFromFieldValues =
             let constructor = FSharpValue.PreComputeRecordConstructorInfo(dotnetType)
             fun (fieldValues: Expression[]) ->
@@ -341,7 +414,7 @@ module ValueInfo =
                 Expression.Default(dotnetType))
             :> Expression
         ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
-            isNull getValue createFromFieldValues createNull
+            isNull createFromFieldValues createNull
 
     let private ofNullableInner dotnetType (valueInfo: ValueInfo) =
         let isNull = Nullable.isNull
@@ -363,14 +436,13 @@ module ValueInfo =
                 FieldInfo.create name valueInfo getValue
             [| valueField |]
         let isNull = Nullable.isNull
-        let getValue = id
         let createFromFieldValues =
             let createValue = Nullable.createValue dotnetType
             fun (fieldValues: Expression[]) ->
                 createValue fieldValues[0]
         let createNull = Nullable.createNull dotnetType
         ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
-            isNull getValue createFromFieldValues createNull
+            isNull createFromFieldValues createNull
 
     let private ofNullable (dotnetType: Type) =
         let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
@@ -402,14 +474,13 @@ module ValueInfo =
                 FieldInfo.create name valueInfo getValue
             [| valueField |]
         let isNull = Option.isNone valueInfo.DotnetType
-        let getValue = id
         let createFromFieldValues =
             let createSome = Option.createSome dotnetType
             fun (fieldValues: Expression[]) ->
                 createSome fieldValues[0]
         let createNull = Option.createNone dotnetType
         ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
-            isNull getValue createFromFieldValues createNull
+            isNull createFromFieldValues createNull
 
     let private ofOption (dotnetType: Type) =
         let valueDotnetType = dotnetType.GetGenericArguments()[0]
@@ -417,82 +488,6 @@ module ValueInfo =
         if not valueInfo.IsOptional
         then ValueInfo.ofOptionInner dotnetType valueInfo
         else ValueInfo.ofOptionOuter dotnetType valueInfo
-
-    type private UnionInfo = {
-        DotnetType: Type
-        GetTag: Expression -> Expression
-        GetCaseName: Expression -> Expression
-        UnionCases: UnionCaseInfo[] }
-
-    type private UnionCaseInfo = {
-        DotnetType: Type
-        Tag: Expression
-        Name: string
-        Fields: PropertyInfo[]
-        CreateFromFieldValues: Expression[] -> Expression  }
-
-    module private UnionInfo =
-        let ofUnion dotnetType =
-            let unionCases =
-                FSharpType.GetUnionCases(dotnetType)
-                |> Array.map (fun unionCase ->
-                    let createFromFieldValues =
-                        let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(unionCase)
-                        fun (fieldValues: Expression[]) ->
-                            Expression.Call(constructorMethod, fieldValues)
-                            :> Expression
-                    let dotnetType =
-                        match unionCase.GetFields() with
-                        | [||] -> dotnetType
-                        | fields -> fields[0].DeclaringType
-                    { UnionCaseInfo.DotnetType = dotnetType
-                      UnionCaseInfo.Tag = Expression.Constant(unionCase.Tag)
-                      UnionCaseInfo.Name = unionCase.Name
-                      UnionCaseInfo.Fields = unionCase.GetFields()
-                      UnionCaseInfo.CreateFromFieldValues = createFromFieldValues })
-            let getTag =
-                // TODO: Can some of these options be removed in practice? Do we even
-                // need to precompute if there's only one option?
-                match FSharpValue.PreComputeUnionTagMemberInfo(dotnetType) with
-                | :? MethodInfo as methodInfo ->
-                    if methodInfo.IsStatic
-                    then
-                        fun (union: Expression) ->
-                            Expression.Call(methodInfo, union)
-                            :> Expression
-                    else
-                        fun (union: Expression) ->
-                            Expression.Call(union, methodInfo)
-                            :> Expression
-                | :? PropertyInfo as propertyInfo ->
-                    fun (union: Expression) ->
-                        Expression.Property(union, propertyInfo)
-                        :> Expression
-                | memberInfo ->
-                    failwith $"unsupported tag member info type '{memberInfo.GetType().FullName}'"
-            let getCaseName (union: Expression) =
-                let tag = Expression.Variable(typeof<int>, "tag")
-                let failWithInvalidTag =
-                    Expression.FailWith(
-                        $"union of type '{dotnetType.FullName}' has invalid tag value")
-                let returnLabel = Expression.Label(typeof<string>, "caseName")
-                Expression.Block(
-                    [ tag ],
-                    Expression.Assign(tag, getTag union),
-                    unionCases
-                    |> Array.rev
-                    |> Array.fold
-                        (fun (ifFalse: Expression) caseInfo ->
-                            let test = Expression.Equal(tag, caseInfo.Tag)
-                            let ifTrue = Expression.Return(returnLabel, Expression.Constant(caseInfo.Name))
-                            Expression.IfThenElse(test, ifTrue, ifFalse))
-                        failWithInvalidTag,
-                    Expression.Label(returnLabel, Expression.Constant(null, typeof<string>)))
-                :> Expression
-            { UnionInfo.DotnetType = dotnetType
-              UnionInfo.GetTag = getTag
-              UnionInfo.GetCaseName = getCaseName
-              UnionInfo.UnionCases = unionCases }
 
     let private ofUnionEnum (unionInfo: UnionInfo) =
         let dotnetType = unionInfo.DotnetType
@@ -527,17 +522,14 @@ module ValueInfo =
         // Each union case is treated as optional. Only one case from the union
         // can be set, so the others will be NULL.
         let isOptional = true
-        let fields = unionCase.Fields |> Array.map FieldInfo.ofProperty
+        let fields = unionCase.Fields |> Array.map (FieldInfo.ofUnionCaseField unionCase)
         let isNull (union: Expression) =
             Expression.NotEqual(unionInfo.GetTag union, unionCase.Tag)
-            :> Expression
-        let getValue (union: Expression) =
-            Expression.Convert(union, unionCase.DotnetType)
             :> Expression
         let createFromFieldValues = unionCase.CreateFromFieldValues
         let createNull = Expression.Default(dotnetType) :> Expression
         ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
-            isNull getValue createFromFieldValues createNull
+            isNull createFromFieldValues createNull
 
     let private ofUnionData (unionInfo: UnionInfo) =
         let dotnetType = unionInfo.DotnetType
@@ -570,7 +562,6 @@ module ValueInfo =
                     :> Expression)
                 |> Expression.AndAlso)
             :> Expression
-        let getValue = id
         let createFromFieldValues (fieldValues: Expression[]) =
             let failWithAllCaseDataNull =
                 Expression.FailWith(
@@ -596,7 +587,7 @@ module ValueInfo =
             :> Expression
         let createNull = Expression.Default(dotnetType)
         ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
-            isNull' getValue createFromFieldValues createNull
+            isNull' createFromFieldValues createNull
 
     let private ofUnionComplex (unionInfo: UnionInfo) =
         let dotnetType = unionInfo.DotnetType
@@ -621,7 +612,6 @@ module ValueInfo =
                 FieldInfo.create name valueInfo getValue
             [| unionCaseField; dataField |]
         let isNull = fun (union: Expression) -> Expression.False
-        let getValue = id
         let createFromFieldValues (fieldValues: Expression[]) =
             let caseName = Expression.Variable(typeof<string>, "caseName")
             let caseData = Expression.Variable(dotnetType, "caseData")
@@ -658,7 +648,7 @@ module ValueInfo =
                 Expression.Default(dotnetType))
             :> Expression
         ValueInfo.recordInfo dotnetType valueDotnetType isOptional fields
-            isNull getValue createFromFieldValues createNull
+            isNull createFromFieldValues createNull
 
     let private ofUnion dotnetType =
         // Unions are represented in one of two ways. For unions where none of
@@ -818,5 +808,14 @@ module private FieldInfo =
         let valueInfo = ValueInfo.ofType field.PropertyType
         let getValue (record: Expression) =
             Expression.Property(record, field)
+            :> Expression
+        create name valueInfo getValue
+
+    let ofUnionCaseField (unionCase: UnionCaseInfo) (field: PropertyInfo) =
+        let name = field.Name
+        let valueInfo = ValueInfo.ofType field.PropertyType
+        let getValue (union: Expression) =
+            Expression.Property(
+                Expression.Convert(union, unionCase.DotnetType), field)
             :> Expression
         create name valueInfo getValue

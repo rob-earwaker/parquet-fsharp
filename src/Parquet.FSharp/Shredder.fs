@@ -210,27 +210,22 @@ type private RecordShredder(recordInfo: RecordInfo, maxDefLevel, fieldShredders:
         |> Array.map (fun (fieldInfo, fieldShredder) ->
             let recordRepLevel = Expression.Parameter(typeof<int>, "recordRepLevel")
             let recordDefLevel = Expression.Parameter(typeof<int>, "recordDefLevel")
-            let recordValue = Expression.Parameter(recordInfo.ValueDotnetType, "recordValue")
+            let record = Expression.Parameter(recordInfo.DotnetType, "record")
             let fieldValue = Expression.Variable(fieldInfo.ValueInfo.DotnetType, "fieldValue")
             Expression.Lambda(
                 Expression.Block(
                     [ fieldValue ],
-                    Expression.Assign(fieldValue, fieldInfo.GetValue recordValue),
+                    Expression.Assign(fieldValue, fieldInfo.GetValue record),
                     fieldShredder.ShredValue(recordRepLevel, recordDefLevel, fieldValue)),
                 "shredField",
-                [ recordRepLevel; recordDefLevel; recordValue ]))
+                [ recordRepLevel; recordDefLevel; record ]))
 
     let shredFields(recordRepLevel, recordDefLevel, record) =
-        let recordValue = Expression.Variable(recordInfo.ValueDotnetType, "recordValue")
         Expression.Block(
-            [ recordValue ],
-            seq {
-                yield Expression.Assign(recordValue, recordInfo.GetValue(record)) :> Expression
-                yield! shredFieldLambdas
-                    |> Array.map (fun shredField ->
-                        Expression.Invoke(shredField, recordRepLevel, recordDefLevel, recordValue)
-                        :> Expression)
-            })
+            shredFieldLambdas
+            |> Array.map (fun shredField ->
+                Expression.Invoke(shredField, recordRepLevel, recordDefLevel, record)
+                :> Expression))
 
     override this.CollectColumnBuilderVariables() =
         fieldShredders

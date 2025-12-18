@@ -261,7 +261,6 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
-    // TODO: Might need to rename this if ambiguous with C# record types.
     let (|Record|_|) dotnetType =
         if FSharpType.IsRecord(dotnetType)
         then Option.Some ()
@@ -269,6 +268,11 @@ module private DotnetType =
 
     let (|Union|_|) dotnetType =
         if FSharpType.IsUnion(dotnetType)
+        then Option.Some ()
+        else Option.None
+
+    let (|Class|_|) (dotnetType: Type) =
+        if dotnetType.IsClass
         then Option.Some ()
         else Option.None
 
@@ -402,6 +406,32 @@ module ValueInfo =
         // type.
         ValueInfo.recordInfo dotnetType fields createFromFieldValues
         |> ValueInfo.ofNonNullableReferenceType
+
+    let private ofClass (dotnetType: Type) =
+        let defaultConstructor = dotnetType.GetConstructor([||])
+        if isNull defaultConstructor then
+            failwith $"type '{dotnetType.FullName}' does not have a default constructor"
+        let fields =
+            dotnetType.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
+            |> Array.map FieldInfo.ofProperty
+        let createFromFieldValues =
+            fun (fieldValues: Expression[]) ->
+                let record = Expression.Variable(dotnetType, "record")
+                Expression.Block(
+                    [ record ],
+                    seq<Expression> {
+                        yield Expression.Assign(record, Expression.New(defaultConstructor))
+                        yield! Array.zip fields fieldValues
+                            |> Array.map (fun (field, fieldValue) ->
+                                Expression.Assign(
+                                    Expression.Property(record, field.Name),
+                                    fieldValue)
+                                :> Expression)
+                        yield record
+                    })
+                :> Expression
+        ValueInfo.recordInfo dotnetType fields createFromFieldValues
+        |> ValueInfo.ofReferenceType
 
     let private ofNullableInner dotnetType (valueInfo: ValueInfo) =
         let isNull = Nullable.isNull
@@ -685,6 +715,7 @@ module ValueInfo =
                 // This must come after the option type since option types are
                 // handled in a special way.
                 | DotnetType.Union -> ValueInfo.ofUnion dotnetType
+                | DotnetType.Class -> ValueInfo.ofClass dotnetType
                 | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
             addToCache dotnetType valueInfo
             valueInfo

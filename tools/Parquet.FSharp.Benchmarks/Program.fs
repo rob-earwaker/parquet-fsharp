@@ -31,6 +31,22 @@ module ParquetFSharp =
         use stream = new MemoryStream(bytes)
         Parquet.FSharp.ParquetSerializer.Deserialize<'Record>(stream)
 
+[<AllowNullLiteral>]
+type Inner() =
+    member val Field1 = false with get, set
+    member val Field2 = 0 with get, set
+
+[<CLIMutable>]
+type Record = {
+    Field1: bool
+    Field2: Nullable<int>
+    Field3: float
+    Field4: decimal
+    Field5: Guid
+    Field6: Inner
+    Field7: ResizeArray<int>
+    Field8: ResizeArray<Inner> }
+
 module Random =
     let private Random = Random()
 
@@ -54,40 +70,44 @@ module Random =
     let guid () =
         Guid.NewGuid()
 
+    let private refType<'Value when 'Value: null> (createValue: unit -> 'Value) =
+        if Random.NextDouble() < 0.8
+        then createValue ()
+        else null
+
     let array count (createItem: unit -> 'Item) =
-        Array.init count (fun _ -> createItem ())
+        refType (fun () ->
+            Array.init count (fun _ -> createItem ()))
 
     let genericList count (createItem: unit -> 'Item) =
-        ResizeArray(Array.init count (fun _ -> createItem ()))
+        refType (fun () ->
+            ResizeArray(Array.init count (fun _ -> createItem ())))
 
-[<CLIMutable>]
-type Inner = {
-    Field1: bool
-    Field2: int }
+    let nullable<'Value
+        when 'Value: struct
+        and 'Value :> ValueType
+        and 'Value: (new: unit -> 'Value)>
+        createValue =
+        if Random.NextDouble() < 0.8
+        then Nullable<'Value>(createValue ())
+        else Nullable()
 
-[<CLIMutable>]
-type Record = {
-    Field1: bool
-    Field2: int
-    Field3: float
-    Field4: decimal
-    Field5: Guid
-    Field6: ResizeArray<int>
-    Field7: ResizeArray<Inner> }
+    let inner () =
+        refType (fun () ->
+            Inner(Field1 = bool (), Field2 = int ()))
 
 let RowCount = 100_000
 
 let Records =
     Array.init RowCount (fun _ ->
         { Record.Field1 = Random.bool ()
-          Record.Field2 = Random.int ()
+          Record.Field2 = Random.nullable Random.int
           Record.Field3 = Random.float ()
           Record.Field4 = Random.decimal ()
           Record.Field5 = Random.guid ()
-          Record.Field6 = Random.genericList 100 Random.int
-          Record.Field7 = Random.genericList 10 (fun () ->
-            { Inner.Field1 = Random.bool ()
-              Inner.Field2 = Random.int () }) })
+          Record.Field6 = Random.inner ()
+          Record.Field7 = Random.genericList 100 Random.int
+          Record.Field8 = Random.genericList 10 Random.inner })
 
 let Bytes = ParquetNet.serialize Records
 

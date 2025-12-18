@@ -4,6 +4,7 @@ open FSharp.Reflection
 open System
 open System.Collections
 open System.Collections.Generic
+open System.Reflection
 open Xunit
 
 let private objEqual (expected: obj) (actual: obj) =
@@ -84,6 +85,20 @@ let private buildUnionEqualityAssertion (dotnetType: Type) =
             let actualFieldValue = actualFieldValues[index]
             fieldsEqual expectedFieldValue actualFieldValue
 
+let private buildClassEqualityAssertion (dotnetType: Type) =
+    let properties =
+        dotnetType.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
+    let propertyEqualityAssertions =
+        properties
+        |> Array.map (fun property -> buildEqualityAssertion property.PropertyType)
+    fun (expected: obj) (actual: obj) ->
+        for index in [ 0 .. properties.Length - 1 ] do
+            let property = properties[index]
+            let propertiesEqual = propertyEqualityAssertions[index]
+            let expectedPropertyValue = property.GetValue(expected)
+            let actualPropertyValue = property.GetValue(actual)
+            propertiesEqual expectedPropertyValue actualPropertyValue
+
 let private buildGenericListEqualityAssertion (dotnetType: Type) =
     let elementDotnetType = dotnetType.GetGenericArguments()[0]
     buildEnumerableEqualityAssertion elementDotnetType
@@ -141,6 +156,7 @@ let private buildEqualityAssertion (dotnetType: Type) =
             elif FSharpType.IsRecord(dotnetType) then buildRecordEqualityAssertion dotnetType
             elif dotnetType.IsGenericType then buildGenericTypeEqualityAssertion dotnetType
             elif FSharpType.IsUnion(dotnetType) then buildUnionEqualityAssertion dotnetType
+            elif dotnetType.IsClass then buildClassEqualityAssertion dotnetType
             else failwith  $"unsupported type '{dotnetType.FullName}'"
         addEqualityAssertionToCache dotnetType equalityAssertion
         equalityAssertion

@@ -32,5 +32,8 @@ type Expression with
         :> Expression
 
     static member FailWith(message: string) =
-        Expression.Throw(Expression.Constant(exn(message)))
+        Expression.Throw(
+            Expression.New(
+                typeof<exn>.GetConstructor([| typeof<string> |]),
+                Expression.Constant(message)))
         :> Expression

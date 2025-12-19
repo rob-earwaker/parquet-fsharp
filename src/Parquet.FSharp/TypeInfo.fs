@@ -116,22 +116,21 @@ module private UnionInfo =
                 failwith $"unsupported tag member info type '{memberInfo.GetType().FullName}'"
         let getCaseName (union: Expression) =
             let tag = Expression.Variable(typeof<int>, "tag")
-            let failWithInvalidTag =
-                Expression.FailWith(
-                    $"union of type '{dotnetType.FullName}' has invalid tag value")
             let returnLabel = Expression.Label(typeof<string>, "caseName")
             Expression.Block(
                 [ tag ],
-                Expression.Assign(tag, getTag union),
-                unionCases
-                |> Array.rev
-                |> Array.fold
-                    (fun (ifFalse: Expression) caseInfo ->
-                        let test = Expression.Equal(tag, caseInfo.Tag)
-                        let ifTrue = Expression.Return(returnLabel, Expression.Constant(caseInfo.Name))
-                        Expression.IfThenElse(test, ifTrue, ifFalse))
-                    failWithInvalidTag,
-                Expression.Label(returnLabel, Expression.Constant(null, typeof<string>)))
+                seq<Expression> {
+                    yield Expression.Assign(tag, getTag union)
+                    yield! unionCases
+                        |> Array.map (fun caseInfo ->
+                            Expression.IfThen(
+                                Expression.Equal(tag, caseInfo.Tag),
+                                Expression.Return(returnLabel, Expression.Constant(caseInfo.Name)))
+                            :> Expression)
+                    yield Expression.FailWith(
+                        $"union of type '{dotnetType.FullName}' has invalid tag value")
+                    yield Expression.Label(returnLabel, Expression.Null(returnLabel.Type))
+                })
             :> Expression
         { UnionInfo.DotnetType = dotnetType
           UnionInfo.GetTag = getTag
@@ -524,21 +523,19 @@ module ValueInfo =
         let dataDotnetType = typeof<string>
         let getDataValue = unionInfo.GetCaseName
         let createFromDataValue (caseName: Expression) =
-            let failWithInvalidName =
-                Expression.FailWith(
-                    $"union of type '{dotnetType.FullName}' has invalid name value")
             let returnLabel = Expression.Label(dotnetType, "union")
             Expression.Block(
-                unionInfo.UnionCases
-                // TODO: Maybe just use an if-then-return pattern rather than nesting them?
-                |> Array.rev
-                |> Array.fold
-                    (fun (ifFalse: Expression) caseInfo ->
-                        let test = Expression.Equal(caseName, Expression.Constant(caseInfo.Name))
-                        let ifTrue = Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||])
-                        Expression.IfThenElse(test, ifTrue, ifFalse))
-                    failWithInvalidName,
-                Expression.Label(returnLabel, Expression.Default(dotnetType)))
+                seq<Expression> {
+                    yield! unionInfo.UnionCases
+                        |> Array.map (fun caseInfo ->
+                            Expression.IfThen(
+                                Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
+                                Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||]))
+                            :> Expression)
+                    yield Expression.FailWith(
+                        $"union of type '{dotnetType.FullName}' has invalid name value")
+                    yield Expression.Label(returnLabel, Expression.Default(dotnetType))
+                })
             :> Expression
         ValueInfo.atomicInfo
             dotnetType dataDotnetType getDataValue createFromDataValue
@@ -585,28 +582,25 @@ module ValueInfo =
                     let getValue = id
                     FieldInfo.create name valueInfo getValue)
             let createFromFieldValues (fieldValues: Expression[]) =
-                let failWithAllCaseDataNull =
-                    Expression.FailWith(
-                        $"all case data fields are null for union of type '{dotnetType.FullName}'")
                 let returnLabel = Expression.Label(dotnetType, "union")
                 Expression.Block(
-                    fieldValues
-                    |> Array.rev
-                    // TODO: Maybe just use an if-then-return pattern rather than nesting them?
-                    |> Array.fold
-                        (fun (ifFalse: Expression) fieldValue ->
-                            // TODO: Should technically use the 'IsNull' function from the
-                            // relevant field here instead checking directly.
-                            // TODO: Slightly hacky to box before checking for null. This gets around
-                            // the fact that null is not a proper value for a union.
-                            let test =
-                                Expression.Not(
-                                    Expression.IsNull(
-                                        Expression.Convert(fieldValue, typeof<obj>)))
-                            let ifTrue = Expression.Return(returnLabel, fieldValue)
-                            Expression.IfThenElse(test, ifTrue, ifFalse))
-                        failWithAllCaseDataNull,
-                    Expression.Label(returnLabel, Expression.Default(returnLabel.Type)))
+                    seq<Expression> {
+                        yield! fieldValues
+                            |> Array.map (fun fieldValue ->
+                                // TODO: Should technically use the 'IsNull' function from the
+                                // relevant field here instead checking directly.
+                                // TODO: Slightly hacky to box before checking for null. This gets around
+                                // the fact that null is not a proper value for a union.
+                                Expression.IfThen(
+                                    Expression.Not(
+                                        Expression.IsNull(
+                                            Expression.Convert(fieldValue, typeof<obj>))),
+                                    Expression.Return(returnLabel, fieldValue))
+                                :> Expression)
+                        yield Expression.FailWith(
+                            $"all case data fields are null for union of type '{dotnetType.FullName}'")
+                        yield Expression.Label(returnLabel, Expression.Default(returnLabel.Type))
+                    })
                 :> Expression
             ValueInfo.recordInfo dotnetType fields createFromFieldValues
         let isNull (union: Expression) =
@@ -651,9 +645,6 @@ module ValueInfo =
         let createFromFieldValues (fieldValues: Expression[]) =
             let caseName = Expression.Variable(typeof<string>, "caseName")
             let caseData = Expression.Variable(dotnetType, "caseData")
-            let failWithInvalidName =
-                Expression.FailWith(
-                    $"union of type '{dotnetType.FullName}' has invalid name value")
             let returnLabel = Expression.Label(dotnetType, "union")
             Expression.Block(
                 [ caseName; caseData ],
@@ -666,17 +657,18 @@ module ValueInfo =
                     // the fact that null is not a proper value for a union.
                     Expression.Not(Expression.IsNull(Expression.Convert(caseData, typeof<obj>))),
                     Expression.Return(returnLabel, caseData),
-                    unionInfo.UnionCases
-                    |> Array.filter (fun caseInfo -> caseInfo.Fields.Length = 0)
-                    // TODO: Maybe just use an if-then-return pattern rather than nesting them?
-                    |> Array.rev
-                    |> Array.fold
-                        (fun (ifFalse: Expression) caseInfo ->
-                            let test = Expression.Equal(caseName, Expression.Constant(caseInfo.Name))
-                            let union = caseInfo.CreateFromFieldValues [||]
-                            let ifTrue = Expression.Return(returnLabel, union)
-                            Expression.IfThenElse(test, ifTrue, ifFalse))
-                        failWithInvalidName),
+                    Expression.Block(
+                        seq<Expression> {
+                            yield! unionInfo.UnionCases
+                                |> Array.filter (fun caseInfo -> caseInfo.Fields.Length = 0)
+                                |> Array.map (fun caseInfo ->
+                                    Expression.IfThen(
+                                        Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
+                                        Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||]))
+                                    :> Expression)
+                            yield Expression.FailWith(
+                                $"union of type '{dotnetType.FullName}' has invalid name value")
+                        })),
                 Expression.Label(returnLabel, Expression.Default(returnLabel.Type)))
             :> Expression
         // TODO: F# unions are not nullable by default, however we are mapping

@@ -105,7 +105,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
             Expression.Call(
                 columnBuilder, "AddDataValue", [||], parentRepLevel, parentDefLevel, dataValue))
 
-type private ListShredder(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, elementShredder: ValueShredder) =
+type private ListShredder(listInfo: ListInfo, elementMaxRepLevel, elementShredder: ValueShredder) =
     inherit ValueShredder()
 
     let shredElement =
@@ -117,7 +117,16 @@ type private ListShredder(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, e
             "shredElement",
             [ repLevel; defLevel; element ])
 
-    let shredElements(listRepLevel, listDefLevel, list) =
+    override this.CollectColumnBuilderVariables() =
+        elementShredder.CollectColumnBuilderVariables()
+
+    override this.CollectColumnBuilderInitializers() =
+        elementShredder.CollectColumnBuilderInitializers()
+
+    override this.AddNull(repLevel, defLevel) =
+        elementShredder.AddNull(repLevel, defLevel)
+
+    override this.ShredValue(parentRepLevel, parentDefLevel, list) =
         let elementCount = Expression.Variable(typeof<int>, "elementCount")
         let firstElementRepLevel = Expression.Variable(typeof<int>, "firstElementRepLevel")
         let otherElementRepLevel = Expression.Variable(typeof<int>, "otherElementRepLevel")
@@ -136,7 +145,7 @@ type private ListShredder(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, e
                 // The list is empty. Add a NULL element using the list levels.
                 // This indicates that the list is NOTNULL but there are no
                 // elements.
-                elementShredder.AddNull(listRepLevel, listDefLevel),
+                elementShredder.AddNull(parentRepLevel, parentDefLevel),
                 // The list contains at least one element. The first element
                 // inherits its repetition level from the list, whereas
                 // subsequent elements use the max repetition level of the
@@ -146,9 +155,9 @@ type private ListShredder(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, e
                 // is NOTNULL.
                 Expression.Block(
                     [ firstElementRepLevel; otherElementRepLevel; elementDefLevel; elementIndex ],
-                    Expression.Assign(firstElementRepLevel, listRepLevel),
+                    Expression.Assign(firstElementRepLevel, parentRepLevel),
                     Expression.Assign(otherElementRepLevel, Expression.Constant(elementMaxRepLevel)),
-                    Expression.Assign(elementDefLevel, Expression.Increment(listDefLevel)),
+                    Expression.Assign(elementDefLevel, Expression.Increment(parentDefLevel)),
                     Expression.Invoke(
                         shredElement,
                         firstElementRepLevel,
@@ -173,34 +182,6 @@ type private ListShredder(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, e
                                     listInfo.GetElement(list, elementIndex)),
                                 Expression.AddAssign(elementIndex, Expression.Constant(1)))),
                         loopBreakLabel))))
-
-    override this.CollectColumnBuilderVariables() =
-        elementShredder.CollectColumnBuilderVariables()
-
-    override this.CollectColumnBuilderInitializers() =
-        elementShredder.CollectColumnBuilderInitializers()
-
-    override this.AddNull(repLevel, defLevel) =
-        elementShredder.AddNull(repLevel, defLevel)
-
-    override this.ShredValue(parentRepLevel, parentDefLevel, list) =
-        if listInfo.IsOptional
-        then
-            Expression.IfThenElse(
-                // The list is OPTIONAL, so check for NULL.
-                listInfo.IsNull(list),
-                // If the list is NULL, add a NULL value using the parent levels
-                // to indicate the last definition level at which a value was
-                // present.
-                this.AddNull(parentRepLevel, parentDefLevel),
-                // If the record is NOTNULL, update the definition level to the
-                // max definition level of the list before shredding the
-                // elements.
-                shredElements(parentRepLevel, Expression.Constant(maxDefLevel), list))
-        else
-            // The list is REQUIRED. The definition level will be the same as
-            // the parent, so use the parent levels when shredding the elements.
-            shredElements(parentRepLevel, parentDefLevel, list)
 
 type private RecordShredder(recordInfo: RecordInfo, fieldShredders: ValueShredder[]) =
     inherit ValueShredder()
@@ -289,16 +270,13 @@ module private rec ValueShredder =
 
     let forList (listInfo: ListInfo) parentMaxRepLevel parentMaxDefLevel (listField: ListField) =
         let listMaxRepLevel = parentMaxRepLevel
-        let listMaxDefLevel =
-            if listInfo.IsOptional
-            then parentMaxDefLevel + 1
-            else parentMaxDefLevel
+        let listMaxDefLevel = parentMaxDefLevel
         let elementMaxRepLevel = listMaxRepLevel + 1
         let elementMaxDefLevel = listMaxDefLevel + 1
         let elementShredder =
             ValueShredder.forValue
                 listInfo.ElementInfo elementMaxRepLevel elementMaxDefLevel listField.Item
-        ListShredder(listInfo, listMaxDefLevel, elementMaxRepLevel, elementShredder)
+        ListShredder(listInfo, elementMaxRepLevel, elementShredder)
         :> ValueShredder
 
     let forRecord (recordInfo: RecordInfo) parentMaxRepLevel parentMaxDefLevel (fields: Field seq) =

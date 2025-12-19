@@ -103,23 +103,15 @@ module private UnionInfo =
                   UnionCaseInfo.Fields = unionCase.GetFields()
                   UnionCaseInfo.CreateFromFieldValues = createFromFieldValues })
         let getTag =
-            // TODO: Can some of these options be removed in practice? Do we even
-            // need to precompute if there's only one option?
             match FSharpValue.PreComputeUnionTagMemberInfo(dotnetType) with
             | :? MethodInfo as methodInfo ->
-                if methodInfo.IsStatic
-                then
-                    fun (union: Expression) ->
-                        Expression.Call(methodInfo, union)
-                        :> Expression
-                else
-                    fun (union: Expression) ->
-                        Expression.Call(union, methodInfo)
-                        :> Expression
+                fun (union: Expression) ->
+                    if methodInfo.IsStatic
+                    then Expression.Call(methodInfo, union) :> Expression
+                    else Expression.Call(union, methodInfo) :> Expression
             | :? PropertyInfo as propertyInfo ->
                 fun (union: Expression) ->
-                    Expression.Property(union, propertyInfo)
-                    :> Expression
+                    Expression.Property(union, propertyInfo) :> Expression
             | memberInfo ->
                 failwith $"unsupported tag member info type '{memberInfo.GetType().FullName}'"
         let getCaseName (union: Expression) =
@@ -437,7 +429,7 @@ module ValueInfo =
             getLength getElementValue createEmpty createFromElementValues
         |> ValueInfo.ofNonNullableReferenceType
 
-    let private ofNullableInner dotnetType (valueInfo: ValueInfo) =
+    let private ofNullableRequired dotnetType (valueInfo: ValueInfo) =
         let isNull (nullable: Expression) =
             Expression.Not(Expression.Property(nullable, "HasValue"))
             :> Expression
@@ -453,7 +445,7 @@ module ValueInfo =
         ValueInfo.optionalInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
 
-    let private ofNullableOuter (dotnetType: Type) (valueInfo: ValueInfo) =
+    let private ofNullableOptional (dotnetType: Type) (valueInfo: ValueInfo) =
         let fields =
             let valueField =
                 // TODO: The name of this field could be configurable via an attribute.
@@ -464,21 +456,19 @@ module ValueInfo =
         let createFromFieldValues (fieldValues: Expression[]) =
             fieldValues[0]
         ValueInfo.recordInfo valueInfo.DotnetType fields createFromFieldValues
-        // TODO: Inner and Outer probably aren't the best
-        // names, particularly given this use case!
-        |> ValueInfo.ofNullableInner dotnetType
+        |> ValueInfo.ofNullableRequired dotnetType
 
     let private ofNullable (dotnetType: Type) =
         let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
         let valueInfo = ValueInfo.ofType valueDotnetType
-        if not valueInfo.IsOptional
-        then ValueInfo.ofNullableInner dotnetType valueInfo
+        if valueInfo.IsOptional
         // TODO: This shouldn't really be possible as nullable values have to be
         // value types and therefore can't be null, but while we need to treat
         // all record types as optional we need to handle this case.
-        else ValueInfo.ofNullableOuter dotnetType valueInfo
+        then ValueInfo.ofNullableOptional dotnetType valueInfo
+        else ValueInfo.ofNullableRequired dotnetType valueInfo
 
-    let private ofOptionInner dotnetType (valueInfo: ValueInfo) =
+    let private ofOptionRequired dotnetType (valueInfo: ValueInfo) =
         let unionCases = FSharpType.GetUnionCases(dotnetType)
         let isNull =
             let optionModuleType =
@@ -505,7 +495,7 @@ module ValueInfo =
         ValueInfo.optionalInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
 
-    let private ofOptionOuter (dotnetType: Type) (valueInfo: ValueInfo) =
+    let private ofOptionOptional (dotnetType: Type) (valueInfo: ValueInfo) =
         let fields =
             let valueField =
                 // TODO: The name of this field could be configurable via an attribute.
@@ -516,16 +506,14 @@ module ValueInfo =
         let createFromFieldValues (fieldValues: Expression[]) =
             fieldValues[0]
         ValueInfo.recordInfo valueInfo.DotnetType fields createFromFieldValues
-        // TODO: Inner and Outer probably aren't the best
-        // names, particularly given this use case!
-        |> ValueInfo.ofOptionInner dotnetType
+        |> ValueInfo.ofOptionRequired dotnetType
 
     let private ofOption (dotnetType: Type) =
         let valueDotnetType = dotnetType.GetGenericArguments()[0]
         let valueInfo = ValueInfo.ofType valueDotnetType
-        if not valueInfo.IsOptional
-        then ValueInfo.ofOptionInner dotnetType valueInfo
-        else ValueInfo.ofOptionOuter dotnetType valueInfo
+        if valueInfo.IsOptional
+        then ValueInfo.ofOptionOptional dotnetType valueInfo
+        else ValueInfo.ofOptionRequired dotnetType valueInfo
 
     let private ofUnionEnum (unionInfo: UnionInfo) =
         let dotnetType = unionInfo.DotnetType

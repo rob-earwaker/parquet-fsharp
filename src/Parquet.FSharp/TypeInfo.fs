@@ -10,26 +10,14 @@ type ValueInfo =
     | Atomic of AtomicInfo
     | List of ListInfo
     | Record of RecordInfo
-    // TODO: This is ambiguous with F# option types. 'Optional' is a better name
-    // but conflicts with the 'IsOptional' member for now. Once everything
-    // including reference types is wrapped in ValueInfo.Option then the member
-    // should be unecessary and the generated IsOptional member will behave as
-    // we need it.
-    | Option of OptionInfo
+    | Optional of OptionalInfo
     with
     member this.DotnetType =
         match this with
         | ValueInfo.Atomic atomicInfo -> atomicInfo.DotnetType
         | ValueInfo.List listInfo -> listInfo.DotnetType
         | ValueInfo.Record recordInfo -> recordInfo.DotnetType
-        | ValueInfo.Option optionInfo -> optionInfo.DotnetType
-
-    member this.IsOptional =
-        match this with
-        | ValueInfo.Atomic atomicInfo -> false
-        | ValueInfo.List listInfo -> false
-        | ValueInfo.Record recordInfo -> false
-        | ValueInfo.Option optionInfo -> true
+        | ValueInfo.Optional optionalInfo -> optionalInfo.DotnetType
 
 // TODO: Types supported by Parquet.Net:
 
@@ -74,7 +62,7 @@ type RecordInfo = {
     Fields: FieldInfo[]
     CreateFromFieldValues: Expression[] -> Expression }
 
-type OptionInfo = {
+type OptionalInfo = {
     DotnetType: Type
     ValueInfo: ValueInfo
     IsNull: Expression -> Expression
@@ -309,15 +297,15 @@ module ValueInfo =
             ListInfo.CreateEmpty = createEmpty
             ListInfo.CreateFromElementValues = createFromElementValues }
 
-    let private optionInfo
+    let private optionalInfo
         dotnetType valueInfo isNull getValue createNull createFromValue =
-        ValueInfo.Option {
-            OptionInfo.DotnetType = dotnetType
-            OptionInfo.ValueInfo = valueInfo
-            OptionInfo.IsNull = isNull
-            OptionInfo.GetValue = getValue
-            OptionInfo.CreateNull = createNull
-            OptionInfo.CreateFromValue = createFromValue }
+        ValueInfo.Optional {
+            OptionalInfo.DotnetType = dotnetType
+            OptionalInfo.ValueInfo = valueInfo
+            OptionalInfo.IsNull = isNull
+            OptionalInfo.GetValue = getValue
+            OptionalInfo.CreateNull = createNull
+            OptionalInfo.CreateFromValue = createFromValue }
 
     let private ofReferenceType (valueInfo: ValueInfo) =
         let dotnetType = valueInfo.DotnetType
@@ -325,7 +313,7 @@ module ValueInfo =
         let getValue = id
         let createNull = Expression.Null(dotnetType)
         let createFromValue = id
-        ValueInfo.optionInfo
+        ValueInfo.optionalInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
 
     // TODO: This shouldn't really be necessary, but while Parquet.Net
@@ -340,7 +328,7 @@ module ValueInfo =
                 Expression.Default(dotnetType))
             :> Expression
         let createFromValue = id
-        ValueInfo.optionInfo
+        ValueInfo.optionalInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
 
     let private ofPrimitive<'Value> =
@@ -512,7 +500,7 @@ module ValueInfo =
         let getValue = Nullable.getValue
         let createNull = Nullable.createNull dotnetType
         let createFromValue = Nullable.createValue dotnetType
-        ValueInfo.optionInfo
+        ValueInfo.optionalInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
 
     let private ofNullableOuter (dotnetType: Type) (valueInfo: ValueInfo) =
@@ -545,7 +533,7 @@ module ValueInfo =
         let getValue = Option.getValue
         let createNull = Option.createNone dotnetType
         let createFromValue = Option.createSome dotnetType
-        ValueInfo.optionInfo
+        ValueInfo.optionalInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
 
     let private ofOptionOuter (dotnetType: Type) (valueInfo: ValueInfo) =
@@ -619,7 +607,7 @@ module ValueInfo =
         // because they are reference types.
         let createNull = Expression.Default(dotnetType) :> Expression
         let createFromValue = id
-        ValueInfo.optionInfo
+        ValueInfo.optionalInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
 
     let private ofUnionData (unionInfo: UnionInfo) =
@@ -683,7 +671,7 @@ module ValueInfo =
         // because they are reference types.
         let createNull = Expression.Default(dotnetType) :> Expression
         let createFromValue = id
-        ValueInfo.optionInfo
+        ValueInfo.optionalInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
 
     let private ofUnionComplex (unionInfo: UnionInfo) =

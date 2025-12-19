@@ -230,7 +230,7 @@ type private RecordShredder(recordInfo: RecordInfo, fieldShredders: ValueShredde
                 Expression.Invoke(shredField, parentRepLevel, parentDefLevel, record)
                 :> Expression))
 
-type private OptionShredder(optionInfo: OptionInfo, maxDefLevel, valueShredder: ValueShredder) =
+type private OptionalShredder(optionalInfo: OptionalInfo, maxDefLevel, valueShredder: ValueShredder) =
     inherit ValueShredder()
 
     override this.CollectColumnBuilderVariables() =
@@ -243,10 +243,10 @@ type private OptionShredder(optionInfo: OptionInfo, maxDefLevel, valueShredder: 
         valueShredder.AddNull(repLevel, defLevel)
 
     override this.ShredValue(parentRepLevel, parentDefLevel, optionalValue) =
-        let value = Expression.Variable(optionInfo.ValueInfo.DotnetType, "value")
+        let value = Expression.Variable(optionalInfo.ValueInfo.DotnetType, "value")
         Expression.IfThenElse(
             // The value is OPTIONAL, so check for NULL.
-            optionInfo.IsNull(optionalValue),
+            optionalInfo.IsNull(optionalValue),
             // If the value is NULL, add a NULL value using the parent levels to
             // indicate the last definition level at which a value was present.
             this.AddNull(parentRepLevel, parentDefLevel),
@@ -255,7 +255,7 @@ type private OptionShredder(optionInfo: OptionInfo, maxDefLevel, valueShredder: 
             // should be one more than the parent definition level.
             Expression.Block(
                 [ value ],
-                Expression.Assign(value, optionInfo.GetValue(optionalValue)),
+                Expression.Assign(value, optionalInfo.GetValue(optionalValue)),
                 valueShredder.ShredValue(
                     parentRepLevel,
                     Expression.Constant(maxDefLevel),
@@ -290,12 +290,12 @@ module private rec ValueShredder =
         RecordShredder(recordInfo, fieldShredders)
         :> ValueShredder
 
-    let forOption (optionInfo: OptionInfo) parentMaxRepLevel parentMaxDefLevel field =
+    let forOptional (optionalInfo: OptionalInfo) parentMaxRepLevel parentMaxDefLevel field =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel + 1
         let valueShredder =
-            ValueShredder.forValue optionInfo.ValueInfo maxRepLevel maxDefLevel field
-        OptionShredder(optionInfo, maxDefLevel, valueShredder)
+            ValueShredder.forValue optionalInfo.ValueInfo maxRepLevel maxDefLevel field
+        OptionalShredder(optionalInfo, maxDefLevel, valueShredder)
         :> ValueShredder
 
     let forValue (valueInfo: ValueInfo) parentMaxRepLevel parentMaxDefLevel (field: Field) =
@@ -309,8 +309,8 @@ module private rec ValueShredder =
         | ValueInfo.Record recordInfo ->
             let structField = field :?> StructField
             ValueShredder.forRecord recordInfo parentMaxRepLevel parentMaxDefLevel structField.Fields
-        | ValueInfo.Option optionInfo ->
-            ValueShredder.forOption optionInfo parentMaxRepLevel parentMaxDefLevel field
+        | ValueInfo.Optional optionalInfo ->
+            ValueShredder.forOptional optionalInfo parentMaxRepLevel parentMaxDefLevel field
 
 type private Shredder<'Record>() =
     // TODO: Currently only supports F# records but we probably want it to
@@ -321,8 +321,8 @@ type private Shredder<'Record>() =
         // TODO: F# records are currently treated as optional for compatability
         // with Parquet.Net, but the root record should never be optional.
         // Unwrap the record info to remove this optionality.
-        | ValueInfo.Option optionInfo ->
-            match optionInfo.ValueInfo with
+        | ValueInfo.Optional optionalInfo ->
+            match optionalInfo.ValueInfo with
             | ValueInfo.Record recordInfo -> recordInfo
             | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
         | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"

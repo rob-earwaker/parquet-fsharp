@@ -7,7 +7,7 @@ let private getValueSchema fieldName valueInfo =
     | ValueInfo.Atomic atomicInfo ->
         // TODO: Should we use some of the custom DataField types here, e.g. DecimalDataField?
         let dataType = atomicInfo.DataDotnetType
-        // Nullability in the schema is handled at the {OptionInfo} level, so
+        // Nullability in the schema is handled at the {OptionalInfo} level, so
         // despite some atomic values being nullable, e.g. {string} and
         // {byte[]}, we specify as not nullable here. Note that if nullability
         // is not explicitly specified then it will be inferred from the data
@@ -21,9 +21,9 @@ let private getValueSchema fieldName valueInfo =
     | ValueInfo.Record recordInfo ->
         let fields = getRecordFields recordInfo
         StructField(fieldName, fields) :> Field
-    | ValueInfo.Option optionInfo ->
+    | ValueInfo.Optional optionalInfo ->
         // TODO: Is there a better way to deal with this nesting?
-        let valueField = getValueSchema fieldName optionInfo.ValueInfo
+        let valueField = getValueSchema fieldName optionalInfo.ValueInfo
         if valueField.IsNullable
         then valueField
         else

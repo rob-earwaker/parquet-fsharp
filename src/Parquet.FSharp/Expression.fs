@@ -26,6 +26,10 @@ type Expression with
         |> Array.reduce (fun combined value ->
             Expression.AndAlso(combined, value))
 
+    static member Call(instance: Expression, methodName: string, arguments) =
+        Expression.Call(instance, methodName, [||], Array.ofSeq arguments)
+        :> Expression
+
     static member FailWith(message: string) =
         Expression.Throw(Expression.Constant(exn(message)))
         :> Expression

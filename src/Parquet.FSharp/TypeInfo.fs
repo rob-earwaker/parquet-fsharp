@@ -363,7 +363,7 @@ module ValueInfo =
         let createFromDataValue (dataValue: Expression) =
             Expression.New(
                 typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
-                Expression.Call(dataValue, "ToUniversalTime", [||], [||]))
+                Expression.Call(dataValue, "ToUniversalTime", []))
             :> Expression
         ValueInfo.atomicInfo
             dotnetType dataDotnetType getDataValue createFromDataValue
@@ -441,8 +441,7 @@ module ValueInfo =
         let createEmpty =
             Expression.NewArrayBounds(elementDotnetType, Expression.Constant(0))
         let createFromElementValues (elementValues: Expression) =
-            Expression.Call(elementValues, "ToArray", [||], [||])
-            :> Expression
+            Expression.Call(elementValues, "ToArray", [])
         ValueInfo.listInfo
             dotnetType elementInfo
             getLength getElementValue createEmpty createFromElementValues

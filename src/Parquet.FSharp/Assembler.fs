@@ -101,16 +101,13 @@ type private ValueAssembler(dotnetType: Type) =
     member this.CurrentValue = currentValueProperty "Value"
 
     member private this.MarkCurrentValueUsed =
-        Expression.Call(currentValue, "MarkUsed", [||], [||])
-        :> Expression
+        Expression.Call(currentValue, "MarkUsed", [])
 
     member this.SetCurrentValueUndefined(repLevel, defLevel) =
-        Expression.Call(currentValue, "SetUndefined", [||], repLevel, defLevel)
-        :> Expression
+        Expression.Call(currentValue, "SetUndefined", [ repLevel; defLevel ])
 
     member this.SetCurrentValue(repLevel, defLevel, value) =
-        Expression.Call(currentValue, "SetValue", [||], repLevel, defLevel, value)
-        :> Expression
+        Expression.Call(currentValue, "SetValue", [ repLevel; defLevel; value ])
 
     abstract member CollectColumnEnumeratorVariables : unit -> ParameterExpression seq
     abstract member CollectColumnEnumeratorInitializers : unit -> (Expression -> Expression) seq
@@ -175,7 +172,7 @@ type private AtomicAssembler(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel) =
         :> Expression
 
     let columnEnumeratorMoveNext =
-        Expression.Call(columnEnumerator, "MoveNext", [||], [||])
+        Expression.Call(columnEnumerator, "MoveNext", [])
 
     override this.CollectColumnEnumeratorVariables() =
         Seq.singleton columnEnumerator
@@ -314,7 +311,7 @@ type private ListAssembler(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, 
                                 // let elementValues = ResizeArray<'Element>()
                                 // elementValues.Add(elementAssembler.CurrentValue.Value)
                                 Expression.Assign(elementValues, Expression.New(elementValues.Type)),
-                                Expression.Call(elementValues, "Add", [||], elementAssembler.CurrentValue),
+                                Expression.Call(elementValues, "Add", [ elementAssembler.CurrentValue ]),
                                 // Enumerate subsequent elements until we either reach the end of
                                 // the data set or find an element with a repetition level less than
                                 // the element maximum repetition level. In the latter case, this
@@ -338,7 +335,9 @@ type private ListAssembler(listInfo: ListInfo, maxDefLevel, elementMaxRepLevel, 
                                         //     elementValues.Add(elementAssembler.CurrentValue.Value)
                                         //     elementAssembler.SkipPeekedValue()
                                         Expression.Block(
-                                            Expression.Call(elementValues, "Add", [||], elementAssembler.CurrentValue),
+                                            Expression.Call(
+                                                elementValues, "Add",
+                                                [ elementAssembler.CurrentValue ]),
                                             elementAssembler.SkipPeekedValue)),
                                     loopBreakLabel),
                                 Expression.Assign(list, listInfo.CreateFromElementValues(elementValues)),
@@ -581,11 +580,11 @@ type internal Assembler<'Record>() =
                             // else break
                             Expression.IfThenElse(
                                 Expression.Invoke(recordAssembler.TryReadNextValue),
-                                Expression.Call(records, "Add", [||], recordAssembler.CurrentValue),
+                                Expression.Call(records, "Add", [ recordAssembler.CurrentValue ]),
                                 Expression.Break(loopBreakLabel)),
                         loopBreakLabel)
                     // return records.ToArray()
-                    yield Expression.Call(records, "ToArray", [||], [||])
+                    yield Expression.Call(records, "ToArray", [])
                 }),
             dataColumns)
 

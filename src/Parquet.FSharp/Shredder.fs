@@ -93,7 +93,7 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
         Seq.singleton initializeColumnBuilder
 
     override this.AddNull(repLevel, defLevel) =
-        Expression.Call(columnBuilder, "AddNull", [||], repLevel, defLevel)
+        Expression.Call(columnBuilder, "AddNull", [ repLevel; defLevel ])
 
     override this.ShredValue(parentRepLevel, parentDefLevel, value) =
         // The value is REQUIRED. The definition level will be the same as
@@ -103,7 +103,8 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
             [ dataValue ],
             Expression.Assign(dataValue, atomicInfo.GetDataValue(value)),
             Expression.Call(
-                columnBuilder, "AddDataValue", [||], parentRepLevel, parentDefLevel, dataValue))
+                columnBuilder, "AddDataValue",
+                [ parentRepLevel; parentDefLevel; dataValue ]))
 
 type private ListShredder(listInfo: ListInfo, elementMaxRepLevel, elementShredder: ValueShredder) =
     inherit ValueShredder()
@@ -357,7 +358,7 @@ type private Shredder<'Record>() =
                     // let recordEnumerator = records.GetEnumerator()
                     yield Expression.Assign(
                         recordEnumerator,
-                        Expression.Call(records, "GetEnumerator", [||], [||]))
+                        Expression.Call(records, "GetEnumerator", []))
                     yield Expression.Loop(
                         // while True do
                         Expression.IfThenElse(
@@ -388,8 +389,7 @@ type private Shredder<'Record>() =
                         typeof<DataColumn>,
                         columnBuilderVariables
                         |> Seq.map (fun columnBuilder ->
-                            Expression.Call(columnBuilder, "Build", [||])
-                            :> Expression))
+                            Expression.Call(columnBuilder, "Build", [])))
                 }),
             records)
 

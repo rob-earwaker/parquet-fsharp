@@ -70,42 +70,6 @@ type OptionalInfo = {
     CreateNull: Expression
     CreateFromValue: Expression -> Expression }
 
-// TODO: Can we inline some of this?
-module private Option =
-    let private getSomeCase dotnetType =
-        let unionCases = FSharpType.GetUnionCases(dotnetType)
-        unionCases |> Array.find _.Name.Equals("Some")
-        
-    let private getNoneCase dotnetType =
-        let unionCases = FSharpType.GetUnionCases(dotnetType)
-        unionCases |> Array.find _.Name.Equals("None")
-
-    let isNone valueDotnetType =
-        let optionModuleType =
-            Assembly.Load("FSharp.Core").GetTypes()
-            |> Array.filter (fun type' -> type'.Name = "OptionModule")
-            |> Array.exactlyOne
-        fun (valueOption: Expression) ->
-            Expression.Call(optionModuleType, "IsNone", [| valueDotnetType |], valueOption)
-            :> Expression
-
-    let getValue (valueOption: Expression) =
-        Expression.Property(valueOption, "Value")
-        :> Expression
-
-    let createSome dotnetType =
-        let someCase = getSomeCase dotnetType
-        let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(someCase)
-        fun (value: Expression) ->
-            Expression.Call(constructorMethod, value)
-            :> Expression
-
-    let createNone dotnetType =
-        let noneCase = getNoneCase dotnetType
-        let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(noneCase)
-        Expression.Call(constructorMethod, [||])
-        :> Expression
-
 type private UnionInfo = {
     DotnetType: Type
     GetTag: Expression -> Expression
@@ -515,10 +479,29 @@ module ValueInfo =
         else ValueInfo.ofNullableOuter dotnetType valueInfo
 
     let private ofOptionInner dotnetType (valueInfo: ValueInfo) =
-        let isNull = Option.isNone valueInfo.DotnetType
-        let getValue = Option.getValue
-        let createNull = Option.createNone dotnetType
-        let createFromValue = Option.createSome dotnetType
+        let unionCases = FSharpType.GetUnionCases(dotnetType)
+        let isNull =
+            let optionModuleType =
+                Assembly.Load("FSharp.Core").GetTypes()
+                |> Array.filter (fun type' -> type'.Name = "OptionModule")
+                |> Array.exactlyOne
+            fun (option: Expression) ->
+                Expression.Call(optionModuleType, "IsNone", [| valueInfo.DotnetType |], option)
+                :> Expression
+        let getValue (option: Expression) =
+            Expression.Property(option, "Value")
+            :> Expression
+        let createNull =
+            let noneCase = unionCases |> Array.find _.Name.Equals("None")
+            let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(noneCase)
+            Expression.Call(constructorMethod, [||])
+            :> Expression
+        let createFromValue =
+            let someCase = unionCases |> Array.find _.Name.Equals("Some")
+            let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(someCase)
+            fun (value: Expression) ->
+                Expression.Call(constructorMethod, value)
+                :> Expression
         ValueInfo.optionalInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
 

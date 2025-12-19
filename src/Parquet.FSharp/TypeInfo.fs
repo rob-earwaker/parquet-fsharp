@@ -60,8 +60,7 @@ type ListInfo = {
     DotnetType: Type
     ElementInfo: ValueInfo
     GetLength: Expression -> Expression
-    // TODO: 'GetElemenValue'? For consistency with others
-    GetElement: Expression * Expression -> Expression
+    GetElementValue: Expression * Expression -> Expression
     CreateEmpty: Expression
     CreateFromElementValues: Expression -> Expression }
 
@@ -301,12 +300,12 @@ module ValueInfo =
 
     let private listInfo
         dotnetType elementInfo
-        getLength getElement createEmpty createFromElementValues =
+        getLength getElementValue createEmpty createFromElementValues =
         ValueInfo.List {
             ListInfo.DotnetType = dotnetType
             ListInfo.ElementInfo = elementInfo
             ListInfo.GetLength = getLength
-            ListInfo.GetElement = getElement
+            ListInfo.GetElementValue = getElementValue
             ListInfo.CreateEmpty = createEmpty
             ListInfo.CreateFromElementValues = createFromElementValues }
 
@@ -448,7 +447,7 @@ module ValueInfo =
         let getLength (array: Expression) =
             Expression.Property(array, "Length")
             :> Expression
-        let getElement (array: Expression, index: Expression) =
+        let getElementValue (array: Expression, index: Expression) =
             Expression.ArrayIndex(array, [ index ])
             :> Expression
         let createEmpty =
@@ -458,7 +457,7 @@ module ValueInfo =
             :> Expression
         ValueInfo.listInfo
             dotnetType elementInfo
-            getLength getElement createEmpty createFromElementValues
+            getLength getElementValue createEmpty createFromElementValues
         |> ValueInfo.ofReferenceType
 
     let private ofGenericList (dotnetType: Type) =
@@ -467,14 +466,14 @@ module ValueInfo =
         let getLength (list: Expression) =
             Expression.Property(list, "Count")
             :> Expression
-        let getElement (list: Expression, index: Expression) =
+        let getElementValue (list: Expression, index: Expression) =
             Expression.MakeIndex(list, dotnetType.GetProperty("Item"), [ index ])
             :> Expression
         let createEmpty = Expression.New(dotnetType)
         let createFromElementValues = id
         ValueInfo.listInfo
             dotnetType elementInfo
-            getLength getElement createEmpty createFromElementValues
+            getLength getElementValue createEmpty createFromElementValues
         |> ValueInfo.ofReferenceType
 
     let private ofFSharpList (dotnetType: Type) =
@@ -483,7 +482,7 @@ module ValueInfo =
         let getLength (list: Expression) =
             Expression.Property(list, "Length")
             :> Expression
-        let getElement =
+        let getElementValue =
             let itemProperty = dotnetType.GetProperty("Item")
             fun (list: Expression, index: Expression) ->
                 Expression.MakeIndex(list, itemProperty, [ index ])
@@ -505,7 +504,7 @@ module ValueInfo =
         // type.
         ValueInfo.listInfo
             dotnetType elementInfo
-            getLength getElement createEmpty createFromElementValues
+            getLength getElementValue createEmpty createFromElementValues
         |> ValueInfo.ofNonNullableReferenceType
 
     let private ofNullableInner dotnetType (valueInfo: ValueInfo) =

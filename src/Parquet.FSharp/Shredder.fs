@@ -162,7 +162,7 @@ type private ListShredder(listInfo: ListInfo, elementMaxRepLevel, elementShredde
                         shredElement,
                         firstElementRepLevel,
                         elementDefLevel,
-                        listInfo.GetElement(list, Expression.Constant(0))),
+                        listInfo.GetElementValue(list, Expression.Constant(0))),
                     Expression.Assign(elementIndex, Expression.Constant(1)),
                     Expression.Loop(
                         // while True do
@@ -179,7 +179,7 @@ type private ListShredder(listInfo: ListInfo, elementMaxRepLevel, elementShredde
                                     shredElement,
                                     otherElementRepLevel,
                                     elementDefLevel,
-                                    listInfo.GetElement(list, elementIndex)),
+                                    listInfo.GetElementValue(list, elementIndex)),
                                 Expression.AddAssign(elementIndex, Expression.Constant(1)))),
                         loopBreakLabel))))
 

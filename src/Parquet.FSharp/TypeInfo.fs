@@ -303,6 +303,21 @@ module ValueInfo =
             RecordInfo.Fields = fields
             RecordInfo.CreateFromFieldValues = createFromFieldValues }
 
+    let private listInfo
+        dotnetType isOptional elementInfo
+        isNull getLength getElement
+        createNull createEmpty createFromElementValues =
+        ValueInfo.List {
+            ListInfo.DotnetType = dotnetType
+            ListInfo.IsOptional = isOptional
+            ListInfo.ElementInfo = elementInfo
+            ListInfo.IsNull = isNull
+            ListInfo.GetLength = getLength
+            ListInfo.GetElement = getElement
+            ListInfo.CreateNull = createNull
+            ListInfo.CreateEmpty = createEmpty
+            ListInfo.CreateFromElementValues = createFromElementValues }
+
     let private optionInfo
         dotnetType valueInfo isNull getValue createNull createFromValue =
         ValueInfo.Option {
@@ -432,6 +447,82 @@ module ValueInfo =
                 :> Expression
         ValueInfo.recordInfo dotnetType fields createFromFieldValues
         |> ValueInfo.ofReferenceType
+
+    let private ofArray1d (dotnetType: Type) =
+        let isOptional = true
+        let elementDotnetType = dotnetType.GetElementType()
+        let elementInfo = ValueInfo.ofType elementDotnetType
+        let isNull = Expression.IsNull
+        let getLength (array: Expression) =
+            Expression.Property(array, "Length")
+            :> Expression
+        let getElement (array: Expression, index: Expression) =
+            Expression.ArrayIndex(array, [ index ])
+            :> Expression
+        let createNull = Expression.Null(dotnetType)
+        let createEmpty =
+            Expression.NewArrayBounds(elementDotnetType, Expression.Constant(0))
+        let createFromElementValues (elementValues: Expression) =
+            Expression.Call(elementValues, "ToArray", [||], [||])
+            :> Expression
+        ValueInfo.listInfo dotnetType isOptional elementInfo
+            isNull getLength getElement
+            createNull createEmpty createFromElementValues
+
+    let private ofGenericList (dotnetType: Type) =
+        let isOptional = true
+        let elementDotnetType = dotnetType.GetGenericArguments()[0]
+        let elementInfo = ValueInfo.ofType elementDotnetType
+        let isNull = Expression.IsNull
+        let getLength (list: Expression) =
+            Expression.Property(list, "Count")
+            :> Expression
+        let getElement (list: Expression, index: Expression) =
+            Expression.MakeIndex(list, dotnetType.GetProperty("Item"), [ index ])
+            :> Expression
+        let createNull = Expression.Null(dotnetType)
+        let createEmpty = Expression.New(dotnetType)
+        let createFromElementValues = id
+        ValueInfo.listInfo dotnetType isOptional elementInfo
+            isNull getLength getElement
+            createNull createEmpty createFromElementValues
+
+    let private ofFSharpList (dotnetType: Type) =
+        // TODO: F# lists are not nullable by default, however Parquet.Net
+        // does not support list fields that aren't nullable and a nullable
+        // list field class can't easily be created since some of the relevant
+        // properties are internal. For now, treat all lists as optional, even
+        // though in practice they will never be null.
+        let isOptional = true
+        let elementDotnetType = dotnetType.GetGenericArguments()[0]
+        let elementInfo = ValueInfo.ofType elementDotnetType
+        let isNull = fun (list: Expression) -> Expression.False
+        let getLength (list: Expression) =
+            Expression.Property(list, "Length")
+            :> Expression
+        let getElement =
+            let itemProperty = dotnetType.GetProperty("Item")
+            fun (list: Expression, index: Expression) ->
+                Expression.MakeIndex(list, itemProperty, [ index ])
+                :> Expression
+        let createNull =
+            Expression.Block(
+                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
+                Expression.Default(dotnetType))
+            :> Expression
+        let createEmpty =
+            Expression.Property(null, dotnetType.GetProperty("Empty"))
+        let createFromElementValues =
+            let seqModuleType =
+                Assembly.Load("FSharp.Core").GetTypes()
+                |> Array.filter (fun type' -> type'.Name = "SeqModule")
+                |> Array.exactlyOne
+            fun (elementValues: Expression) ->
+                Expression.Call(seqModuleType, "ToList", [| elementDotnetType |], elementValues)
+                :> Expression
+        ValueInfo.listInfo dotnetType isOptional elementInfo
+            isNull getLength getElement
+            createNull createEmpty createFromElementValues
 
     let private ofNullableInner dotnetType (valueInfo: ValueInfo) =
         let isNull = Nullable.isNull
@@ -706,9 +797,9 @@ module ValueInfo =
                 // arrays are supported as a primitive type in Parquet and are
                 // therefore handled as atomic values rather than lists.
                 | DotnetType.ByteArray -> ValueInfo.ByteArray
-                | DotnetType.Array1d -> ValueInfo.List (ListInfo.ofArray1d dotnetType)
-                | DotnetType.GenericList -> ValueInfo.List (ListInfo.ofGenericList dotnetType)
-                | DotnetType.FSharpList -> ValueInfo.List (ListInfo.ofFSharpList dotnetType)
+                | DotnetType.Array1d -> ValueInfo.ofArray1d dotnetType
+                | DotnetType.GenericList -> ValueInfo.ofGenericList dotnetType
+                | DotnetType.FSharpList -> ValueInfo.ofFSharpList dotnetType
                 | DotnetType.Record -> ValueInfo.ofRecord dotnetType
                 | DotnetType.Nullable -> ValueInfo.ofNullable dotnetType
                 | DotnetType.Option -> ValueInfo.ofOption dotnetType
@@ -722,97 +813,6 @@ module ValueInfo =
 
     let of'<'Value> =
         ofType typeof<'Value>
-
-module private ListInfo =
-    let private create
-        dotnetType isOptional elementInfo
-        isNull getLength getElement
-        createNull createEmpty createFromElementValues =
-        { ListInfo.DotnetType = dotnetType
-          ListInfo.IsOptional = isOptional
-          ListInfo.ElementInfo = elementInfo
-          ListInfo.IsNull = isNull
-          ListInfo.GetLength = getLength
-          ListInfo.GetElement = getElement
-          ListInfo.CreateNull = createNull
-          ListInfo.CreateEmpty = createEmpty
-          ListInfo.CreateFromElementValues = createFromElementValues }
-
-    let ofArray1d (dotnetType: Type) =
-        let isOptional = true
-        let elementDotnetType = dotnetType.GetElementType()
-        let elementInfo = ValueInfo.ofType elementDotnetType
-        let isNull = Expression.IsNull
-        let getLength (array: Expression) =
-            Expression.Property(array, "Length")
-            :> Expression
-        let getElement (array: Expression, index: Expression) =
-            Expression.ArrayIndex(array, [ index ])
-            :> Expression
-        let createNull = Expression.Null(dotnetType)
-        let createEmpty =
-            Expression.NewArrayBounds(elementDotnetType, Expression.Constant(0))
-        let createFromElementValues (elementValues: Expression) =
-            Expression.Call(elementValues, "ToArray", [||], [||])
-            :> Expression
-        create dotnetType isOptional elementInfo
-            isNull getLength getElement
-            createNull createEmpty createFromElementValues
-
-    let ofGenericList (dotnetType: Type) =
-        let isOptional = true
-        let elementDotnetType = dotnetType.GetGenericArguments()[0]
-        let elementInfo = ValueInfo.ofType elementDotnetType
-        let isNull = Expression.IsNull
-        let getLength (list: Expression) =
-            Expression.Property(list, "Count")
-            :> Expression
-        let getElement (list: Expression, index: Expression) =
-            Expression.MakeIndex(list, dotnetType.GetProperty("Item"), [ index ])
-            :> Expression
-        let createNull = Expression.Null(dotnetType)
-        let createEmpty = Expression.New(dotnetType)
-        let createFromElementValues = id
-        create dotnetType isOptional elementInfo
-            isNull getLength getElement
-            createNull createEmpty createFromElementValues
-
-    let ofFSharpList (dotnetType: Type) =
-        // TODO: F# lists are not nullable by default, however Parquet.Net
-        // does not support list fields that aren't nullable and a nullable
-        // list field class can't easily be created since some of the relevant
-        // properties are internal. For now, treat all lists as optional, even
-        // though in practice they will never be null.
-        let isOptional = true
-        let elementDotnetType = dotnetType.GetGenericArguments()[0]
-        let elementInfo = ValueInfo.ofType elementDotnetType
-        let isNull = fun (list: Expression) -> Expression.False
-        let getLength (list: Expression) =
-            Expression.Property(list, "Length")
-            :> Expression
-        let getElement =
-            let itemProperty = dotnetType.GetProperty("Item")
-            fun (list: Expression, index: Expression) ->
-                Expression.MakeIndex(list, itemProperty, [ index ])
-                :> Expression
-        let createNull =
-            Expression.Block(
-                Expression.FailWith($"type '{dotnetType.FullName}' is not optional"),
-                Expression.Default(dotnetType))
-            :> Expression
-        let createEmpty =
-            Expression.Property(null, dotnetType.GetProperty("Empty"))
-        let createFromElementValues =
-            let seqModuleType =
-                Assembly.Load("FSharp.Core").GetTypes()
-                |> Array.filter (fun type' -> type'.Name = "SeqModule")
-                |> Array.exactlyOne
-            fun (elementValues: Expression) ->
-                Expression.Call(seqModuleType, "ToList", [| elementDotnetType |], elementValues)
-                :> Expression
-        create dotnetType isOptional elementInfo
-            isNull getLength getElement
-            createNull createEmpty createFromElementValues
 
 module private FieldInfo =
     let create name valueInfo getValue =

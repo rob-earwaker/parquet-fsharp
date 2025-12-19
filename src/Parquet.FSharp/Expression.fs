@@ -1,5 +1,6 @@
 module [<AutoOpen>] internal Parquet.FSharp.ExpressionExtensions
-// TODO: Should eventually be able to move this below TypeInfo.fs
+// TODO: Should eventually be able to move this below TypeInfo.fs if we end up
+// moving all expression code into the Shredder and Assembler modules.
 
 open System
 open System.Linq.Expressions

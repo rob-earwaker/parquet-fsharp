@@ -71,27 +71,6 @@ type OptionalInfo = {
     CreateFromValue: Expression -> Expression }
 
 // TODO: Can we inline some of this?
-module private Nullable =
-    let isNull (nullableValue: Expression) =
-        Expression.Not(
-            Expression.Property(nullableValue, "HasValue"))
-        :> Expression
-
-    let getValue (nullableValue: Expression) =
-        Expression.Property(nullableValue, "Value")
-        :> Expression
-
-    let createValue dotnetType =
-        let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
-        let constructor = dotnetType.GetConstructor([| valueDotnetType |])
-        fun (value: Expression) ->
-            Expression.New(constructor, value)
-            :> Expression
-
-    let createNull dotnetType =
-        Expression.Null(dotnetType)
-
-// TODO: Can we inline some of this?
 module private Option =
     let private getSomeCase dotnetType =
         let unionCases = FSharpType.GetUnionCases(dotnetType)
@@ -495,10 +474,18 @@ module ValueInfo =
         |> ValueInfo.ofNonNullableReferenceType
 
     let private ofNullableInner dotnetType (valueInfo: ValueInfo) =
-        let isNull = Nullable.isNull
-        let getValue = Nullable.getValue
-        let createNull = Nullable.createNull dotnetType
-        let createFromValue = Nullable.createValue dotnetType
+        let isNull (nullable: Expression) =
+            Expression.Not(Expression.Property(nullable, "HasValue"))
+            :> Expression
+        let getValue (nullable: Expression) =
+            Expression.Property(nullable, "Value")
+            :> Expression
+        let createNull = Expression.Null(dotnetType)
+        let createFromValue =
+            let constructor = dotnetType.GetConstructor([| valueInfo.DotnetType |])
+            fun (value: Expression) ->
+                Expression.New(constructor, value)
+                :> Expression
         ValueInfo.optionalInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
 

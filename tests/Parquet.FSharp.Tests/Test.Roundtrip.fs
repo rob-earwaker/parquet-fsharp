@@ -288,11 +288,9 @@ type ClassWithOptionOptionField() =
     member val Field1 = Unchecked.defaultof<option<option<int>>> with get, set
 
 let testRoundtrip<'Record> (records: 'Record[]) =
-    use stream = new MemoryStream()
-    ParquetSerializer.Serialize<'Record>(records, stream)
-    stream.Seek(0, SeekOrigin.Begin) |> ignore
-    let roundtrippedRecords = ParquetSerializer.Deserialize<'Record>(stream)
-    Assert.structurallyEqual records roundtrippedRecords
+    let bytes = ParquetSerializer.Serialize(records)
+    let roundtrippedRecords = ParquetSerializer.Deserialize<'Record>(bytes)
+    Assert.equal records roundtrippedRecords
 
 [<Property>]
 let ``bool field`` records =

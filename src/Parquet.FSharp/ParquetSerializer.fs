@@ -15,6 +15,11 @@ type ParquetSerializer =
         for column in shredder.Shred(records) do
             rowGroupWriter.WriteColumnAsync(column).Wait()
 
+    static member Serialize<'Record>(records: 'Record seq) =
+        use stream = new MemoryStream()
+        ParquetSerializer.Serialize(records, stream)
+        stream.ToArray()
+
     static member Deserialize<'Record>(stream: Stream) =
         // TODO: Make Async and use cancellation tokens.
         let assembler = Assembler.of'<'Record>
@@ -26,3 +31,7 @@ type ParquetSerializer =
             assembler.Schema.DataFields
             |> Array.map (fun field -> rowGroupReader.ReadColumnAsync(field).Result)
         assembler.Assemble(columns)
+
+    static member Deserialize<'Record>(bytes: byte[]) =
+        use stream = new MemoryStream(bytes)
+        ParquetSerializer.Deserialize<'Record>(stream)

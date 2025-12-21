@@ -161,6 +161,12 @@ let private buildEqualityAssertion (dotnetType: Type) =
         addEqualityAssertionToCache dotnetType equalityAssertion
         equalityAssertion
 
-let structurallyEqual<'Value> (expected: 'Value) (actual: 'Value) =
+let equal<'Value> (expected: 'Value) (actual: 'Value) =
     let assertEqual = buildEqualityAssertion typeof<'Value>
     assertEqual (box expected) (box actual)
+
+let arrayLengthEqual (expected: 'Item1[]) (actual: 'Item2[]) =
+    Assert.Equal(expected.Length, actual.Length)
+
+let failWith message =
+    Assert.Fail(message)

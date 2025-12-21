@@ -540,7 +540,7 @@ module ValueInfo =
         ValueInfo.atomicInfo
             dotnetType dataDotnetType getDataValue createFromDataValue
 
-    let private ofUnionCaseData (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
+    let private ofUnionCase (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
         // Union case data is represented as an optional record containing the
         // field values for that case. The record needs to be optional since
         // only one case from the union can be set and the others will be NULL.
@@ -564,112 +564,59 @@ module ValueInfo =
         ValueInfo.optionalInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
 
-    let private ofUnionData (unionInfo: UnionInfo) =
-        // Some union cases might not have any associated data fields. When
-        // representing these cases we want to be able to set the data to NULL,
-        // so this virtual record type must be optional.
+    let private ofUnionComplex (unionInfo: UnionInfo) =
         let dotnetType = unionInfo.DotnetType
         let unionCasesWithFields =
             unionInfo.UnionCases
             |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
-        let valueInfo =
-            let dotnetType = unionInfo.DotnetType
-            let fields =
-                unionCasesWithFields
-                |> Array.map (fun unionCase ->
-                    let name = unionCase.Name
-                    let valueInfo = ValueInfo.ofUnionCaseData unionInfo unionCase
-                    let getValue = id
-                    FieldInfo.create name valueInfo getValue)
-            let createFromFieldValues (fieldValues: Expression[]) =
-                let returnLabel = Expression.Label(dotnetType, "union")
-                Expression.Block(
-                    seq<Expression> {
-                        yield! fieldValues
-                            |> Array.map (fun fieldValue ->
-                                // TODO: Should technically use the 'IsNull' function from the
-                                // relevant field here instead checking directly.
-                                // TODO: Slightly hacky to box before checking for null. This gets around
-                                // the fact that null is not a proper value for a union.
-                                Expression.IfThen(
-                                    Expression.Not(
-                                        Expression.IsNull(
-                                            Expression.Convert(fieldValue, typeof<obj>))),
-                                    Expression.Return(returnLabel, fieldValue))
-                                :> Expression)
-                        yield Expression.FailWith(
-                            $"all case data fields are null for union of type '{dotnetType.FullName}'")
-                        yield Expression.Label(returnLabel, Expression.Default(returnLabel.Type))
-                    })
-                :> Expression
-            ValueInfo.recordInfo dotnetType fields createFromFieldValues
-        let isNull (union: Expression) =
-            // TODO: This whole thing could almost certainly be made more elegant
-            // and performant by implementing a UnionShredder and UnionAssembler
-            // but this would require big changes!
-            let tag = Expression.Variable(typeof<int>, "tag")
-            Expression.Block(
-                [ tag ],
-                Expression.Assign(tag, unionInfo.GetTag union),
-                unionCasesWithFields
-                |> Array.map (fun unionCase ->
-                    Expression.NotEqual(tag, unionCase.Tag) :> Expression)
-                |> Expression.AndAlso)
-            :> Expression
-        let getValue = id
-        // We can't use {Expression.Null} here because union types are not
-        // nullable, however they do still have {null} as their default value
-        // because they are reference types.
-        let createNull = Expression.Default(dotnetType) :> Expression
-        let createFromValue = id
-        ValueInfo.optionalInfo
-            dotnetType valueInfo isNull getValue createNull createFromValue
-
-    let private ofUnionComplex (unionInfo: UnionInfo) =
-        let dotnetType = unionInfo.DotnetType
-        let fields =
-            let unionCaseField =
-                // TODO: The name of this field could be configurable via an attribute.
-                let name = "UnionCase"
-                // TODO: This should really be a non-optional string like for the union enum
-                let valueInfo = ValueInfo.String
-                let getValue = unionInfo.GetCaseName
-                FieldInfo.create name valueInfo getValue
-            let dataField =
-                // TODO: The name of this field could be configurable via an attribute.
-                let name = "Data"
-                let valueInfo = ValueInfo.ofUnionData unionInfo
+        let typeField =
+            // TODO: The name of this field could be configurable via an attribute.
+            let name = "Type"
+            // TODO: This should really be a non-optional string like for the union enum
+            let valueInfo = ValueInfo.String
+            let getValue = unionInfo.GetCaseName
+            FieldInfo.create name valueInfo getValue
+        let caseFields =
+            unionCasesWithFields
+            |> Array.map (fun unionCase ->
+                let name = unionCase.Name
+                if name = typeField.Name then
+                    failwith <|
+                        $"case name '{typeField.Name}' is not supported"
+                        + $" for union type '{dotnetType.FullName}'"
+                let valueInfo = ValueInfo.ofUnionCase unionInfo unionCase
                 let getValue = id
-                FieldInfo.create name valueInfo getValue
-            [| unionCaseField; dataField |]
+                FieldInfo.create name valueInfo getValue)
+        let fields = Array.append [| typeField |] caseFields
         let createFromFieldValues (fieldValues: Expression[]) =
             let caseName = Expression.Variable(typeof<string>, "caseName")
-            let caseData = Expression.Variable(dotnetType, "caseData")
             let returnLabel = Expression.Label(dotnetType, "union")
             Expression.Block(
-                [ caseName; caseData ],
-                Expression.Assign(caseName, fieldValues[0]),
-                Expression.Assign(caseData, fieldValues[1]),
-                Expression.IfThenElse(
-                    // TODO: Should technically use the 'IsNull' function from the
-                    // relevant field here instead checking directly.
-                    // TODO: Slightly hacky to box before checking for null. This gets around
-                    // the fact that null is not a proper value for a union.
-                    Expression.Not(Expression.IsNull(Expression.Convert(caseData, typeof<obj>))),
-                    Expression.Return(returnLabel, caseData),
-                    Expression.Block(
-                        seq<Expression> {
-                            yield! unionInfo.UnionCases
-                                |> Array.filter (fun caseInfo -> caseInfo.Fields.Length = 0)
-                                |> Array.map (fun caseInfo ->
-                                    Expression.IfThen(
-                                        Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
-                                        Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||]))
-                                    :> Expression)
-                            yield Expression.FailWith(
-                                $"union of type '{dotnetType.FullName}' has invalid name value")
-                        })),
-                Expression.Label(returnLabel, Expression.Default(returnLabel.Type)))
+                [ caseName ],
+                seq<Expression> {
+                    yield Expression.Assign(caseName, fieldValues[0])
+                    for caseInfo in unionInfo.UnionCases do
+                        yield Expression.IfThen(
+                            Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
+                            if caseInfo.Fields.Length = 0
+                            then
+                                Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||])
+                                :> Expression
+                            else
+                                let caseIndex =
+                                    caseFields
+                                    |> Array.findIndex (fun field -> field.Name = caseInfo.Name)
+                                let fieldValue = fieldValues[caseIndex + 1]
+                                Expression.IfThenElse(
+                                    Expression.IsNull(Expression.Convert(fieldValue, typeof<obj>)),
+                                    Expression.FailWith(
+                                        $"no field values found for case '{caseInfo.Name}'"
+                                        + " of union type '{dotnetType.FullName}'"),
+                                    Expression.Return(returnLabel, fieldValue)))
+                    yield Expression.FailWith(
+                        $"unknown case name for union of type '{dotnetType.FullName}'")
+                    yield Expression.Label(returnLabel, Expression.Default(returnLabel.Type))
+                })
             :> Expression
         // TODO: F# unions are not nullable by default, however we are mapping
         // to a struct and Parquet.Net does not support struct fields that

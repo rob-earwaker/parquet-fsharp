@@ -565,21 +565,42 @@ module ValueInfo =
             dotnetType valueInfo isNull getValue createNull createFromValue
 
     let private ofUnionComplex (unionInfo: UnionInfo) =
+        // Unions that have one or more cases with one or more fields can not be
+        // represented as a simple string value. Instead, we have to model the
+        // union as a record with a field to capture the case name and
+        // additional fields to hold any associated case data.
         let dotnetType = unionInfo.DotnetType
         let unionCasesWithFields =
             unionInfo.UnionCases
             |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
+        // The 'Type' field holds the case name. Since unions are not nullable
+        // there must always be a case name present. We therefore model this
+        // as a non-optional string value.
         let typeField =
             // TODO: The name of this field could be configurable via an attribute.
             let name = "Type"
-            // TODO: This should really be a non-optional string like for the union enum
-            let valueInfo = ValueInfo.String
+            let valueInfo =
+                let dotnetType = typeof<string>
+                let dataDotnetType = dotnetType
+                let getDataValue = id
+                let createFromDataValue = id
+                ValueInfo.atomicInfo
+                    dotnetType dataDotnetType getDataValue createFromDataValue
             let getValue = unionInfo.GetCaseName
             FieldInfo.create name valueInfo getValue
+        // Each union case with one or more fields is assigned an additional
+        // field within the record to hold its associated data. The name of this
+        // field matches the case name and the value is a record that contains
+        // the case's field values.
         let caseFields =
             unionCasesWithFields
             |> Array.map (fun unionCase ->
                 let name = unionCase.Name
+                // Note that there's a chance the case name is the same as the
+                // field name chosen to store the union case name, in which case
+                // we'd have two fields with the same name. We could add a level
+                // of nesting to the object structure to avoid this potential
+                // name conflict, but this adds extra complexity.
                 if name = typeField.Name then
                     failwith <|
                         $"case name '{typeField.Name}' is not supported"

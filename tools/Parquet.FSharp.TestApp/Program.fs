@@ -9,6 +9,12 @@ type Alternative =
     | OptionB of string * bool
     | OptionC
 
+type FileType =
+    | Unknown = 0
+    | Jpeg = 1
+    | Bmp = 2
+    | Png = 3
+
 type Gps = {
     Latitude: float
     Longitude: float }
@@ -24,12 +30,13 @@ type Message = {
     Timestamp: DateTimeOffset
     Source: string
     Level: float
-    (*Alternative: Alternative*)
+    Alternative: Alternative
+    (*FileType: FileType*)
     Flag: Nullable<bool>
     Count: int option
-  (*  Samples: int list*)
+    Samples: int list
     Gps: Gps
-    (*Values: Data[]*)
+    Values: Data[]
     Money: decimal }
 
 module Random =
@@ -107,6 +114,16 @@ module Random =
         then Alternative.OptionB (string (), bool ())
         else Alternative.OptionC
 
+    let fileType () =
+        let nextDouble = Random.NextDouble()
+        if nextDouble < 0.25
+        then FileType.Unknown
+        elif nextDouble < 0.50
+        then FileType.Jpeg
+        elif nextDouble < 0.75
+        then FileType.Bmp
+        else FileType.Png
+
     let gps () =
         { Gps.Latitude = float ()
           Gps.Longitude = float () }
@@ -122,12 +139,13 @@ module Random =
           Message.Timestamp = dateTimeOffset ()
           Message.Source = string ()
           Message.Level = float ()
-         (* Message.Alternative = alternative ()*)
+          Message.Alternative = alternative ()
+          (*Message.FileType = fileType ()*)
           Message.Flag = nullableBool ()
           Message.Count = intOption ()
-       (*   Message.Samples = list 5 int*)
+          Message.Samples = list 5 int
           Message.Gps = gps ()
-        (*  Message.Values = array 3 data*)
+          Message.Values = array 3 data
           Message.Money = decimal () }
 
 [<EntryPoint>]

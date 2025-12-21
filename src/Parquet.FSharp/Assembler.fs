@@ -518,8 +518,6 @@ module private rec ValueAssembler =
             ValueAssembler.forOptional optionalInfo parentMaxRepLevel parentMaxDefLevel
 
 type internal Assembler<'Record>() =
-    // TODO: Currently only supports F# records but we probably want it to
-    // support other type as well, e.g. classes, structs, C# records.
     let recordInfo =
         match ValueInfo.of'<'Record> with
         | ValueInfo.Record recordInfo -> recordInfo

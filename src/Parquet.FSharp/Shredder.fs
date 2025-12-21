@@ -314,8 +314,6 @@ module private rec ValueShredder =
             ValueShredder.forOptional optionalInfo parentMaxRepLevel parentMaxDefLevel field
 
 type private Shredder<'Record>() =
-    // TODO: Currently only supports F# records but we probably want it to
-    // support other type as well, e.g. classes, structs, C# records.
     let recordInfo =
         match ValueInfo.of'<'Record> with
         | ValueInfo.Record recordInfo -> recordInfo

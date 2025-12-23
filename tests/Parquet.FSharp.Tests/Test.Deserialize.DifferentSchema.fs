@@ -1,9 +1,11 @@
-namespace Parquet.FSharp.Tests.Deserialize
+namespace Parquet.FSharp.Tests.Deserialize.DifferentSchema
 
 open FsCheck.Xunit
 open Parquet.FSharp
 open Parquet.FSharp.Tests
 open System
+
+// TODO: If this file gets large, could split into PartialSchema and ExtendedSchema.
 
 module ``record with subset of fields`` =
     module Input =

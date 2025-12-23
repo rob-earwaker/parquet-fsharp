@@ -5,7 +5,7 @@ open Parquet.FSharp
 open System
 open System.IO
 
-type EnumUnion =
+type SimpleUnion =
     | CaseA
     | CaseB
     | CaseC
@@ -38,7 +38,7 @@ type ComplexUnionWithArrayCase = Case1 of field1:array<int>
 type ComplexUnionWithGenericListCase = Case1 of field1:ResizeArray<int>
 type ComplexUnionWithFSharpListCase = Case1 of field1:list<int>
 type ComplexUnionWithRecordCase = Case1 of field1:{| Field1: int |}
-type ComplexUnionWithEnumUnionCase = Case1 of field1:EnumUnion
+type ComplexUnionWithSimpleUnionCase = Case1 of field1:SimpleUnion
 type ComplexUnionWithComplexUnionCase = Case1 of field1:ComplexUnion
 type ComplexUnionWithClassCase = Case1 of field1:Class
 type ComplexUnionWithNullableBoolCase = Case1 of field1:Nullable<bool>
@@ -78,7 +78,7 @@ type ComplexUnionWithOptionArrayCase = Case1 of field1:option<array<int>>
 type ComplexUnionWithOptionGenericListCase = Case1 of field1:option<ResizeArray<int>>
 type ComplexUnionWithOptionFSharpListCase = Case1 of field1:option<list<int>>
 type ComplexUnionWithOptionRecordCase = Case1 of field1:option<{| Field1: int |}>
-type ComplexUnionWithOptionEnumUnionCase = Case1 of field1:option<EnumUnion>
+type ComplexUnionWithOptionSimpleUnionCase = Case1 of field1:option<SimpleUnion>
 type ComplexUnionWithOptionComplexUnionCase = Case1 of field1:option<ComplexUnion>
 type ComplexUnionWithOptionClassCase = Case1 of field1:option<Class>
 type ComplexUnionWithOptionNullableCase = Case1 of field1:option<Nullable<int>>
@@ -152,8 +152,8 @@ type ClassWithFSharpListField() =
 type ClassWithRecordField() =
     member val Field1 = Unchecked.defaultof<{| Field1: int |}> with get, set
 
-type ClassWithEnumUnionField() =
-    member val Field1 = Unchecked.defaultof<EnumUnion> with get, set
+type ClassWithSimpleUnionField() =
+    member val Field1 = Unchecked.defaultof<SimpleUnion> with get, set
 
 type ClassWithComplexUnionField() =
     member val Field1 = Unchecked.defaultof<ComplexUnion> with get, set
@@ -272,8 +272,8 @@ type ClassWithOptionFSharpListField() =
 type ClassWithOptionRecordField() =
     member val Field1 = Unchecked.defaultof<option<{| Field1: int |}>> with get, set
 
-type ClassWithOptionEnumUnionField() =
-    member val Field1 = Unchecked.defaultof<option<EnumUnion>> with get, set
+type ClassWithOptionSimpleUnionField() =
+    member val Field1 = Unchecked.defaultof<option<SimpleUnion>> with get, set
 
 type ClassWithOptionComplexUnionField() =
     member val Field1 = Unchecked.defaultof<option<ComplexUnion>> with get, set
@@ -522,9 +522,9 @@ let ``array field with record elements`` records =
         records
 
 [<Property>]
-let ``array field with enum union elements`` records =
+let ``array field with simple union elements`` records =
     testRoundtrip<{|
-        Field1: array<EnumUnion> |}>
+        Field1: array<SimpleUnion> |}>
         records
 
 [<Property>]
@@ -764,9 +764,9 @@ let ``array field with option record elements`` records =
         records
 
 [<Property>]
-let ``array field with option enum union elements`` records =
+let ``array field with option simple union elements`` records =
     testRoundtrip<{|
-        Field1: array<option<EnumUnion>> |}>
+        Field1: array<option<SimpleUnion>> |}>
         records
 
 [<Property>]
@@ -921,9 +921,9 @@ let ``generic list field with record elements`` records =
         records
 
 [<Property>]
-let ``generic list field with enum union elements`` records =
+let ``generic list field with simple union elements`` records =
     testRoundtrip<{|
-        Field1: ResizeArray<EnumUnion> |}>
+        Field1: ResizeArray<SimpleUnion> |}>
         records
 
 [<Property>]
@@ -1163,9 +1163,9 @@ let ``generic list field with option record elements`` records =
         records
 
 [<Property>]
-let ``generic list field with option enum union elements`` records =
+let ``generic list field with option simple union elements`` records =
     testRoundtrip<{|
-        Field1: ResizeArray<option<EnumUnion>> |}>
+        Field1: ResizeArray<option<SimpleUnion>> |}>
         records
 
 [<Property>]
@@ -1320,9 +1320,9 @@ let ``fsharp list field with record elements`` records =
         records
 
 [<Property>]
-let ``fsharp list field with enum union elements`` records =
+let ``fsharp list field with simple union elements`` records =
     testRoundtrip<{|
-        Field1: list<EnumUnion> |}>
+        Field1: list<SimpleUnion> |}>
         records
 
 [<Property>]
@@ -1562,9 +1562,9 @@ let ``fsharp list field with option record elements`` records =
         records
 
 [<Property>]
-let ``fsharp list field with option enum union elements`` records =
+let ``fsharp list field with option simple union elements`` records =
     testRoundtrip<{|
-        Field1: list<option<EnumUnion>> |}>
+        Field1: list<option<SimpleUnion>> |}>
         records
 
 [<Property>]
@@ -1740,10 +1740,10 @@ let ``record field with record field`` records =
         records
 
 [<Property>]
-let ``record field with enum union field`` records =
+let ``record field with simple union field`` records =
     testRoundtrip<{|
         Field1: {|
-            Field2: EnumUnion |} |}>
+            Field2: SimpleUnion |} |}>
         records
 
 [<Property>]
@@ -2022,10 +2022,10 @@ let ``record field with option record field`` records =
         records
 
 [<Property>]
-let ``record field with option enum union field`` records =
+let ``record field with option simple union field`` records =
     testRoundtrip<{|
         Field1: {|
-            Field2: option<EnumUnion> |} |}>
+            Field2: option<SimpleUnion> |} |}>
         records
 
 [<Property>]
@@ -2057,9 +2057,9 @@ let ``record field with option option field`` records =
         records
 
 [<Property>]
-let ``enum union field`` records =
+let ``simple union field`` records =
     testRoundtrip<{|
-        Field1: EnumUnion |}>
+        Field1: SimpleUnion |}>
         records
 
 [<Property>]
@@ -2195,9 +2195,9 @@ let ``complex union field with record case`` records =
         records
 
 [<Property>]
-let ``complex union field with enum union case`` records =
+let ``complex union field with simple union case`` records =
     testRoundtrip<{|
-        Field1: ComplexUnionWithEnumUnionCase |}>
+        Field1: ComplexUnionWithSimpleUnionCase |}>
         records
 
 [<Property>]
@@ -2435,9 +2435,9 @@ let ``complex union field with option record case`` records =
         records
 
 [<Property>]
-let ``complex union field with option enum union case`` records =
+let ``complex union field with option simple union case`` records =
     testRoundtrip<{|
-        Field1: ComplexUnionWithOptionEnumUnionCase |}>
+        Field1: ComplexUnionWithOptionSimpleUnionCase |}>
         records
 
 [<Property>]
@@ -2597,9 +2597,9 @@ let ``class field with record field`` records =
         records
 
 [<Property>]
-let ``class field with enum union field`` records =
+let ``class field with simple union field`` records =
     testRoundtrip<{|
-        Field1: ClassWithEnumUnionField |}>
+        Field1: ClassWithSimpleUnionField |}>
         records
 
 [<Property>]
@@ -2837,9 +2837,9 @@ let ``class field with option record field`` records =
         records
 
 [<Property>]
-let ``class field with option enum union field`` records =
+let ``class field with option simple union field`` records =
     testRoundtrip<{|
-        Field1: ClassWithOptionEnumUnionField |}>
+        Field1: ClassWithOptionSimpleUnionField |}>
         records
 
 [<Property>]
@@ -3440,9 +3440,9 @@ let ``option array field with record elements`` records =
         records
 
 [<Property>]
-let ``option array field with enum union elements`` records =
+let ``option array field with simple union elements`` records =
     testRoundtrip<{|
-        Field1: option<array<EnumUnion>> |}>
+        Field1: option<array<SimpleUnion>> |}>
         records
 
 [<Property>]
@@ -3682,9 +3682,9 @@ let ``option array field with option record elements`` records =
         records
 
 [<Property>]
-let ``option array field with option enum union elements`` records =
+let ``option array field with option simple union elements`` records =
     testRoundtrip<{|
-        Field1: option<array<option<EnumUnion>>> |}>
+        Field1: option<array<option<SimpleUnion>>> |}>
         records
 
 [<Property>]
@@ -3839,9 +3839,9 @@ let ``option generic list field with record elements`` records =
         records
 
 [<Property>]
-let ``option generic list field with enum union elements`` records =
+let ``option generic list field with simple union elements`` records =
     testRoundtrip<{|
-        Field1: option<ResizeArray<EnumUnion>> |}>
+        Field1: option<ResizeArray<SimpleUnion>> |}>
         records
 
 [<Property>]
@@ -4081,9 +4081,9 @@ let ``option generic list field with option record elements`` records =
         records
 
 [<Property>]
-let ``option generic list field with option enum union elements`` records =
+let ``option generic list field with option simple union elements`` records =
     testRoundtrip<{|
-        Field1: option<ResizeArray<option<EnumUnion>>> |}>
+        Field1: option<ResizeArray<option<SimpleUnion>>> |}>
         records
 
 [<Property>]
@@ -4238,9 +4238,9 @@ let ``option fsharp list field with record elements`` records =
         records
 
 [<Property>]
-let ``option fsharp list field with enum union elements`` records =
+let ``option fsharp list field with simple union elements`` records =
     testRoundtrip<{|
-        Field1: option<list<EnumUnion>> |}>
+        Field1: option<list<SimpleUnion>> |}>
         records
 
 [<Property>]
@@ -4480,9 +4480,9 @@ let ``option fsharp list field with option record elements`` records =
         records
 
 [<Property>]
-let ``option fsharp list field with option enum union elements`` records =
+let ``option fsharp list field with option simple union elements`` records =
     testRoundtrip<{|
-        Field1: option<list<option<EnumUnion>>> |}>
+        Field1: option<list<option<SimpleUnion>>> |}>
         records
 
 [<Property>]
@@ -4658,10 +4658,10 @@ let ``option record field with record field`` records =
         records
 
 [<Property>]
-let ``option record field with enum union field`` records =
+let ``option record field with simple union field`` records =
     testRoundtrip<{|
         Field1: option<{|
-            Field2: EnumUnion |}> |}>
+            Field2: SimpleUnion |}> |}>
         records
 
 [<Property>]
@@ -4940,10 +4940,10 @@ let ``option record field with option record field`` records =
         records
 
 [<Property>]
-let ``option record field with option enum union field`` records =
+let ``option record field with option simple union field`` records =
     testRoundtrip<{|
         Field1: option<{|
-            Field2: option<EnumUnion> |}> |}>
+            Field2: option<SimpleUnion> |}> |}>
         records
 
 [<Property>]
@@ -4975,9 +4975,9 @@ let ``option record field with option option field`` records =
         records
 
 [<Property>]
-let ``option enum union field`` records =
+let ``option simple union field`` records =
     testRoundtrip<{|
-        Field1: option<EnumUnion> |}>
+        Field1: option<SimpleUnion> |}>
         records
 
 [<Property>]
@@ -5113,9 +5113,9 @@ let ``option complex union field with record case`` records =
         records
 
 [<Property>]
-let ``option complex union field with enum union case`` records =
+let ``option complex union field with simple union case`` records =
     testRoundtrip<{|
-        Field1: option<ComplexUnionWithEnumUnionCase> |}>
+        Field1: option<ComplexUnionWithSimpleUnionCase> |}>
         records
 
 [<Property>]
@@ -5353,9 +5353,9 @@ let ``option complex union field with option record case`` records =
         records
 
 [<Property>]
-let ``option complex union field with option enum union case`` records =
+let ``option complex union field with option simple union case`` records =
     testRoundtrip<{|
-        Field1: option<ComplexUnionWithOptionEnumUnionCase> |}>
+        Field1: option<ComplexUnionWithOptionSimpleUnionCase> |}>
         records
 
 [<Property>]
@@ -5515,9 +5515,9 @@ let ``option class field with record field`` records =
         records
 
 [<Property>]
-let ``option class field with enum union field`` records =
+let ``option class field with simple union field`` records =
     testRoundtrip<{|
-        Field1: option<ClassWithEnumUnionField> |}>
+        Field1: option<ClassWithSimpleUnionField> |}>
         records
 
 [<Property>]
@@ -5755,9 +5755,9 @@ let ``option class field with option record field`` records =
         records
 
 [<Property>]
-let ``option class field with option enum union field`` records =
+let ``option class field with option simple union field`` records =
     testRoundtrip<{|
-        Field1: option<ClassWithOptionEnumUnionField> |}>
+        Field1: option<ClassWithOptionSimpleUnionField> |}>
         records
 
 [<Property>]

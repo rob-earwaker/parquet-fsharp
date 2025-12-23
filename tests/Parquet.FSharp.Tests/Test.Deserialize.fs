@@ -26,7 +26,7 @@ module ``record with subset of fields`` =
             Assert.equal inputRecord.Field1 outputRecord.Field1
             Assert.equal inputRecord.Field4 outputRecord.Field4
 
-module ``enum union with additional cases`` =
+module ``simple union with additional cases`` =
     module Input =
         type Record1 = {
             Field1: Union1 }

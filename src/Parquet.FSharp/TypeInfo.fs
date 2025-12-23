@@ -514,12 +514,12 @@ module ValueInfo =
         then ValueInfo.ofOptionOptional dotnetType valueInfo
         else ValueInfo.ofOptionRequired dotnetType valueInfo
 
-    let private ofUnionEnum (unionInfo: UnionInfo) =
+    let private ofUnionSimple (unionInfo: UnionInfo) =
         let dotnetType = unionInfo.DotnetType
-        // We represent unions that are equivalent to enums, i.e. all cases have
-        // zero fields, as a string value containing the case name. Since a
-        // union value can't be null and must be one of the possible cases, this
-        // value is not optional despite being represented as a string value.
+        // Unions in which all cases have no fields can be represented as a
+        // simple string value containing the case name. Since a union value
+        // can't be null and must be one of the possible cases, this value is
+        // not optional.
         let dataDotnetType = typeof<string>
         let getDataValue = unionInfo.GetCaseName
         let createFromDataValue (caseName: Expression) =
@@ -646,17 +646,12 @@ module ValueInfo =
         |> ValueInfo.ofNonNullableReferenceType
 
     let private ofUnion dotnetType =
-        // Unions are represented in one of two ways. For unions where none of
-        // the cases have any associated fields this is similar to an enum and
-        // we represent it as a string value where the value is the case name.
-        // For unions where at least one of the cases has at least one
-        // associated field we need a more complex data structure. We represent
-        // this as a record with two fields, one containing the case name and
-        // another containing the case data.
+        // Unions are represented in one of two ways depending on whether any of
+        // the cases have associated data fields.
         let unionInfo = UnionInfo.ofUnion dotnetType
         if unionInfo.UnionCases
             |> Array.forall (fun unionCase -> unionCase.Fields.Length = 0)
-        then ValueInfo.ofUnionEnum unionInfo
+        then ValueInfo.ofUnionSimple unionInfo
         else ValueInfo.ofUnionComplex unionInfo
 
     let ofType (dotnetType: Type) : ValueInfo =

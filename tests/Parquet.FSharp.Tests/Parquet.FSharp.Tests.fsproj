@@ -11,6 +11,7 @@
     <Compile Include="Assert.fs" />
     <Compile Include="Test.Roundtrip.fs" />
     <Compile Include="Test.Deserialize.fs" />
+    <Compile Include="Test.Deserialize.TypeCompatibility.fs" />
   </ItemGroup>
 
   <ItemGroup>

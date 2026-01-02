@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\parquet-dotnet\src\Parquet\Parquet.csproj" />
+    <PackageReference Include="Parquet.Net" Version="5.4.0" />
   </ItemGroup>
 
   <ItemGroup>

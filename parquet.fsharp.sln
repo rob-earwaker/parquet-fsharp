@@ -1,15 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.11.35327.3
+# Visual Studio Version 18
+VisualStudioVersion = 18.1.11312.151 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{4DA8050E-0810-4D9F-9B23-79497C037CC8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{BFE57175-4080-4BD2-A3BF-B4D5521B054D}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Parquet", "..\parquet-dotnet\src\Parquet\Parquet.csproj", "{D0DF93F7-FEA7-B04F-E630-E24CBBF2B19B}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Parquet.FSharp", "src\Parquet.FSharp\Parquet.FSharp.fsproj", "{C8E2E7B7-971F-75C1-A603-6D41FD02B47E}"
 EndProject
@@ -25,10 +23,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{D0DF93F7-FEA7-B04F-E630-E24CBBF2B19B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D0DF93F7-FEA7-B04F-E630-E24CBBF2B19B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D0DF93F7-FEA7-B04F-E630-E24CBBF2B19B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D0DF93F7-FEA7-B04F-E630-E24CBBF2B19B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C8E2E7B7-971F-75C1-A603-6D41FD02B47E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C8E2E7B7-971F-75C1-A603-6D41FD02B47E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C8E2E7B7-971F-75C1-A603-6D41FD02B47E}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -50,7 +44,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{D0DF93F7-FEA7-B04F-E630-E24CBBF2B19B} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{C8E2E7B7-971F-75C1-A603-6D41FD02B47E} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{3C09B12E-2523-C54B-6A0D-953A4B9CF732} = {BFE57175-4080-4BD2-A3BF-B4D5521B054D}
 		{80D42B01-FF32-3961-BDF8-44B007911AD1} = {4DA8050E-0810-4D9F-9B23-79497C037CC8}

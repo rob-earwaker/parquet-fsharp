@@ -2,7 +2,9 @@ name: CI
 on: push
 jobs:
   build:
-    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    runs-on: windows-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v5
@@ -17,4 +19,4 @@ jobs:
     - name: Test
       run: dotnet test --no-build --verbosity normal
     - name: Benchmark
-      run: dotnet run --project tools/Parquet.FSharp.Benchmarks --configuration Release
+      run: dotnet run --project tools\Parquet.FSharp.Benchmarks --configuration Release

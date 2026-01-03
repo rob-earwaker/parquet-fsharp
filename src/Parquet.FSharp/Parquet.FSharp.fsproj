@@ -2,12 +2,17 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <PropertyGroup>
     <Version>0.1.0</Version>
+    <Authors>rob.earwaker</Authors>
+    <PackageProjectUrl>https://github.com/rob-earwaker/parquet-fsharp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/rob-earwaker/parquet-fsharp</RepositoryUrl>
+    <Description>F# serialization library for Apache Parquet built on top of Parquet.Net</Description>
   </PropertyGroup>
 
   <ItemGroup>

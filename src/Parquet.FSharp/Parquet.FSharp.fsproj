@@ -13,6 +13,8 @@
     <PackageProjectUrl>https://github.com/rob-earwaker/parquet-fsharp</PackageProjectUrl>
     <RepositoryUrl>https://github.com/rob-earwaker/parquet-fsharp</RepositoryUrl>
     <Description>F# serialization library for Apache Parquet built on top of Parquet.Net</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright (c) 2026 Rob Earwaker</Copyright>
   </PropertyGroup>
 
   <ItemGroup>

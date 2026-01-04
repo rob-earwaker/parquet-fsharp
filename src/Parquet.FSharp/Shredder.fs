@@ -211,16 +211,9 @@ type private RecordShredder(recordInfo: RecordInfo, fieldShredders: ValueShredde
         |> Seq.collect _.CollectColumnBuilderInitializers()
 
     override this.AddNull(repLevel, defLevel) =
-        // TODO: Slight improvement to debug readability of expression by only
-        // using a block if necessary. There must be a better way of combining
-        // blocks up the tree!
-        match fieldShredders with
-        | [| fieldShredder |] ->
-            fieldShredder.AddNull(repLevel, defLevel)
-        | _ ->
-            Expression.Block(
-                fieldShredders
-                |> Array.map _.AddNull(repLevel, defLevel))
+        Expression.Block(
+            fieldShredders
+            |> Array.map _.AddNull(repLevel, defLevel))
 
     override this.ShredValue(parentRepLevel, parentDefLevel, record) =
         // The record is REQUIRED. The definition level will be the same as

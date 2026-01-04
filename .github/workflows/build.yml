@@ -18,8 +18,8 @@ jobs:
       run: dotnet build --no-restore --configuration Release
     - name: Test
       run: dotnet test --no-build --configuration Release
-    - name: Benchmark
-      run: dotnet run --project tools\Parquet.FSharp.Benchmarks --configuration Release
+    # - name: Benchmark
+    #   run: dotnet run --project tools\Parquet.FSharp.Benchmarks --configuration Release
   publish:
     needs: build
     if: startsWith(github.ref, 'refs/tags/')

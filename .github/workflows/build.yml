@@ -15,7 +15,7 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
-      run: dotnet build --no-restore --configuration Release
+      run: dotnet build --no-restore --configuration Release /p:ContinuousIntegrationBuild=true
     - name: Test
       run: dotnet test --no-build --configuration Release
     # - name: Benchmark

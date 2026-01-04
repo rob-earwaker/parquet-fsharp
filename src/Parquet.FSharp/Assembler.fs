@@ -5,7 +5,7 @@ open System
 open System.Collections.Generic
 open System.Linq.Expressions
 
-type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColumn) =
+type private ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColumn) =
     let repLevelsRequired = maxRepLevel > 0
     let defLevelsRequired = maxDefLevel > 0
 
@@ -64,7 +64,7 @@ type ColumnEnumerator<'DataValue>(maxRepLevel, maxDefLevel, dataColumn: DataColu
             moveNextValue ()
             true
 
-type AssembledValue<'Value>() =
+type private AssembledValue<'Value>() =
     member val Used = true with get, private set
     member val RepLevel = 0 with get, private set
     member val DefLevel = 0 with get, private set

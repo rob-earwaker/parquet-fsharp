@@ -6,7 +6,7 @@ open System.Collections.Generic
 open System.Linq.Expressions
 open System.Reflection
 
-type ValueInfo =
+type internal ValueInfo =
     | Atomic of AtomicInfo
     | List of ListInfo
     | Record of RecordInfo
@@ -38,13 +38,13 @@ type ValueInfo =
 //     - TimeSpan, Interval
 //     - Enums?
 
-type AtomicInfo = {
+type internal AtomicInfo = {
     DotnetType: Type
     DataDotnetType: Type
     GetDataValue: Expression -> Expression
     CreateFromDataValue: Expression -> Expression }
 
-type ListInfo = {
+type internal ListInfo = {
     DotnetType: Type
     ElementInfo: ValueInfo
     GetLength: Expression -> Expression
@@ -52,17 +52,17 @@ type ListInfo = {
     CreateEmpty: Expression
     CreateFromElementValues: Expression -> Expression }
 
-type FieldInfo = {
+type internal FieldInfo = {
     Name: string
     ValueInfo: ValueInfo
     GetValue: Expression -> Expression }
 
-type RecordInfo = {
+type internal RecordInfo = {
     DotnetType: Type
     Fields: FieldInfo[]
     CreateFromFieldValues: Expression[] -> Expression }
 
-type OptionalInfo = {
+type internal OptionalInfo = {
     DotnetType: Type
     ValueInfo: ValueInfo
     IsNull: Expression -> Expression
@@ -193,7 +193,7 @@ module private DotnetType =
         then Option.Some ()
         else Option.None
 
-module ValueInfo =
+module internal ValueInfo =
     let private Cache = Dictionary<Type, ValueInfo>()
 
     let private tryGetCached dotnetType =

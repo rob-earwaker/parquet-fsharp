@@ -7,6 +7,7 @@ open System.IO
 // TODO: Support for various serializer options in Parquet.Net.
 
 type ParquetSerializer =
+    /// Asynchronously serialize a sequence of records to a stream.
     static member AsyncSerialize<'Record>(records: 'Record seq, stream: Stream) =
         async {
             let shredder = Shredder.of'<'Record>
@@ -24,6 +25,7 @@ type ParquetSerializer =
                     |> Async.AwaitTask
         }
 
+    /// Asynchronously serialize a sequence of records as a byte array.
     static member AsyncSerialize<'Record>(records) =
         async {
             use stream = new MemoryStream()
@@ -31,14 +33,17 @@ type ParquetSerializer =
             return stream.ToArray()
         }
 
+    /// Serialize a sequence of records to a stream.
     static member Serialize<'Record>(records, stream) =
         ParquetSerializer.AsyncSerialize<'Record>(records, stream)
         |> Async.RunSynchronously
 
+    /// Serialize a sequence of records as a byte array.
     static member Serialize<'Record>(records) =
         ParquetSerializer.AsyncSerialize<'Record>(records)
         |> Async.RunSynchronously
 
+    /// Asynchronously deserialize an array of records from a stream.
     static member AsyncDeserialize<'Record>(stream: Stream) =
         async {
             let assembler = Assembler.of'<'Record>
@@ -60,16 +65,19 @@ type ParquetSerializer =
             return assembler.Assemble(columns)
         }
 
+    /// Asynchronously deserialize an array of records from a byte array.
     static member AsyncDeserialize<'Record>(bytes: byte[]) =
         async {
             use stream = new MemoryStream(bytes)
             return! ParquetSerializer.AsyncDeserialize<'Record>(stream)
         }
 
+    /// Deserialize an array of records from a stream.
     static member Deserialize<'Record>(stream: Stream) =
         ParquetSerializer.AsyncDeserialize<'Record>(stream)
         |> Async.RunSynchronously
 
+    /// Deserialize an array of records from a byte array.
     static member Deserialize<'Record>(bytes: byte[]) =
         ParquetSerializer.AsyncDeserialize<'Record>(bytes)
         |> Async.RunSynchronously

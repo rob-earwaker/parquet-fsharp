@@ -20,6 +20,13 @@ jobs:
       run: dotnet test --no-build --configuration Release
     # - name: Benchmark
     #   run: dotnet run --project tools\Parquet.FSharp.Benchmarks --configuration Release
+    - name: Add package artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: packages
+        path: |
+          src\Parquet.FSharp\bin\Release\Parquet.FSharp.*.nupkg
+          src\Parquet.FSharp\bin\Release\Parquet.FSharp.*.snupkg
   publish:
     needs: build
     if: startsWith(github.ref, 'refs/tags/')

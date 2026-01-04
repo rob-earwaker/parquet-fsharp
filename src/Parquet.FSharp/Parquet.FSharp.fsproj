@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Description>F# serialization library for the Apache Parquet file format. Built on top of Parquet.Net, and with first-class support for F# types such as records, options, lists and discriminated unions.</Description>
     <Authors>rob.earwaker</Authors>
     <Company />

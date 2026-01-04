@@ -47,5 +47,5 @@ jobs:
       run: |
         dotnet nuget push packages\Parquet.FSharp.${{ github.ref_name }}.nupkg `
           --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} `
-          --source https://api.nuget.org/v3/index.json
+          --source https://api.nuget.org/v3/index.json `
           --skip-duplicate

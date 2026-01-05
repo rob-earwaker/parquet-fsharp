@@ -9,23 +9,29 @@ An F# serailization library for the [Apache Parquet](https://parquet.apache.org/
 open Parquet.FSharp
 open System.IO
 
-type Record = {
-    Id: string
-    Source: int option
-    Samples: float list }
+type Shape =
+    | Circle of radius:int
+    | Square of sideLength:int
+    | Rectangle of height:int * width:int
 
-let records = [
-    { Id = "0aacf928"; Source = Some 12; Samples = [ 2.61 ]       }
-    { Id = "2e1674b1"; Source = None   ; Samples = [ 5.28; 2.83 ] }
-    { Id = "cec3218d"; Source = Some 37; Samples = [ 1.61; 6.81 ] }
-    { Id = "6d393804"; Source = Some 12; Samples = []             }
-    { Id = "5a06d6f8"; Source = None   ; Samples = [ 3.32 ]       } ]
+type Node = {
+    Id: int
+    Shape: Shape
+    Scale: float option
+    Children: int list }
+
+let nodes = [|
+    { Id = 0; Shape = Square 1        ; Scale = None    ; Children = [ 1; 2 ] }
+    { Id = 1; Shape = Circle 2        ; Scale = Some 1.5; Children = [ 4 ]    }
+    { Id = 2; Shape = Square 3        ; Scale = Some 0.5; Children = [ 3 ]    }
+    { Id = 3; Shape = Rectangle (1, 2); Scale = None    ; Children = [ 4 ]    }
+    { Id = 4; Shape = Circle 1        ; Scale = Some 2.0; Children = []       } |]
 
 // Serialize to file
-use file = File.OpenWrite("./data.parquet")
-ParquetSerializer.Serialize(records, file)
+use file = File.OpenWrite("./nodes.parquet")
+ParquetSerializer.Serialize(nodes, file)
 
 // Deserialize from file
-use file = File.OpenRead("./data.parquet")
-let records = ParquetSerializer.Deserialize<Record>(file)
+use file = File.OpenRead("./nodes.parquet")
+let nodes = ParquetSerializer.Deserialize<Node>(file)
 ```

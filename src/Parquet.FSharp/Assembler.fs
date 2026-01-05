@@ -68,7 +68,6 @@ type private AssembledValue<'Value>() =
     member val Used = true with get, private set
     member val RepLevel = 0 with get, private set
     member val DefLevel = 0 with get, private set
-    member val IsDefined = true with get, private set
     member val Value = Unchecked.defaultof<'Value> with get, private set
 
     member this.MarkUsed() =

@@ -7,9 +7,9 @@ open System.Collections.Generic
 open System.Linq.Expressions
 open System.Reflection
 
-type internal ValueInfoFactory = {
-    IsSupportedType: Type -> bool
-    CreateValueInfo: Type -> ValueInfo }
+type internal IValueInfoFactory =
+    abstract member IsSupportedType : dotnetType:Type -> bool
+    abstract member CreateValueInfo : dotnetType:Type -> ValueInfo
 
 type internal ValueInfo =
     | Atomic of AtomicInfo
@@ -639,8 +639,9 @@ module private FieldInfo =
 
 module internal ValueInfoFactory =
     let private create isSupportedType createValueInfo =
-        { ValueInfoFactory.IsSupportedType = isSupportedType
-          ValueInfoFactory.CreateValueInfo = createValueInfo }
+        { new IValueInfoFactory with
+            member this.IsSupportedType(dotnetType) = isSupportedType dotnetType
+            member this.CreateValueInfo(dotnetType) = createValueInfo dotnetType }
 
     let private Bool = create DotnetType.isType<bool> ValueInfo.ofPrimitive
     let private Int8 = create DotnetType.isType<int8> ValueInfo.ofPrimitive
@@ -715,7 +716,7 @@ module internal ValueInfoFactory =
         let createValueInfo = ValueInfo.ofClass
         ValueInfoFactory.create isSupportedType createValueInfo
 
-    let All = [|
+    let All : IValueInfoFactory[] = [|
         Bool
         Int8
         Int16

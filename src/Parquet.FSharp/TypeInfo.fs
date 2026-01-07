@@ -602,12 +602,8 @@ module internal ValueInfo =
         match tryGetCached dotnetType with
         | Option.Some valueInfo -> valueInfo
         | Option.None ->
-            let valueInfo =
-                ValueInfoFactory.All
-                |> Array.tryFind _.IsSupportedType(dotnetType)
-                |> Option.map _.CreateValueInfo(dotnetType)
-                |> Option.defaultWith (fun () ->
-                    failwith $"unsupported type '{dotnetType.FullName}'")
+            let valueInfoFactory = ValueInfoFactory.ofType dotnetType
+            let valueInfo = valueInfoFactory.CreateValueInfo(dotnetType)
             addToCache dotnetType valueInfo
             valueInfo
 
@@ -716,7 +712,7 @@ module internal ValueInfoFactory =
         let createValueInfo = ValueInfo.ofClass
         ValueInfoFactory.create isSupportedType createValueInfo
 
-    let All : IValueInfoFactory[] = [|
+    let private All = [|
         Bool
         Int8
         Int16
@@ -748,3 +744,9 @@ module internal ValueInfoFactory =
         Union
         Class
     |]
+
+    let ofType dotnetType : IValueInfoFactory =
+        ValueInfoFactory.All
+        |> Array.tryFind _.IsSupportedType(dotnetType)
+        |> FSharp.Core.Option.defaultWith (fun () ->
+            failwith $"unsupported type '{dotnetType.FullName}'")

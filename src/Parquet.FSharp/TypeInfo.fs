@@ -732,18 +732,18 @@ module internal ValueInfoFactory =
         Guid
         DateTimeOffset
         String
-        // This must come before the generic array type since byte
-        // arrays are supported as a primitive type in Parquet and are
-        // therefore handled as atomic values rather than lists.
+        // This must come before the generic array type since byte arrays are
+        // supported as a primitive type in Parquet and are therefore handled as
+        // atomic values rather than lists.
         ByteArray
         Array1d
         GenericList
         FSharpList
         Record
         Nullable
-        Option
-        // This must come after the option type since option types are
+        // This must come before the generic union type since option types are
         // handled in a special way.
+        Option
         Union
         Class
     |]

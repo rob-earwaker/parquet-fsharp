@@ -1,10 +1,15 @@
 ﻿namespace rec Parquet.FSharp
+#nowarn 40
 
 open FSharp.Reflection
 open System
 open System.Collections.Generic
 open System.Linq.Expressions
 open System.Reflection
+
+type internal ValueInfoFactory = {
+    IsSupportedType: Type -> bool
+    CreateValueInfo: Type -> ValueInfo }
 
 type internal ValueInfo =
     | Atomic of AtomicInfo
@@ -37,6 +42,9 @@ type internal ValueInfo =
 //     - DateOnly, TimeOnly
 //     - TimeSpan, Interval
 //     - Enums?
+
+// TODO: Attribute to select specific converter type to use? Alternatively could
+// be part of the serializer configuration?
 
 type internal AtomicInfo = {
     DotnetType: Type
@@ -138,60 +146,12 @@ module private UnionInfo =
           UnionInfo.UnionCases = unionCases }
 
 module private DotnetType =
-    let private ActivePatternTypeMatch<'Type> dotnetType =
-        if dotnetType = typeof<'Type>
-        then Option.Some ()
-        else Option.None
+    let isType<'Type> dotnetType =
+        dotnetType = typeof<'Type>
 
-    let (|Bool|_|) = ActivePatternTypeMatch<bool>
-    let (|Int8|_|) = ActivePatternTypeMatch<int8>
-    let (|Int16|_|) = ActivePatternTypeMatch<int16>
-    let (|Int32|_|) = ActivePatternTypeMatch<int>
-    let (|Int64|_|) = ActivePatternTypeMatch<int64>
-    let (|UInt8|_|) = ActivePatternTypeMatch<uint8>
-    let (|UInt16|_|) = ActivePatternTypeMatch<uint16>
-    let (|UInt32|_|) = ActivePatternTypeMatch<uint>
-    let (|UInt64|_|) = ActivePatternTypeMatch<uint64>
-    let (|Float32|_|) = ActivePatternTypeMatch<float32>
-    let (|Float64|_|) = ActivePatternTypeMatch<float>
-    let (|Decimal|_|) = ActivePatternTypeMatch<decimal>
-    let (|String|_|) = ActivePatternTypeMatch<string>
-    let (|Guid|_|) = ActivePatternTypeMatch<Guid>
-    let (|DateTime|_|) = ActivePatternTypeMatch<DateTime>
-    let (|DateTimeOffset|_|) = ActivePatternTypeMatch<DateTimeOffset>
-    let (|ByteArray|_|) = ActivePatternTypeMatch<byte[]>
-    
-    let private ActivePatternGenericTypeMatch<'GenericType> (dotnetType: Type) =
-        if dotnetType.IsGenericType
-            && dotnetType.GetGenericTypeDefinition() = typedefof<'GenericType>
-        then Option.Some ()
-        else Option.None
-
-    let (|GenericList|_|) = ActivePatternGenericTypeMatch<ResizeArray<_>>
-    let (|FSharpList|_|) = ActivePatternGenericTypeMatch<list<_>>
-    let (|Nullable|_|) = ActivePatternGenericTypeMatch<Nullable<_>>
-    let (|Option|_|) = ActivePatternGenericTypeMatch<option<_>>
-
-    let (|Array1d|_|) (dotnetType: Type) =
-        if dotnetType.IsArray
-            && dotnetType.GetArrayRank() = 1
-        then Option.Some ()
-        else Option.None
-
-    let (|Record|_|) dotnetType =
-        if FSharpType.IsRecord(dotnetType)
-        then Option.Some ()
-        else Option.None
-
-    let (|Union|_|) dotnetType =
-        if FSharpType.IsUnion(dotnetType)
-        then Option.Some ()
-        else Option.None
-
-    let (|Class|_|) (dotnetType: Type) =
-        if dotnetType.IsClass
-        then Option.Some ()
-        else Option.None
+    let isGenericType<'GenericType> (dotnetType: Type) =
+        dotnetType.IsGenericType
+        && dotnetType.GetGenericTypeDefinition() = typedefof<'GenericType>
 
 module internal ValueInfo =
     let private Cache = Dictionary<Type, ValueInfo>()
@@ -265,30 +225,14 @@ module internal ValueInfo =
         ValueInfo.optionalInfo
             dotnetType valueInfo isNull getValue createNull createFromValue
 
-    let private ofPrimitive<'Value> =
-        let dotnetType = typeof<'Value>
+    let ofPrimitive dotnetType =
         let dataDotnetType = dotnetType
         let getDataValue = id
         let createFromDataValue = id
         ValueInfo.atomicInfo
             dotnetType dataDotnetType getDataValue createFromDataValue
 
-    let private Bool = ofPrimitive<bool>
-    let private Int8 = ofPrimitive<int8>
-    let private Int16 = ofPrimitive<int16>
-    let private Int32 = ofPrimitive<int>
-    let private Int64 = ofPrimitive<int64>
-    let private UInt8 = ofPrimitive<uint8>
-    let private UInt16 = ofPrimitive<uint16>
-    let private UInt32 = ofPrimitive<uint32>
-    let private UInt64 = ofPrimitive<uint64>
-    let private Float32 = ofPrimitive<float32>
-    let private Float64 = ofPrimitive<float>
-    let private Decimal = ofPrimitive<decimal>
-    let private DateTime = ofPrimitive<DateTime>
-    let private Guid = ofPrimitive<Guid>
-
-    let private DateTimeOffset =
+    let DateTimeOffset =
         let dotnetType = typeof<DateTimeOffset>
         let dataDotnetType = typeof<DateTime>
         let getDataValue (value: Expression) =
@@ -302,7 +246,7 @@ module internal ValueInfo =
         ValueInfo.atomicInfo
             dotnetType dataDotnetType getDataValue createFromDataValue
 
-    let private String =
+    let String =
         let dotnetType = typeof<string>
         let dataDotnetType = dotnetType
         let getDataValue = id
@@ -311,7 +255,7 @@ module internal ValueInfo =
             dotnetType dataDotnetType getDataValue createFromDataValue
         |> ValueInfo.ofReferenceType
 
-    let private ByteArray =
+    let ByteArray =
         let dotnetType = typeof<byte[]>
         let dataDotnetType = dotnetType
         let getDataValue = id
@@ -320,7 +264,7 @@ module internal ValueInfo =
             dotnetType dataDotnetType getDataValue createFromDataValue
         |> ValueInfo.ofReferenceType
 
-    let private ofRecord dotnetType =
+    let ofRecord dotnetType =
         let fields =
             FSharpType.GetRecordFields(dotnetType)
             |> Array.map FieldInfo.ofProperty
@@ -337,7 +281,7 @@ module internal ValueInfo =
         ValueInfo.recordInfo dotnetType fields createFromFieldValues
         |> ValueInfo.ofNonNullableReferenceType
 
-    let private ofClass (dotnetType: Type) =
+    let ofClass (dotnetType: Type) =
         let defaultConstructor = dotnetType.GetConstructor([||])
         if isNull defaultConstructor then
             failwith $"type '{dotnetType.FullName}' does not have a default constructor"
@@ -363,7 +307,7 @@ module internal ValueInfo =
         ValueInfo.recordInfo dotnetType fields createFromFieldValues
         |> ValueInfo.ofReferenceType
 
-    let private ofArray1d (dotnetType: Type) =
+    let ofArray1d (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetElementType()
         let elementInfo = ValueInfo.ofType elementDotnetType
         let getLength (array: Expression) =
@@ -381,7 +325,7 @@ module internal ValueInfo =
             getLength getElementValue createEmpty createFromElementValues
         |> ValueInfo.ofReferenceType
 
-    let private ofGenericList (dotnetType: Type) =
+    let ofGenericList (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementInfo = ValueInfo.ofType elementDotnetType
         let getLength (list: Expression) =
@@ -397,7 +341,7 @@ module internal ValueInfo =
             getLength getElementValue createEmpty createFromElementValues
         |> ValueInfo.ofReferenceType
 
-    let private ofFSharpList (dotnetType: Type) =
+    let ofFSharpList (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementInfo = ValueInfo.ofType elementDotnetType
         let getLength (list: Expression) =
@@ -457,7 +401,7 @@ module internal ValueInfo =
         ValueInfo.recordInfo valueInfo.DotnetType fields createFromFieldValues
         |> ValueInfo.ofNullableRequired dotnetType
 
-    let private ofNullable (dotnetType: Type) =
+    let ofNullable (dotnetType: Type) =
         let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
         let valueInfo = ValueInfo.ofType valueDotnetType
         if valueInfo.IsOptional
@@ -507,7 +451,7 @@ module internal ValueInfo =
         ValueInfo.recordInfo valueInfo.DotnetType fields createFromFieldValues
         |> ValueInfo.ofOptionRequired dotnetType
 
-    let private ofOption (dotnetType: Type) =
+    let ofOption (dotnetType: Type) =
         let valueDotnetType = dotnetType.GetGenericArguments()[0]
         let valueInfo = ValueInfo.ofType valueDotnetType
         if valueInfo.IsOptional
@@ -645,7 +589,7 @@ module internal ValueInfo =
         ValueInfo.recordInfo dotnetType fields createFromFieldValues
         |> ValueInfo.ofNonNullableReferenceType
 
-    let private ofUnion dotnetType =
+    let ofUnion dotnetType =
         // Unions are represented in one of two ways depending on whether any of
         // the cases have associated data fields.
         let unionInfo = UnionInfo.ofUnion dotnetType
@@ -659,38 +603,11 @@ module internal ValueInfo =
         | Option.Some valueInfo -> valueInfo
         | Option.None ->
             let valueInfo =
-                match dotnetType with
-                | DotnetType.Bool -> ValueInfo.Bool
-                | DotnetType.Int8 -> ValueInfo.Int8
-                | DotnetType.Int16 -> ValueInfo.Int16
-                | DotnetType.Int32 -> ValueInfo.Int32
-                | DotnetType.Int64 -> ValueInfo.Int64
-                | DotnetType.UInt8 -> ValueInfo.UInt8
-                | DotnetType.UInt16 -> ValueInfo.UInt16
-                | DotnetType.UInt32 -> ValueInfo.UInt32
-                | DotnetType.UInt64 -> ValueInfo.UInt64
-                | DotnetType.Float32 -> ValueInfo.Float32
-                | DotnetType.Float64 -> ValueInfo.Float64
-                | DotnetType.Decimal -> ValueInfo.Decimal
-                | DotnetType.DateTime -> ValueInfo.DateTime
-                | DotnetType.DateTimeOffset -> ValueInfo.DateTimeOffset
-                | DotnetType.String -> ValueInfo.String
-                | DotnetType.Guid -> ValueInfo.Guid
-                // This must come before the generic array type since byte
-                // arrays are supported as a primitive type in Parquet and are
-                // therefore handled as atomic values rather than lists.
-                | DotnetType.ByteArray -> ValueInfo.ByteArray
-                | DotnetType.Array1d -> ValueInfo.ofArray1d dotnetType
-                | DotnetType.GenericList -> ValueInfo.ofGenericList dotnetType
-                | DotnetType.FSharpList -> ValueInfo.ofFSharpList dotnetType
-                | DotnetType.Record -> ValueInfo.ofRecord dotnetType
-                | DotnetType.Nullable -> ValueInfo.ofNullable dotnetType
-                | DotnetType.Option -> ValueInfo.ofOption dotnetType
-                // This must come after the option type since option types are
-                // handled in a special way.
-                | DotnetType.Union -> ValueInfo.ofUnion dotnetType
-                | DotnetType.Class -> ValueInfo.ofClass dotnetType
-                | _ -> failwith $"unsupported type '{dotnetType.FullName}'"
+                ValueInfoFactory.All
+                |> Array.tryFind _.IsSupportedType(dotnetType)
+                |> Option.map _.CreateValueInfo(dotnetType)
+                |> Option.defaultWith (fun () ->
+                    failwith $"unsupported type '{dotnetType.FullName}'")
             addToCache dotnetType valueInfo
             valueInfo
 
@@ -719,3 +636,114 @@ module private FieldInfo =
                 Expression.Convert(union, unionCase.DotnetType), field)
             :> Expression
         create name valueInfo getValue
+
+module internal ValueInfoFactory =
+    let private create isSupportedType createValueInfo =
+        { ValueInfoFactory.IsSupportedType = isSupportedType
+          ValueInfoFactory.CreateValueInfo = createValueInfo }
+
+    let private Bool = create DotnetType.isType<bool> ValueInfo.ofPrimitive
+    let private Int8 = create DotnetType.isType<int8> ValueInfo.ofPrimitive
+    let private Int16 = create DotnetType.isType<int16> ValueInfo.ofPrimitive
+    let private Int32 = create DotnetType.isType<int> ValueInfo.ofPrimitive
+    let private Int64 = create DotnetType.isType<int64> ValueInfo.ofPrimitive
+    let private UInt8 = create DotnetType.isType<uint8> ValueInfo.ofPrimitive
+    let private UInt16 = create DotnetType.isType<uint16> ValueInfo.ofPrimitive
+    let private UInt32 = create DotnetType.isType<uint32> ValueInfo.ofPrimitive
+    let private UInt64 = create DotnetType.isType<uint64> ValueInfo.ofPrimitive
+    let private Float32 = create DotnetType.isType<float32> ValueInfo.ofPrimitive
+    let private Float64 = create DotnetType.isType<float> ValueInfo.ofPrimitive
+    let private Decimal = create DotnetType.isType<decimal> ValueInfo.ofPrimitive
+    let private DateTime = create DotnetType.isType<DateTime> ValueInfo.ofPrimitive
+    let private Guid = create DotnetType.isType<Guid> ValueInfo.ofPrimitive
+
+    let private DateTimeOffset =
+        let isSupportedType = DotnetType.isType<DateTimeOffset>
+        let createValueInfo = fun _ -> ValueInfo.DateTimeOffset
+        create isSupportedType createValueInfo
+
+    let private String =
+        let isSupportedType = DotnetType.isType<string>
+        let createValueInfo = fun _ -> ValueInfo.String
+        create isSupportedType createValueInfo
+
+    let private ByteArray =
+        let isSupportedType = DotnetType.isType<byte[]>
+        let createValueInfo = fun _ -> ValueInfo.ByteArray
+        create isSupportedType createValueInfo
+
+    let private Array1d =
+        let isSupportedType (dotnetType: Type) =
+            dotnetType.IsArray
+            && dotnetType.GetArrayRank() = 1
+        let createValueInfo = ValueInfo.ofArray1d
+        ValueInfoFactory.create isSupportedType createValueInfo
+
+    let private GenericList =
+        let isSupportedType = DotnetType.isGenericType<ResizeArray<_>>
+        let createValueInfo = ValueInfo.ofGenericList
+        ValueInfoFactory.create isSupportedType createValueInfo
+
+    let private FSharpList =
+        let isSupportedType = DotnetType.isGenericType<list<_>>
+        let createValueInfo = ValueInfo.ofFSharpList
+        ValueInfoFactory.create isSupportedType createValueInfo
+
+    let private Record =
+        let isSupportedType = FSharpType.IsRecord
+        let createValueInfo = ValueInfo.ofRecord
+        ValueInfoFactory.create isSupportedType createValueInfo
+
+    let private Nullable =
+        let isSupportedType = DotnetType.isGenericType<Nullable<_>>
+        let createValueInfo = ValueInfo.ofNullable
+        ValueInfoFactory.create isSupportedType createValueInfo
+
+    let private Option =
+        let isSupportedType = DotnetType.isGenericType<option<_>>
+        let createValueInfo = ValueInfo.ofOption
+        ValueInfoFactory.create isSupportedType createValueInfo
+
+    let private Union =
+        let isSupportedType = FSharpType.IsUnion
+        let createValueInfo = ValueInfo.ofUnion
+        ValueInfoFactory.create isSupportedType createValueInfo
+
+    let private Class =
+        let isSupportedType (dotnetType: Type) =
+            dotnetType.IsClass
+        let createValueInfo = ValueInfo.ofClass
+        ValueInfoFactory.create isSupportedType createValueInfo
+
+    let All = [|
+        Bool
+        Int8
+        Int16
+        Int32
+        Int64
+        UInt8
+        UInt16
+        UInt32
+        UInt64
+        Float32
+        Float64
+        Decimal
+        DateTime
+        Guid
+        DateTimeOffset
+        String
+        // This must come before the generic array type since byte
+        // arrays are supported as a primitive type in Parquet and are
+        // therefore handled as atomic values rather than lists.
+        ByteArray
+        Array1d
+        GenericList
+        FSharpList
+        Record
+        Nullable
+        Option
+        // This must come after the option type since option types are
+        // handled in a special way.
+        Union
+        Class
+    |]

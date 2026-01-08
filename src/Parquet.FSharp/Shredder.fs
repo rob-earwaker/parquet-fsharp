@@ -69,11 +69,11 @@ type private ValueShredder() =
         : parentRepLevel:Expression * parentDefLevel:Expression * value:Expression
         -> Expression
 
-type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, field: DataField) =
+type private AtomicShredder(atomicConverter: AtomicConverter, maxRepLevel, maxDefLevel, field: DataField) =
     inherit ValueShredder()
 
     let columnBuilderType =
-        typedefof<ColumnBuilder<_>>.MakeGenericType(atomicInfo.DataDotnetType)
+        typedefof<ColumnBuilder<_>>.MakeGenericType(atomicConverter.DataDotnetType)
 
     let columnBuilder = Expression.Variable(columnBuilderType, "columnBuilder")
 
@@ -98,21 +98,21 @@ type private AtomicShredder(atomicInfo: AtomicInfo, maxRepLevel, maxDefLevel, fi
     override this.ShredValue(parentRepLevel, parentDefLevel, value) =
         // The value is REQUIRED. The definition level will be the same as
         // the parent, so just add the value using the parent levels.
-        let dataValue = Expression.Variable(atomicInfo.DataDotnetType, "dataValue")
+        let dataValue = Expression.Variable(atomicConverter.DataDotnetType, "dataValue")
         Expression.Block(
             [ dataValue ],
-            Expression.Assign(dataValue, atomicInfo.GetDataValue(value)),
+            Expression.Assign(dataValue, atomicConverter.GetDataValue(value)),
             Expression.Call(
                 columnBuilder, "AddDataValue",
                 [ parentRepLevel; parentDefLevel; dataValue ]))
 
-type private ListShredder(listInfo: ListInfo, elementMaxRepLevel, elementShredder: ValueShredder) =
+type private ListShredder(listConverter: ListConverter, elementMaxRepLevel, elementShredder: ValueShredder) =
     inherit ValueShredder()
 
     let shredElement =
         let repLevel = Expression.Parameter(typeof<int>, "repLevel")
         let defLevel = Expression.Parameter(typeof<int>, "defLevel")
-        let element = Expression.Parameter(listInfo.ElementInfo.DotnetType, "element")
+        let element = Expression.Parameter(listConverter.ElementConverter.DotnetType, "element")
         Expression.Lambda(
             elementShredder.ShredValue(repLevel, defLevel, element),
             "shredElement",
@@ -139,7 +139,7 @@ type private ListShredder(listInfo: ListInfo, elementMaxRepLevel, elementShredde
         Expression.Block(
             [ elementCount ],
             // Get the element count.
-            Expression.Assign(elementCount, listInfo.GetLength(list)),
+            Expression.Assign(elementCount, listConverter.GetLength(list)),
             Expression.IfThenElse(
                 // Check if the list is empty.
                 Expression.Equal(elementCount, Expression.Constant(0)),
@@ -163,7 +163,7 @@ type private ListShredder(listInfo: ListInfo, elementMaxRepLevel, elementShredde
                         shredElement,
                         firstElementRepLevel,
                         elementDefLevel,
-                        listInfo.GetElementValue(list, Expression.Constant(0))),
+                        listConverter.GetElementValue(list, Expression.Constant(0))),
                     Expression.Assign(elementIndex, Expression.Constant(1)),
                     Expression.Loop(
                         // while True do
@@ -180,24 +180,24 @@ type private ListShredder(listInfo: ListInfo, elementMaxRepLevel, elementShredde
                                     shredElement,
                                     otherElementRepLevel,
                                     elementDefLevel,
-                                    listInfo.GetElementValue(list, elementIndex)),
+                                    listConverter.GetElementValue(list, elementIndex)),
                                 Expression.AddAssign(elementIndex, Expression.Constant(1)))),
                         loopBreakLabel))))
 
-type private RecordShredder(recordInfo: RecordInfo, fieldShredders: ValueShredder[]) =
+type private RecordShredder(recordConverter: RecordConverter, fieldShredders: ValueShredder[]) =
     inherit ValueShredder()
 
     let shredFieldLambdas =
-        Array.zip recordInfo.Fields fieldShredders
-        |> Array.map (fun (fieldInfo, fieldShredder) ->
+        Array.zip recordConverter.Fields fieldShredders
+        |> Array.map (fun (fieldConverter, fieldShredder) ->
             let recordRepLevel = Expression.Parameter(typeof<int>, "recordRepLevel")
             let recordDefLevel = Expression.Parameter(typeof<int>, "recordDefLevel")
-            let record = Expression.Parameter(recordInfo.DotnetType, "record")
-            let fieldValue = Expression.Variable(fieldInfo.ValueInfo.DotnetType, "fieldValue")
+            let record = Expression.Parameter(recordConverter.DotnetType, "record")
+            let fieldValue = Expression.Variable(fieldConverter.ValueConverter.DotnetType, "fieldValue")
             Expression.Lambda(
                 Expression.Block(
                     [ fieldValue ],
-                    Expression.Assign(fieldValue, fieldInfo.GetValue record),
+                    Expression.Assign(fieldValue, fieldConverter.GetValue record),
                     fieldShredder.ShredValue(recordRepLevel, recordDefLevel, fieldValue)),
                 "shredField",
                 [ recordRepLevel; recordDefLevel; record ]))
@@ -224,7 +224,7 @@ type private RecordShredder(recordInfo: RecordInfo, fieldShredders: ValueShredde
                 Expression.Invoke(shredField, parentRepLevel, parentDefLevel, record)
                 :> Expression))
 
-type private OptionalShredder(optionalInfo: OptionalInfo, maxDefLevel, valueShredder: ValueShredder) =
+type private OptionalShredder(optionalConverter: OptionalConverter, maxDefLevel, valueShredder: ValueShredder) =
     inherit ValueShredder()
 
     override this.CollectColumnBuilderVariables() =
@@ -237,10 +237,10 @@ type private OptionalShredder(optionalInfo: OptionalInfo, maxDefLevel, valueShre
         valueShredder.AddNull(repLevel, defLevel)
 
     override this.ShredValue(parentRepLevel, parentDefLevel, optionalValue) =
-        let value = Expression.Variable(optionalInfo.ValueInfo.DotnetType, "value")
+        let value = Expression.Variable(optionalConverter.ValueConverter.DotnetType, "value")
         Expression.IfThenElse(
             // The value is OPTIONAL, so check for NULL.
-            optionalInfo.IsNull(optionalValue),
+            optionalConverter.IsNull(optionalValue),
             // If the value is NULL, add a NULL value using the parent levels to
             // indicate the last definition level at which a value was present.
             this.AddNull(parentRepLevel, parentDefLevel),
@@ -249,83 +249,83 @@ type private OptionalShredder(optionalInfo: OptionalInfo, maxDefLevel, valueShre
             // should be one more than the parent definition level.
             Expression.Block(
                 [ value ],
-                Expression.Assign(value, optionalInfo.GetValue(optionalValue)),
+                Expression.Assign(value, optionalConverter.GetValue(optionalValue)),
                 valueShredder.ShredValue(
                     parentRepLevel,
                     Expression.Constant(maxDefLevel),
                     value)))
 
 module private rec ValueShredder =
-    let forAtomic (atomicInfo: AtomicInfo) parentMaxRepLevel parentMaxDefLevel dataField =
+    let forAtomic (atomicConverter: AtomicConverter) parentMaxRepLevel parentMaxDefLevel dataField =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel
-        AtomicShredder(atomicInfo, maxRepLevel, maxDefLevel, dataField)
+        AtomicShredder(atomicConverter, maxRepLevel, maxDefLevel, dataField)
         :> ValueShredder
 
-    let forList (listInfo: ListInfo) parentMaxRepLevel parentMaxDefLevel (listField: ListField) =
+    let forList (listConverter: ListConverter) parentMaxRepLevel parentMaxDefLevel (listField: ListField) =
         let listMaxRepLevel = parentMaxRepLevel
         let listMaxDefLevel = parentMaxDefLevel
         let elementMaxRepLevel = listMaxRepLevel + 1
         let elementMaxDefLevel = listMaxDefLevel + 1
         let elementShredder =
             ValueShredder.forValue
-                listInfo.ElementInfo elementMaxRepLevel elementMaxDefLevel listField.Item
-        ListShredder(listInfo, elementMaxRepLevel, elementShredder)
+                listConverter.ElementConverter elementMaxRepLevel elementMaxDefLevel listField.Item
+        ListShredder(listConverter, elementMaxRepLevel, elementShredder)
         :> ValueShredder
 
-    let forRecord (recordInfo: RecordInfo) parentMaxRepLevel parentMaxDefLevel (fields: Field seq) =
+    let forRecord (recordConverter: RecordConverter) parentMaxRepLevel parentMaxDefLevel (fields: Field seq) =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel
         let fieldShredders =
-            Seq.zip recordInfo.Fields fields
-            |> Seq.map (fun (fieldInfo, field) ->
-                ValueShredder.forValue fieldInfo.ValueInfo maxRepLevel maxDefLevel field)
+            Seq.zip recordConverter.Fields fields
+            |> Seq.map (fun (fieldConverter, field) ->
+                ValueShredder.forValue fieldConverter.ValueConverter maxRepLevel maxDefLevel field)
             |> Array.ofSeq
-        RecordShredder(recordInfo, fieldShredders)
+        RecordShredder(recordConverter, fieldShredders)
         :> ValueShredder
 
-    let forOptional (optionalInfo: OptionalInfo) parentMaxRepLevel parentMaxDefLevel field =
+    let forOptional (optionalConverter: OptionalConverter) parentMaxRepLevel parentMaxDefLevel field =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel + 1
         let valueShredder =
-            ValueShredder.forValue optionalInfo.ValueInfo maxRepLevel maxDefLevel field
-        OptionalShredder(optionalInfo, maxDefLevel, valueShredder)
+            ValueShredder.forValue optionalConverter.ValueConverter maxRepLevel maxDefLevel field
+        OptionalShredder(optionalConverter, maxDefLevel, valueShredder)
         :> ValueShredder
 
-    let forValue (valueInfo: ValueInfo) parentMaxRepLevel parentMaxDefLevel (field: Field) =
-        match valueInfo with
-        | ValueInfo.Atomic atomicInfo ->
+    let forValue (valueConverter: ValueConverter) parentMaxRepLevel parentMaxDefLevel (field: Field) =
+        match valueConverter with
+        | ValueConverter.Atomic atomicConverter ->
             let dataField = field :?> DataField
-            ValueShredder.forAtomic atomicInfo parentMaxRepLevel parentMaxDefLevel dataField
-        | ValueInfo.List listInfo ->
+            ValueShredder.forAtomic atomicConverter parentMaxRepLevel parentMaxDefLevel dataField
+        | ValueConverter.List listConverter ->
             let listField = field :?> ListField
-            ValueShredder.forList listInfo parentMaxRepLevel parentMaxDefLevel listField
-        | ValueInfo.Record recordInfo ->
+            ValueShredder.forList listConverter parentMaxRepLevel parentMaxDefLevel listField
+        | ValueConverter.Record recordConverter ->
             let structField = field :?> StructField
-            ValueShredder.forRecord recordInfo parentMaxRepLevel parentMaxDefLevel structField.Fields
-        | ValueInfo.Optional optionalInfo ->
-            ValueShredder.forOptional optionalInfo parentMaxRepLevel parentMaxDefLevel field
+            ValueShredder.forRecord recordConverter parentMaxRepLevel parentMaxDefLevel structField.Fields
+        | ValueConverter.Optional optionalConverter ->
+            ValueShredder.forOptional optionalConverter parentMaxRepLevel parentMaxDefLevel field
 
 type private Shredder<'Record>() =
-    let recordInfo =
-        match ValueInfo.of'<'Record> with
-        | ValueInfo.Record recordInfo -> recordInfo
+    let recordConverter =
+        match ValueConverter.of'<'Record> with
+        | ValueConverter.Record recordConverter -> recordConverter
         // TODO: F# records are currently treated as optional for compatability
         // with Parquet.Net, but the root record should never be optional.
         // Unwrap the record info to remove this optionality.
-        | ValueInfo.Optional optionalInfo ->
-            match optionalInfo.ValueInfo with
-            | ValueInfo.Record recordInfo -> recordInfo
+        | ValueConverter.Optional optionalConverter ->
+            match optionalConverter.ValueConverter with
+            | ValueConverter.Record recordConverter -> recordConverter
             | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
         | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
 
-    let schema = Schema.ofRecordInfo recordInfo
+    let schema = Schema.ofRecordConverter recordConverter
 
     let recordShredder =
         let maxRepLevel = 0
         let maxDefLevel = 0
         ValueShredder.forRecord
-            recordInfo maxRepLevel maxDefLevel schema.Fields
+            recordConverter maxRepLevel maxDefLevel schema.Fields
 
     let shredExpr =
         let records = Expression.Parameter(typeof<'Record seq>, "records")

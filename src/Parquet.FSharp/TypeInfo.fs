@@ -7,21 +7,21 @@ open System.Collections.Generic
 open System.Linq.Expressions
 open System.Reflection
 
-type internal IValueInfoFactory =
-    abstract member TryCreateValueInfo : dotnetType:Type -> ValueInfo option
+type internal IValueConverterFactory =
+    abstract member TryCreateValueConverter : dotnetType:Type -> ValueConverter option
 
-type internal ValueInfo =
-    | Atomic of AtomicInfo
-    | List of ListInfo
-    | Record of RecordInfo
-    | Optional of OptionalInfo
+type internal ValueConverter =
+    | Atomic of AtomicConverter
+    | List of ListConverter
+    | Record of RecordConverter
+    | Optional of OptionalConverter
     with
     member this.DotnetType =
         match this with
-        | ValueInfo.Atomic atomicInfo -> atomicInfo.DotnetType
-        | ValueInfo.List listInfo -> listInfo.DotnetType
-        | ValueInfo.Record recordInfo -> recordInfo.DotnetType
-        | ValueInfo.Optional optionalInfo -> optionalInfo.DotnetType
+        | ValueConverter.Atomic atomicConverter -> atomicConverter.DotnetType
+        | ValueConverter.List listConverter -> listConverter.DotnetType
+        | ValueConverter.Record recordConverter -> recordConverter.DotnetType
+        | ValueConverter.Optional optionalConverter -> optionalConverter.DotnetType
 
 // TODO: Types supported by Parquet.Net:
 
@@ -45,33 +45,33 @@ type internal ValueInfo =
 // TODO: Attribute to select specific converter type to use? Alternatively could
 // be part of the serializer configuration?
 
-type internal AtomicInfo = {
+type internal AtomicConverter = {
     DotnetType: Type
     DataDotnetType: Type
     GetDataValue: Expression -> Expression
     CreateFromDataValue: Expression -> Expression }
 
-type internal ListInfo = {
+type internal ListConverter = {
     DotnetType: Type
-    ElementInfo: ValueInfo
+    ElementConverter: ValueConverter
     GetLength: Expression -> Expression
     GetElementValue: Expression * Expression -> Expression
     CreateEmpty: Expression
     CreateFromElementValues: Expression -> Expression }
 
-type internal FieldInfo = {
+type internal FieldConverter = {
     Name: string
-    ValueInfo: ValueInfo
+    ValueConverter: ValueConverter
     GetValue: Expression -> Expression }
 
-type internal RecordInfo = {
+type internal RecordConverter = {
     DotnetType: Type
-    Fields: FieldInfo[]
+    Fields: FieldConverter[]
     CreateFromFieldValues: Expression[] -> Expression }
 
-type internal OptionalInfo = {
+type internal OptionalConverter = {
     DotnetType: Type
-    ValueInfo: ValueInfo
+    ValueConverter: ValueConverter
     IsNull: Expression -> Expression
     GetValue: Expression -> Expression
     CreateNull: Expression
@@ -152,67 +152,67 @@ module private DotnetType =
         dotnetType.IsGenericType
         && dotnetType.GetGenericTypeDefinition() = typedefof<'GenericType>
 
-module internal ValueInfo =
-    let private Cache = Dictionary<Type, ValueInfo>()
+module internal ValueConverter =
+    let private Cache = Dictionary<Type, ValueConverter>()
 
     let private tryGetCached dotnetType =
         lock Cache (fun () ->
             match Cache.TryGetValue(dotnetType) with
             | false, _ -> Option.None
-            | true, valueInfo -> Option.Some valueInfo)
+            | true, valueConverter -> Option.Some valueConverter)
 
-    let private addToCache dotnetType valueInfo =
+    let private addToCache dotnetType valueConverter =
         lock Cache (fun () ->
-            Cache[dotnetType] <- valueInfo)
+            Cache[dotnetType] <- valueConverter)
 
-    let private atomicInfo
+    let private atomicConverter
         dotnetType dataDotnetType getDataValue createFromDataValue =
-        ValueInfo.Atomic {
-            AtomicInfo.DotnetType = dotnetType
-            AtomicInfo.DataDotnetType = dataDotnetType
-            AtomicInfo.GetDataValue = getDataValue
-            AtomicInfo.CreateFromDataValue = createFromDataValue }
+        ValueConverter.Atomic {
+            AtomicConverter.DotnetType = dotnetType
+            AtomicConverter.DataDotnetType = dataDotnetType
+            AtomicConverter.GetDataValue = getDataValue
+            AtomicConverter.CreateFromDataValue = createFromDataValue }
 
-    let private recordInfo dotnetType fields createFromFieldValues =
-        ValueInfo.Record {
-            RecordInfo.DotnetType = dotnetType
-            RecordInfo.Fields = fields
-            RecordInfo.CreateFromFieldValues = createFromFieldValues }
+    let private recordConverter dotnetType fields createFromFieldValues =
+        ValueConverter.Record {
+            RecordConverter.DotnetType = dotnetType
+            RecordConverter.Fields = fields
+            RecordConverter.CreateFromFieldValues = createFromFieldValues }
 
-    let private listInfo
-        dotnetType elementInfo
+    let private listConverter
+        dotnetType elementConverter
         getLength getElementValue createEmpty createFromElementValues =
-        ValueInfo.List {
-            ListInfo.DotnetType = dotnetType
-            ListInfo.ElementInfo = elementInfo
-            ListInfo.GetLength = getLength
-            ListInfo.GetElementValue = getElementValue
-            ListInfo.CreateEmpty = createEmpty
-            ListInfo.CreateFromElementValues = createFromElementValues }
+        ValueConverter.List {
+            ListConverter.DotnetType = dotnetType
+            ListConverter.ElementConverter = elementConverter
+            ListConverter.GetLength = getLength
+            ListConverter.GetElementValue = getElementValue
+            ListConverter.CreateEmpty = createEmpty
+            ListConverter.CreateFromElementValues = createFromElementValues }
 
-    let private optionalInfo
-        dotnetType valueInfo isNull getValue createNull createFromValue =
-        ValueInfo.Optional {
-            OptionalInfo.DotnetType = dotnetType
-            OptionalInfo.ValueInfo = valueInfo
-            OptionalInfo.IsNull = isNull
-            OptionalInfo.GetValue = getValue
-            OptionalInfo.CreateNull = createNull
-            OptionalInfo.CreateFromValue = createFromValue }
+    let private optionalConverter
+        dotnetType valueConverter isNull getValue createNull createFromValue =
+        ValueConverter.Optional {
+            OptionalConverter.DotnetType = dotnetType
+            OptionalConverter.ValueConverter = valueConverter
+            OptionalConverter.IsNull = isNull
+            OptionalConverter.GetValue = getValue
+            OptionalConverter.CreateNull = createNull
+            OptionalConverter.CreateFromValue = createFromValue }
 
-    let private ofReferenceType (valueInfo: ValueInfo) =
-        let dotnetType = valueInfo.DotnetType
+    let private ofReferenceType (valueConverter: ValueConverter) =
+        let dotnetType = valueConverter.DotnetType
         let isNull = Expression.IsNull
         let getValue = id
         let createNull = Expression.Null(dotnetType)
         let createFromValue = id
-        ValueInfo.optionalInfo
-            dotnetType valueInfo isNull getValue createNull createFromValue
+        ValueConverter.optionalConverter
+            dotnetType valueConverter isNull getValue createNull createFromValue
 
     // TODO: This shouldn't really be necessary, but while Parquet.Net
     // treats all struct and list fields as optional it's necessary.
-    let private ofNonNullableReferenceType (valueInfo: ValueInfo) =
-        let dotnetType = valueInfo.DotnetType
+    let private ofNonNullableReferenceType (valueConverter: ValueConverter) =
+        let dotnetType = valueConverter.DotnetType
         let isNull = fun value -> Expression.False
         let getValue = id
         let createNull =
@@ -221,14 +221,14 @@ module internal ValueInfo =
                 Expression.Default(dotnetType))
             :> Expression
         let createFromValue = id
-        ValueInfo.optionalInfo
-            dotnetType valueInfo isNull getValue createNull createFromValue
+        ValueConverter.optionalConverter
+            dotnetType valueConverter isNull getValue createNull createFromValue
 
     let ofPrimitive dotnetType =
         let dataDotnetType = dotnetType
         let getDataValue = id
         let createFromDataValue = id
-        ValueInfo.atomicInfo
+        ValueConverter.atomicConverter
             dotnetType dataDotnetType getDataValue createFromDataValue
 
     let DateTimeOffset =
@@ -242,7 +242,7 @@ module internal ValueInfo =
                 typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
                 Expression.Call(dataValue, "ToUniversalTime", []))
             :> Expression
-        ValueInfo.atomicInfo
+        ValueConverter.atomicConverter
             dotnetType dataDotnetType getDataValue createFromDataValue
 
     let String =
@@ -250,23 +250,23 @@ module internal ValueInfo =
         let dataDotnetType = dotnetType
         let getDataValue = id
         let createFromDataValue = id
-        ValueInfo.atomicInfo
+        ValueConverter.atomicConverter
             dotnetType dataDotnetType getDataValue createFromDataValue
-        |> ValueInfo.ofReferenceType
+        |> ValueConverter.ofReferenceType
 
     let ByteArray =
         let dotnetType = typeof<byte[]>
         let dataDotnetType = dotnetType
         let getDataValue = id
         let createFromDataValue = id
-        ValueInfo.atomicInfo
+        ValueConverter.atomicConverter
             dotnetType dataDotnetType getDataValue createFromDataValue
-        |> ValueInfo.ofReferenceType
+        |> ValueConverter.ofReferenceType
 
     let ofRecord dotnetType =
         let fields =
             FSharpType.GetRecordFields(dotnetType)
-            |> Array.map FieldInfo.ofProperty
+            |> Array.map FieldConverter.ofProperty
         let createFromFieldValues =
             let constructor = FSharpValue.PreComputeRecordConstructorInfo(dotnetType)
             fun (fieldValues: Expression[]) ->
@@ -277,8 +277,8 @@ module internal ValueInfo =
         // struct field class can't easily be created since some of the relevant
         // properties are internal. For now, wrap as a non-nullable reference
         // type.
-        ValueInfo.recordInfo dotnetType fields createFromFieldValues
-        |> ValueInfo.ofNonNullableReferenceType
+        ValueConverter.recordConverter dotnetType fields createFromFieldValues
+        |> ValueConverter.ofNonNullableReferenceType
 
     let ofClass (dotnetType: Type) =
         let defaultConstructor = dotnetType.GetConstructor([||])
@@ -286,7 +286,7 @@ module internal ValueInfo =
             failwith $"type '{dotnetType.FullName}' does not have a default constructor"
         let fields =
             dotnetType.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
-            |> Array.map FieldInfo.ofProperty
+            |> Array.map FieldConverter.ofProperty
         let createFromFieldValues =
             fun (fieldValues: Expression[]) ->
                 let record = Expression.Variable(dotnetType, "record")
@@ -303,12 +303,12 @@ module internal ValueInfo =
                         yield record
                     })
                 :> Expression
-        ValueInfo.recordInfo dotnetType fields createFromFieldValues
-        |> ValueInfo.ofReferenceType
+        ValueConverter.recordConverter dotnetType fields createFromFieldValues
+        |> ValueConverter.ofReferenceType
 
     let ofArray1d (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetElementType()
-        let elementInfo = ValueInfo.ofType elementDotnetType
+        let elementConverter = ValueConverter.ofType elementDotnetType
         let getLength (array: Expression) =
             Expression.Property(array, "Length")
             :> Expression
@@ -319,14 +319,14 @@ module internal ValueInfo =
             Expression.NewArrayBounds(elementDotnetType, Expression.Constant(0))
         let createFromElementValues (elementValues: Expression) =
             Expression.Call(elementValues, "ToArray", [])
-        ValueInfo.listInfo
-            dotnetType elementInfo
+        ValueConverter.listConverter
+            dotnetType elementConverter
             getLength getElementValue createEmpty createFromElementValues
-        |> ValueInfo.ofReferenceType
+        |> ValueConverter.ofReferenceType
 
     let ofGenericList (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
-        let elementInfo = ValueInfo.ofType elementDotnetType
+        let elementConverter = ValueConverter.ofType elementDotnetType
         let getLength (list: Expression) =
             Expression.Property(list, "Count")
             :> Expression
@@ -335,14 +335,14 @@ module internal ValueInfo =
             :> Expression
         let createEmpty = Expression.New(dotnetType)
         let createFromElementValues = id
-        ValueInfo.listInfo
-            dotnetType elementInfo
+        ValueConverter.listConverter
+            dotnetType elementConverter
             getLength getElementValue createEmpty createFromElementValues
-        |> ValueInfo.ofReferenceType
+        |> ValueConverter.ofReferenceType
 
     let ofFSharpList (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
-        let elementInfo = ValueInfo.ofType elementDotnetType
+        let elementConverter = ValueConverter.ofType elementDotnetType
         let getLength (list: Expression) =
             Expression.Property(list, "Length")
             :> Expression
@@ -366,12 +366,12 @@ module internal ValueInfo =
         // list field class can't easily be created since some of the relevant
         // properties are internal. For now, wrap as a non-nullable reference
         // type.
-        ValueInfo.listInfo
-            dotnetType elementInfo
+        ValueConverter.listConverter
+            dotnetType elementConverter
             getLength getElementValue createEmpty createFromElementValues
-        |> ValueInfo.ofNonNullableReferenceType
+        |> ValueConverter.ofNonNullableReferenceType
 
-    let private ofNullableRequired dotnetType (valueInfo: ValueInfo) =
+    let private ofNullableRequired dotnetType (valueConverter: ValueConverter) =
         let isNull (nullable: Expression) =
             Expression.Not(Expression.Property(nullable, "HasValue"))
             :> Expression
@@ -380,37 +380,37 @@ module internal ValueInfo =
             :> Expression
         let createNull = Expression.Null(dotnetType)
         let createFromValue =
-            let constructor = dotnetType.GetConstructor([| valueInfo.DotnetType |])
+            let constructor = dotnetType.GetConstructor([| valueConverter.DotnetType |])
             fun (value: Expression) ->
                 Expression.New(constructor, value)
                 :> Expression
-        ValueInfo.optionalInfo
-            dotnetType valueInfo isNull getValue createNull createFromValue
+        ValueConverter.optionalConverter
+            dotnetType valueConverter isNull getValue createNull createFromValue
 
-    let private ofNullableOptional (dotnetType: Type) (valueInfo: ValueInfo) =
+    let private ofNullableOptional (dotnetType: Type) (valueConverter: ValueConverter) =
         let fields =
             let valueField =
                 // TODO: The name of this field could be configurable via an attribute.
                 let name = "Value"
                 let getValue = id
-                FieldInfo.create name valueInfo getValue
+                FieldConverter.create name valueConverter getValue
             [| valueField |]
         let createFromFieldValues (fieldValues: Expression[]) =
             fieldValues[0]
-        ValueInfo.recordInfo valueInfo.DotnetType fields createFromFieldValues
-        |> ValueInfo.ofNullableRequired dotnetType
+        ValueConverter.recordConverter valueConverter.DotnetType fields createFromFieldValues
+        |> ValueConverter.ofNullableRequired dotnetType
 
     let ofNullable (dotnetType: Type) =
         let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
-        let valueInfo = ValueInfo.ofType valueDotnetType
-        if valueInfo.IsOptional
+        let valueConverter = ValueConverter.ofType valueDotnetType
+        if valueConverter.IsOptional
         // TODO: This shouldn't really be possible as nullable values have to be
         // value types and therefore can't be null, but while we need to treat
         // all record types as optional we need to handle this case.
-        then ValueInfo.ofNullableOptional dotnetType valueInfo
-        else ValueInfo.ofNullableRequired dotnetType valueInfo
+        then ValueConverter.ofNullableOptional dotnetType valueConverter
+        else ValueConverter.ofNullableRequired dotnetType valueConverter
 
-    let private ofOptionRequired dotnetType (valueInfo: ValueInfo) =
+    let private ofOptionRequired dotnetType (valueConverter: ValueConverter) =
         let unionCases = FSharpType.GetUnionCases(dotnetType)
         let isNull =
             let optionModuleType =
@@ -418,7 +418,7 @@ module internal ValueInfo =
                 |> Array.filter (fun type' -> type'.Name = "OptionModule")
                 |> Array.exactlyOne
             fun (option: Expression) ->
-                Expression.Call(optionModuleType, "IsNone", [| valueInfo.DotnetType |], option)
+                Expression.Call(optionModuleType, "IsNone", [| valueConverter.DotnetType |], option)
                 :> Expression
         let getValue (option: Expression) =
             Expression.Property(option, "Value")
@@ -434,28 +434,28 @@ module internal ValueInfo =
             fun (value: Expression) ->
                 Expression.Call(constructorMethod, value)
                 :> Expression
-        ValueInfo.optionalInfo
-            dotnetType valueInfo isNull getValue createNull createFromValue
+        ValueConverter.optionalConverter
+            dotnetType valueConverter isNull getValue createNull createFromValue
 
-    let private ofOptionOptional (dotnetType: Type) (valueInfo: ValueInfo) =
+    let private ofOptionOptional (dotnetType: Type) (valueConverter: ValueConverter) =
         let fields =
             let valueField =
                 // TODO: The name of this field could be configurable via an attribute.
                 let name = "Value"
                 let getValue = id
-                FieldInfo.create name valueInfo getValue
+                FieldConverter.create name valueConverter getValue
             [| valueField |]
         let createFromFieldValues (fieldValues: Expression[]) =
             fieldValues[0]
-        ValueInfo.recordInfo valueInfo.DotnetType fields createFromFieldValues
-        |> ValueInfo.ofOptionRequired dotnetType
+        ValueConverter.recordConverter valueConverter.DotnetType fields createFromFieldValues
+        |> ValueConverter.ofOptionRequired dotnetType
 
     let ofOption (dotnetType: Type) =
         let valueDotnetType = dotnetType.GetGenericArguments()[0]
-        let valueInfo = ValueInfo.ofType valueDotnetType
-        if valueInfo.IsOptional
-        then ValueInfo.ofOptionOptional dotnetType valueInfo
-        else ValueInfo.ofOptionRequired dotnetType valueInfo
+        let valueConverter = ValueConverter.ofType valueDotnetType
+        if valueConverter.IsOptional
+        then ValueConverter.ofOptionOptional dotnetType valueConverter
+        else ValueConverter.ofOptionRequired dotnetType valueConverter
 
     let private ofUnionSimple (unionInfo: UnionInfo) =
         let dotnetType = unionInfo.DotnetType
@@ -480,7 +480,7 @@ module internal ValueInfo =
                     yield Expression.Label(returnLabel, Expression.Default(dotnetType))
                 })
             :> Expression
-        ValueInfo.atomicInfo
+        ValueConverter.atomicConverter
             dotnetType dataDotnetType getDataValue createFromDataValue
 
     let private ofUnionCase (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
@@ -488,11 +488,11 @@ module internal ValueInfo =
         // field values for that case. The record needs to be optional since
         // only one case from the union can be set and the others will be NULL.
         let dotnetType = unionInfo.DotnetType
-        let valueInfo =
+        let valueConverter =
             let dotnetType = unionInfo.DotnetType
-            let fields = unionCase.Fields |> Array.map (FieldInfo.ofUnionCaseField unionCase)
+            let fields = unionCase.Fields |> Array.map (FieldConverter.ofUnionCaseField unionCase)
             let createFromFieldValues = unionCase.CreateFromFieldValues
-            ValueInfo.recordInfo dotnetType fields createFromFieldValues
+            ValueConverter.recordConverter dotnetType fields createFromFieldValues
         // The data for this case is NULL if the union tag does not match the
         // tag for this case.
         let isNull (union: Expression) =
@@ -504,8 +504,8 @@ module internal ValueInfo =
         // because they are reference types.
         let createNull = Expression.Default(dotnetType) :> Expression
         let createFromValue = id
-        ValueInfo.optionalInfo
-            dotnetType valueInfo isNull getValue createNull createFromValue
+        ValueConverter.optionalConverter
+            dotnetType valueConverter isNull getValue createNull createFromValue
 
     let private ofUnionComplex (unionInfo: UnionInfo) =
         // Unions that have one or more cases with one or more fields can not be
@@ -522,15 +522,15 @@ module internal ValueInfo =
         let typeField =
             // TODO: The name of this field could be configurable via an attribute.
             let name = "Type"
-            let valueInfo =
+            let valueConverter =
                 let dotnetType = typeof<string>
                 let dataDotnetType = dotnetType
                 let getDataValue = id
                 let createFromDataValue = id
-                ValueInfo.atomicInfo
+                ValueConverter.atomicConverter
                     dotnetType dataDotnetType getDataValue createFromDataValue
             let getValue = unionInfo.GetCaseName
-            FieldInfo.create name valueInfo getValue
+            FieldConverter.create name valueConverter getValue
         // Each union case with one or more fields is assigned an additional
         // field within the record to hold its associated data. The name of this
         // field matches the case name and the value is a record that contains
@@ -548,9 +548,9 @@ module internal ValueInfo =
                     failwith <|
                         $"case name '{typeField.Name}' is not supported"
                         + $" for union type '{dotnetType.FullName}'"
-                let valueInfo = ValueInfo.ofUnionCase unionInfo unionCase
+                let valueConverter = ValueConverter.ofUnionCase unionInfo unionCase
                 let getValue = id
-                FieldInfo.create name valueInfo getValue)
+                FieldConverter.create name valueConverter getValue)
         let fields = Array.append [| typeField |] caseFields
         let createFromFieldValues (fieldValues: Expression[]) =
             let caseName = Expression.Variable(typeof<string>, "caseName")
@@ -585,8 +585,8 @@ module internal ValueInfo =
         // TODO: F# unions are not nullable by default, however we are mapping
         // to a struct and Parquet.Net does not support struct fields that
         // aren't nullable, so wrap as a non-nullable reference type.
-        ValueInfo.recordInfo dotnetType fields createFromFieldValues
-        |> ValueInfo.ofNonNullableReferenceType
+        ValueConverter.recordConverter dotnetType fields createFromFieldValues
+        |> ValueConverter.ofNonNullableReferenceType
 
     let ofUnion dotnetType =
         // Unions are represented in one of two ways depending on whether any of
@@ -594,130 +594,130 @@ module internal ValueInfo =
         let unionInfo = UnionInfo.ofUnion dotnetType
         if unionInfo.UnionCases
             |> Array.forall (fun unionCase -> unionCase.Fields.Length = 0)
-        then ValueInfo.ofUnionSimple unionInfo
-        else ValueInfo.ofUnionComplex unionInfo
+        then ValueConverter.ofUnionSimple unionInfo
+        else ValueConverter.ofUnionComplex unionInfo
 
-    let ofType (dotnetType: Type) : ValueInfo =
+    let ofType (dotnetType: Type) : ValueConverter =
         match tryGetCached dotnetType with
-        | Option.Some valueInfo -> valueInfo
+        | Option.Some valueConverter -> valueConverter
         | Option.None ->
-            let valueInfo =
-                ValueInfoFactory.All
-                |> Array.tryPick _.TryCreateValueInfo(dotnetType)
+            let valueConverter =
+                ValueConverterFactory.All
+                |> Array.tryPick _.TryCreateValueConverter(dotnetType)
                 |> Option.defaultWith (fun () ->
                     failwith $"unsupported type '{dotnetType.FullName}'")
-            addToCache dotnetType valueInfo
-            valueInfo
+            addToCache dotnetType valueConverter
+            valueConverter
 
     let of'<'Value> =
         ofType typeof<'Value>
 
-module private FieldInfo =
-    let create name valueInfo getValue =
-        { FieldInfo.Name = name
-          FieldInfo.ValueInfo = valueInfo
-          FieldInfo.GetValue = getValue }
+module private FieldConverter =
+    let create name valueConverter getValue =
+        { FieldConverter.Name = name
+          FieldConverter.ValueConverter = valueConverter
+          FieldConverter.GetValue = getValue }
 
     let ofProperty (field: PropertyInfo) =
         let name = field.Name
-        let valueInfo = ValueInfo.ofType field.PropertyType
+        let valueConverter = ValueConverter.ofType field.PropertyType
         let getValue (record: Expression) =
             Expression.Property(record, field)
             :> Expression
-        create name valueInfo getValue
+        create name valueConverter getValue
 
     let ofUnionCaseField (unionCase: UnionCaseInfo) (field: PropertyInfo) =
         let name = field.Name
-        let valueInfo = ValueInfo.ofType field.PropertyType
+        let valueConverter = ValueConverter.ofType field.PropertyType
         let getValue (union: Expression) =
             Expression.Property(
                 Expression.Convert(union, unionCase.DotnetType), field)
             :> Expression
-        create name valueInfo getValue
+        create name valueConverter getValue
 
-module internal ValueInfoFactory =
-    let private create isSupportedType createValueInfo =
-        let tryCreateValueInfo dotnetType =
+module internal ValueConverterFactory =
+    let private create isSupportedType createValueConverter =
+        let tryCreateValueConverter dotnetType =
             if isSupportedType dotnetType
-            then FSharp.Core.Option.Some (createValueInfo dotnetType)
+            then FSharp.Core.Option.Some (createValueConverter dotnetType)
             else FSharp.Core.Option.None
-        { new IValueInfoFactory with
-            member this.TryCreateValueInfo(dotnetType) = tryCreateValueInfo dotnetType }
+        { new IValueConverterFactory with
+            member this.TryCreateValueConverter(dotnetType) = tryCreateValueConverter dotnetType }
 
-    let private Bool = create DotnetType.isType<bool> ValueInfo.ofPrimitive
-    let private Int8 = create DotnetType.isType<int8> ValueInfo.ofPrimitive
-    let private Int16 = create DotnetType.isType<int16> ValueInfo.ofPrimitive
-    let private Int32 = create DotnetType.isType<int> ValueInfo.ofPrimitive
-    let private Int64 = create DotnetType.isType<int64> ValueInfo.ofPrimitive
-    let private UInt8 = create DotnetType.isType<uint8> ValueInfo.ofPrimitive
-    let private UInt16 = create DotnetType.isType<uint16> ValueInfo.ofPrimitive
-    let private UInt32 = create DotnetType.isType<uint32> ValueInfo.ofPrimitive
-    let private UInt64 = create DotnetType.isType<uint64> ValueInfo.ofPrimitive
-    let private Float32 = create DotnetType.isType<float32> ValueInfo.ofPrimitive
-    let private Float64 = create DotnetType.isType<float> ValueInfo.ofPrimitive
-    let private Decimal = create DotnetType.isType<decimal> ValueInfo.ofPrimitive
-    let private DateTime = create DotnetType.isType<DateTime> ValueInfo.ofPrimitive
-    let private Guid = create DotnetType.isType<Guid> ValueInfo.ofPrimitive
+    let private Bool = create DotnetType.isType<bool> ValueConverter.ofPrimitive
+    let private Int8 = create DotnetType.isType<int8> ValueConverter.ofPrimitive
+    let private Int16 = create DotnetType.isType<int16> ValueConverter.ofPrimitive
+    let private Int32 = create DotnetType.isType<int> ValueConverter.ofPrimitive
+    let private Int64 = create DotnetType.isType<int64> ValueConverter.ofPrimitive
+    let private UInt8 = create DotnetType.isType<uint8> ValueConverter.ofPrimitive
+    let private UInt16 = create DotnetType.isType<uint16> ValueConverter.ofPrimitive
+    let private UInt32 = create DotnetType.isType<uint32> ValueConverter.ofPrimitive
+    let private UInt64 = create DotnetType.isType<uint64> ValueConverter.ofPrimitive
+    let private Float32 = create DotnetType.isType<float32> ValueConverter.ofPrimitive
+    let private Float64 = create DotnetType.isType<float> ValueConverter.ofPrimitive
+    let private Decimal = create DotnetType.isType<decimal> ValueConverter.ofPrimitive
+    let private DateTime = create DotnetType.isType<DateTime> ValueConverter.ofPrimitive
+    let private Guid = create DotnetType.isType<Guid> ValueConverter.ofPrimitive
 
     let private DateTimeOffset =
         let isSupportedType = DotnetType.isType<DateTimeOffset>
-        let createValueInfo = fun _ -> ValueInfo.DateTimeOffset
-        create isSupportedType createValueInfo
+        let createValueConverter = fun _ -> ValueConverter.DateTimeOffset
+        create isSupportedType createValueConverter
 
     let private String =
         let isSupportedType = DotnetType.isType<string>
-        let createValueInfo = fun _ -> ValueInfo.String
-        create isSupportedType createValueInfo
+        let createValueConverter = fun _ -> ValueConverter.String
+        create isSupportedType createValueConverter
 
     let private ByteArray =
         let isSupportedType = DotnetType.isType<byte[]>
-        let createValueInfo = fun _ -> ValueInfo.ByteArray
-        create isSupportedType createValueInfo
+        let createValueConverter = fun _ -> ValueConverter.ByteArray
+        create isSupportedType createValueConverter
 
     let private Array1d =
         let isSupportedType (dotnetType: Type) =
             dotnetType.IsArray
             && dotnetType.GetArrayRank() = 1
-        let createValueInfo = ValueInfo.ofArray1d
-        ValueInfoFactory.create isSupportedType createValueInfo
+        let createValueConverter = ValueConverter.ofArray1d
+        ValueConverterFactory.create isSupportedType createValueConverter
 
     let private GenericList =
         let isSupportedType = DotnetType.isGenericType<ResizeArray<_>>
-        let createValueInfo = ValueInfo.ofGenericList
-        ValueInfoFactory.create isSupportedType createValueInfo
+        let createValueConverter = ValueConverter.ofGenericList
+        ValueConverterFactory.create isSupportedType createValueConverter
 
     let private FSharpList =
         let isSupportedType = DotnetType.isGenericType<list<_>>
-        let createValueInfo = ValueInfo.ofFSharpList
-        ValueInfoFactory.create isSupportedType createValueInfo
+        let createValueConverter = ValueConverter.ofFSharpList
+        ValueConverterFactory.create isSupportedType createValueConverter
 
     let private Record =
         let isSupportedType = FSharpType.IsRecord
-        let createValueInfo = ValueInfo.ofRecord
-        ValueInfoFactory.create isSupportedType createValueInfo
+        let createValueConverter = ValueConverter.ofRecord
+        ValueConverterFactory.create isSupportedType createValueConverter
 
     let private Nullable =
         let isSupportedType = DotnetType.isGenericType<Nullable<_>>
-        let createValueInfo = ValueInfo.ofNullable
-        ValueInfoFactory.create isSupportedType createValueInfo
+        let createValueConverter = ValueConverter.ofNullable
+        ValueConverterFactory.create isSupportedType createValueConverter
 
     let private Option =
         let isSupportedType = DotnetType.isGenericType<option<_>>
-        let createValueInfo = ValueInfo.ofOption
-        ValueInfoFactory.create isSupportedType createValueInfo
+        let createValueConverter = ValueConverter.ofOption
+        ValueConverterFactory.create isSupportedType createValueConverter
 
     let private Union =
         let isSupportedType = FSharpType.IsUnion
-        let createValueInfo = ValueInfo.ofUnion
-        ValueInfoFactory.create isSupportedType createValueInfo
+        let createValueConverter = ValueConverter.ofUnion
+        ValueConverterFactory.create isSupportedType createValueConverter
 
     let private Class =
         let isSupportedType (dotnetType: Type) =
             dotnetType.IsClass
-        let createValueInfo = ValueInfo.ofClass
-        ValueInfoFactory.create isSupportedType createValueInfo
+        let createValueConverter = ValueConverter.ofClass
+        ValueConverterFactory.create isSupportedType createValueConverter
 
-    let All : IValueInfoFactory[] = [|
+    let All : IValueConverterFactory[] = [|
         Bool
         Int8
         Int16

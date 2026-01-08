@@ -270,71 +270,6 @@ module internal ValueConverter =
         ValueConverter.recordConverter dotnetType fields createFromFieldValues
         |> ValueConverter.ofReferenceType
 
-    let ofArray1d (dotnetType: Type) =
-        let elementDotnetType = dotnetType.GetElementType()
-        let elementConverter = ValueConverter.ofType elementDotnetType
-        let getLength (array: Expression) =
-            Expression.Property(array, "Length")
-            :> Expression
-        let getElementValue (array: Expression, index: Expression) =
-            Expression.ArrayIndex(array, [ index ])
-            :> Expression
-        let createEmpty =
-            Expression.NewArrayBounds(elementDotnetType, Expression.Constant(0))
-        let createFromElementValues (elementValues: Expression) =
-            Expression.Call(elementValues, "ToArray", [])
-        ValueConverter.listConverter
-            dotnetType elementConverter
-            getLength getElementValue createEmpty createFromElementValues
-        |> ValueConverter.ofReferenceType
-
-    let ofGenericList (dotnetType: Type) =
-        let elementDotnetType = dotnetType.GetGenericArguments()[0]
-        let elementConverter = ValueConverter.ofType elementDotnetType
-        let getLength (list: Expression) =
-            Expression.Property(list, "Count")
-            :> Expression
-        let getElementValue (list: Expression, index: Expression) =
-            Expression.MakeIndex(list, dotnetType.GetProperty("Item"), [ index ])
-            :> Expression
-        let createEmpty = Expression.New(dotnetType)
-        let createFromElementValues = id
-        ValueConverter.listConverter
-            dotnetType elementConverter
-            getLength getElementValue createEmpty createFromElementValues
-        |> ValueConverter.ofReferenceType
-
-    let ofFSharpList (dotnetType: Type) =
-        let elementDotnetType = dotnetType.GetGenericArguments()[0]
-        let elementConverter = ValueConverter.ofType elementDotnetType
-        let getLength (list: Expression) =
-            Expression.Property(list, "Length")
-            :> Expression
-        let getElementValue =
-            let itemProperty = dotnetType.GetProperty("Item")
-            fun (list: Expression, index: Expression) ->
-                Expression.MakeIndex(list, itemProperty, [ index ])
-                :> Expression
-        let createEmpty =
-            Expression.Property(null, dotnetType.GetProperty("Empty"))
-        let createFromElementValues =
-            let seqModuleType =
-                Assembly.Load("FSharp.Core").GetTypes()
-                |> Array.filter (fun type' -> type'.Name = "SeqModule")
-                |> Array.exactlyOne
-            fun (elementValues: Expression) ->
-                Expression.Call(seqModuleType, "ToList", [| elementDotnetType |], elementValues)
-                :> Expression
-        // TODO: F# lists are not nullable by default, however Parquet.Net
-        // does not support list fields that aren't nullable and a nullable
-        // list field class can't easily be created since some of the relevant
-        // properties are internal. For now, wrap as a non-nullable reference
-        // type.
-        ValueConverter.listConverter
-            dotnetType elementConverter
-            getLength getElementValue createEmpty createFromElementValues
-        |> ValueConverter.ofNonNullableReferenceType
-
     let private ofNullableRequired dotnetType (valueConverter: ValueConverter) =
         let isNull (nullable: Expression) =
             Expression.Not(Expression.Property(nullable, "HasValue"))
@@ -613,26 +548,6 @@ module internal ValueConverterFactory =
             member this.TryCreateSerializer(dotnetType) = tryCreateSerializer dotnetType
             member this.TryCreateDeserializer(dotnetType) = tryCreateDeserializer dotnetType }
 
-    let private Array1d =
-        let isSupportedType (dotnetType: Type) =
-            dotnetType.IsArray
-            && dotnetType.GetArrayRank() = 1
-        let createSerializer = ValueConverter.ofArray1d
-        let createDeserializer = ValueConverter.ofArray1d
-        create isSupportedType createSerializer createDeserializer
-
-    let private GenericList =
-        let isSupportedType = DotnetType.isGenericType<ResizeArray<_>>
-        let createSerializer = ValueConverter.ofGenericList
-        let createDeserializer = ValueConverter.ofGenericList
-        create isSupportedType createSerializer createDeserializer
-
-    let private FSharpList =
-        let isSupportedType = DotnetType.isGenericType<list<_>>
-        let createSerializer = ValueConverter.ofFSharpList
-        let createDeserializer = ValueConverter.ofFSharpList
-        create isSupportedType createSerializer createDeserializer
-
     let private Record =
         let isSupportedType = FSharpType.IsRecord
         let createSerializer = ValueConverter.ofRecord
@@ -685,9 +600,9 @@ module internal ValueConverterFactory =
         // supported as a primitive type in Parquet and are therefore handled as
         // atomic values rather than lists.
         ByteArrayConverterFactory()
-        Array1d
-        GenericList
-        FSharpList
+        Array1dConverterFactory()
+        GenericListConverterFactory()
+        FSharpListConverterFactory()
         Record
         Nullable
         // This must come before the generic union type since option types are
@@ -783,4 +698,113 @@ type internal ByteArrayConverterFactory() =
         member this.TryCreateDeserializer(dotnetType) =
             if dotnetType = valueConverter.DotnetType
             then Option.Some valueConverter
+            else Option.None
+
+type internal Array1dConverterFactory() =
+    let isArray1dType (dotnetType: Type) =
+        dotnetType.IsArray
+        && dotnetType.GetArrayRank() = 1
+
+    let createValueConverter (dotnetType: Type) =
+        let elementDotnetType = dotnetType.GetElementType()
+        let elementConverter = ValueConverter.ofType elementDotnetType
+        let getLength (array: Expression) =
+            Expression.Property(array, "Length")
+            :> Expression
+        let getElementValue (array: Expression, index: Expression) =
+            Expression.ArrayIndex(array, [ index ])
+            :> Expression
+        let createEmpty =
+            Expression.NewArrayBounds(elementDotnetType, Expression.Constant(0))
+        let createFromElementValues (elementValues: Expression) =
+            Expression.Call(elementValues, "ToArray", [])
+        ValueConverter.listConverter
+            dotnetType elementConverter
+            getLength getElementValue createEmpty createFromElementValues
+        |> ValueConverter.ofReferenceType
+
+    interface IValueConverterFactory with
+        member this.TryCreateSerializer(dotnetType) =
+            if isArray1dType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType) =
+            if isArray1dType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+type internal GenericListConverterFactory() =
+    let isGenericListType = DotnetType.isGenericType<ResizeArray<_>>
+
+    let createValueConverter (dotnetType: Type) =
+        let elementDotnetType = dotnetType.GetGenericArguments()[0]
+        let elementConverter = ValueConverter.ofType elementDotnetType
+        let getLength (list: Expression) =
+            Expression.Property(list, "Count")
+            :> Expression
+        let getElementValue (list: Expression, index: Expression) =
+            Expression.MakeIndex(list, dotnetType.GetProperty("Item"), [ index ])
+            :> Expression
+        let createEmpty = Expression.New(dotnetType)
+        let createFromElementValues = id
+        ValueConverter.listConverter
+            dotnetType elementConverter
+            getLength getElementValue createEmpty createFromElementValues
+        |> ValueConverter.ofReferenceType
+
+    interface IValueConverterFactory with
+        member this.TryCreateSerializer(dotnetType) =
+            if isGenericListType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType) =
+            if isGenericListType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+type internal FSharpListConverterFactory() =
+    let isFSharpListType = DotnetType.isGenericType<list<_>>
+
+    let createValueConverter (dotnetType: Type) =
+        let elementDotnetType = dotnetType.GetGenericArguments()[0]
+        let elementConverter = ValueConverter.ofType elementDotnetType
+        let getLength (list: Expression) =
+            Expression.Property(list, "Length")
+            :> Expression
+        let getElementValue =
+            let itemProperty = dotnetType.GetProperty("Item")
+            fun (list: Expression, index: Expression) ->
+                Expression.MakeIndex(list, itemProperty, [ index ])
+                :> Expression
+        let createEmpty =
+            Expression.Property(null, dotnetType.GetProperty("Empty"))
+        let createFromElementValues =
+            let seqModuleType =
+                Assembly.Load("FSharp.Core").GetTypes()
+                |> Array.filter (fun type' -> type'.Name = "SeqModule")
+                |> Array.exactlyOne
+            fun (elementValues: Expression) ->
+                Expression.Call(seqModuleType, "ToList", [| elementDotnetType |], elementValues)
+                :> Expression
+        // TODO: F# lists are not nullable by default, however Parquet.Net
+        // does not support list fields that aren't nullable and a nullable
+        // list field class can't easily be created since some of the relevant
+        // properties are internal. For now, wrap as a non-nullable reference
+        // type.
+        ValueConverter.listConverter
+            dotnetType elementConverter
+            getLength getElementValue createEmpty createFromElementValues
+        |> ValueConverter.ofNonNullableReferenceType
+
+    interface IValueConverterFactory with
+        member this.TryCreateSerializer(dotnetType) =
+            if isFSharpListType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType) =
+            if isFSharpListType dotnetType
+            then Option.Some (createValueConverter dotnetType)
             else Option.None

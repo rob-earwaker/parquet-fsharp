@@ -9,6 +9,8 @@ open Parquet.FSharp.Tests
 // Have only added tests for safe cases that do not result in loss of precision:
 // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/numeric-conversions
 
+// TODO: Tests for ability to load list types interchangeably.
+
 let testTypeCompatibility<'Input, 'Output> convert inputRecords =
     let bytes = ParquetSerializer.Serialize<{| Field1: 'Input |}>(inputRecords)
     let outputRecords = ParquetSerializer.Deserialize<{| Field1: 'Output |}>(bytes)

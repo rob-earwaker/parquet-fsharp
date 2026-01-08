@@ -30,7 +30,7 @@ open System.Reflection
 // be part of the serializer configuration?
 
 type internal IValueConverterFactory =
-    abstract member TryCreateValueConverter : dotnetType:Type -> ValueConverter option
+    abstract member TryCreateSerializer : dotnetType:Type -> ValueConverter option
 
 type internal ValueConverter =
     | Atomic of AtomicConverter
@@ -603,7 +603,7 @@ module internal ValueConverter =
         | Option.None ->
             let valueConverter =
                 ValueConverterFactory.All
-                |> Array.tryPick _.TryCreateValueConverter(dotnetType)
+                |> Array.tryPick _.TryCreateSerializer(dotnetType)
                 |> Option.defaultWith (fun () ->
                     failwith $"unsupported type '{dotnetType.FullName}'")
             addToCache dotnetType valueConverter
@@ -636,13 +636,13 @@ module private FieldConverter =
         create name valueConverter getValue
 
 module internal ValueConverterFactory =
-    let private create isSupportedType createValueConverter =
-        let tryCreateValueConverter dotnetType =
+    let private create isSupportedType createSerializer =
+        let tryCreateSerializer dotnetType =
             if isSupportedType dotnetType
-            then FSharp.Core.Option.Some (createValueConverter dotnetType)
+            then FSharp.Core.Option.Some (createSerializer dotnetType)
             else FSharp.Core.Option.None
         { new IValueConverterFactory with
-            member this.TryCreateValueConverter(dotnetType) = tryCreateValueConverter dotnetType }
+            member this.TryCreateSerializer(dotnetType) = tryCreateSerializer dotnetType }
 
     let private Bool = create DotnetType.isType<bool> ValueConverter.ofPrimitive
     let private Int8 = create DotnetType.isType<int8> ValueConverter.ofPrimitive
@@ -661,61 +661,61 @@ module internal ValueConverterFactory =
 
     let private DateTimeOffset =
         let isSupportedType = DotnetType.isType<DateTimeOffset>
-        let createValueConverter = fun _ -> ValueConverter.DateTimeOffset
-        create isSupportedType createValueConverter
+        let createSerializer = fun _ -> ValueConverter.DateTimeOffset
+        create isSupportedType createSerializer
 
     let private String =
         let isSupportedType = DotnetType.isType<string>
-        let createValueConverter = fun _ -> ValueConverter.String
-        create isSupportedType createValueConverter
+        let createSerializer = fun _ -> ValueConverter.String
+        create isSupportedType createSerializer
 
     let private ByteArray =
         let isSupportedType = DotnetType.isType<byte[]>
-        let createValueConverter = fun _ -> ValueConverter.ByteArray
-        create isSupportedType createValueConverter
+        let createSerializer = fun _ -> ValueConverter.ByteArray
+        create isSupportedType createSerializer
 
     let private Array1d =
         let isSupportedType (dotnetType: Type) =
             dotnetType.IsArray
             && dotnetType.GetArrayRank() = 1
-        let createValueConverter = ValueConverter.ofArray1d
-        ValueConverterFactory.create isSupportedType createValueConverter
+        let createSerializer = ValueConverter.ofArray1d
+        ValueConverterFactory.create isSupportedType createSerializer
 
     let private GenericList =
         let isSupportedType = DotnetType.isGenericType<ResizeArray<_>>
-        let createValueConverter = ValueConverter.ofGenericList
-        ValueConverterFactory.create isSupportedType createValueConverter
+        let createSerializer = ValueConverter.ofGenericList
+        ValueConverterFactory.create isSupportedType createSerializer
 
     let private FSharpList =
         let isSupportedType = DotnetType.isGenericType<list<_>>
-        let createValueConverter = ValueConverter.ofFSharpList
-        ValueConverterFactory.create isSupportedType createValueConverter
+        let createSerializer = ValueConverter.ofFSharpList
+        ValueConverterFactory.create isSupportedType createSerializer
 
     let private Record =
         let isSupportedType = FSharpType.IsRecord
-        let createValueConverter = ValueConverter.ofRecord
-        ValueConverterFactory.create isSupportedType createValueConverter
+        let createSerializer = ValueConverter.ofRecord
+        ValueConverterFactory.create isSupportedType createSerializer
 
     let private Nullable =
         let isSupportedType = DotnetType.isGenericType<Nullable<_>>
-        let createValueConverter = ValueConverter.ofNullable
-        ValueConverterFactory.create isSupportedType createValueConverter
+        let createSerializer = ValueConverter.ofNullable
+        ValueConverterFactory.create isSupportedType createSerializer
 
     let private Option =
         let isSupportedType = DotnetType.isGenericType<option<_>>
-        let createValueConverter = ValueConverter.ofOption
-        ValueConverterFactory.create isSupportedType createValueConverter
+        let createSerializer = ValueConverter.ofOption
+        ValueConverterFactory.create isSupportedType createSerializer
 
     let private Union =
         let isSupportedType = FSharpType.IsUnion
-        let createValueConverter = ValueConverter.ofUnion
-        ValueConverterFactory.create isSupportedType createValueConverter
+        let createSerializer = ValueConverter.ofUnion
+        ValueConverterFactory.create isSupportedType createSerializer
 
     let private Class =
         let isSupportedType (dotnetType: Type) =
             dotnetType.IsClass
-        let createValueConverter = ValueConverter.ofClass
-        ValueConverterFactory.create isSupportedType createValueConverter
+        let createSerializer = ValueConverter.ofClass
+        ValueConverterFactory.create isSupportedType createSerializer
 
     let All : IValueConverterFactory[] = [|
         Bool

@@ -8,8 +8,7 @@ open System.Linq.Expressions
 open System.Reflection
 
 type internal IValueInfoFactory =
-    abstract member IsSupportedType : dotnetType:Type -> bool
-    abstract member CreateValueInfo : dotnetType:Type -> ValueInfo
+    abstract member TryCreateValueInfo : dotnetType:Type -> ValueInfo option
 
 type internal ValueInfo =
     | Atomic of AtomicInfo
@@ -602,8 +601,11 @@ module internal ValueInfo =
         match tryGetCached dotnetType with
         | Option.Some valueInfo -> valueInfo
         | Option.None ->
-            let valueInfoFactory = ValueInfoFactory.ofType dotnetType
-            let valueInfo = valueInfoFactory.CreateValueInfo(dotnetType)
+            let valueInfo =
+                ValueInfoFactory.All
+                |> Array.tryPick _.TryCreateValueInfo(dotnetType)
+                |> Option.defaultWith (fun () ->
+                    failwith $"unsupported type '{dotnetType.FullName}'")
             addToCache dotnetType valueInfo
             valueInfo
 
@@ -635,9 +637,12 @@ module private FieldInfo =
 
 module internal ValueInfoFactory =
     let private create isSupportedType createValueInfo =
+        let tryCreateValueInfo dotnetType =
+            if isSupportedType dotnetType
+            then FSharp.Core.Option.Some (createValueInfo dotnetType)
+            else FSharp.Core.Option.None
         { new IValueInfoFactory with
-            member this.IsSupportedType(dotnetType) = isSupportedType dotnetType
-            member this.CreateValueInfo(dotnetType) = createValueInfo dotnetType }
+            member this.TryCreateValueInfo(dotnetType) = tryCreateValueInfo dotnetType }
 
     let private Bool = create DotnetType.isType<bool> ValueInfo.ofPrimitive
     let private Int8 = create DotnetType.isType<int8> ValueInfo.ofPrimitive
@@ -712,7 +717,7 @@ module internal ValueInfoFactory =
         let createValueInfo = ValueInfo.ofClass
         ValueInfoFactory.create isSupportedType createValueInfo
 
-    let private All = [|
+    let All : IValueInfoFactory[] = [|
         Bool
         Int8
         Int16
@@ -744,9 +749,3 @@ module internal ValueInfoFactory =
         Union
         Class
     |]
-
-    let ofType dotnetType : IValueInfoFactory =
-        ValueInfoFactory.All
-        |> Array.tryFind _.IsSupportedType(dotnetType)
-        |> FSharp.Core.Option.defaultWith (fun () ->
-            failwith $"unsupported type '{dotnetType.FullName}'")

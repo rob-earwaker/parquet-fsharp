@@ -1,6 +1,35 @@
 ﻿module internal rec Parquet.FSharp.Schema
 
 open Parquet.Schema
+open System
+
+// TODO: Is this useful?
+type ValueSchema =
+    | Atomic of AtomicSchema
+    | List of ListSchema
+    | Record of RecordSchema
+    with
+    member this.IsOptional =
+        match this with
+        | ValueSchema.Atomic atomic -> atomic.IsOptional
+        | ValueSchema.List list -> list.IsOptional
+        | ValueSchema.Record record -> record.IsOptional
+
+type AtomicSchema = {
+    IsOptional: bool
+    PrimitiveType: Type }
+
+type ListSchema = {
+    IsOptional: bool
+    ElementSchema: ValueSchema }
+
+type FieldSchema = {
+    Name: string
+    ValueSchema: ValueSchema }
+
+type RecordSchema = {
+    IsOptional: bool
+    FieldSchemas: FieldSchema[] }
 
 let private getValueSchema fieldName valueInfo =
     match valueInfo with

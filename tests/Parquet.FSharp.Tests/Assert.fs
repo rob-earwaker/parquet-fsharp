@@ -45,7 +45,7 @@ let private buildArrayEqualityAssertion (dotnetType: Type) =
     then buildArray1dEqualityAssertion dotnetType
     else failwith "multi-dimensional arrays are not supported"
 
-let private buildRecordEqualityAssertion (dotnetType: Type) =
+let private buildFSharpRecordEqualityAssertion (dotnetType: Type) =
     let fieldEqualityAssertions =
         FSharpType.GetRecordFields(dotnetType)
         |> Array.map (fun field -> buildEqualityAssertion field.PropertyType)
@@ -153,7 +153,7 @@ let private buildEqualityAssertion (dotnetType: Type) =
             elif dotnetType = typeof<DateTime> then Assert.objEqual
             elif dotnetType = typeof<DateTimeOffset> then Assert.objEqual
             elif dotnetType.IsArray then buildArrayEqualityAssertion dotnetType
-            elif FSharpType.IsRecord(dotnetType) then buildRecordEqualityAssertion dotnetType
+            elif FSharpType.IsRecord(dotnetType) then buildFSharpRecordEqualityAssertion dotnetType
             elif dotnetType.IsGenericType then buildGenericTypeEqualityAssertion dotnetType
             elif FSharpType.IsUnion(dotnetType) then buildUnionEqualityAssertion dotnetType
             elif dotnetType.IsClass then buildClassEqualityAssertion dotnetType

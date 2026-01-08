@@ -148,9 +148,6 @@ module private UnionInfo =
           UnionInfo.UnionCases = unionCases }
 
 module private DotnetType =
-    let isType<'Type> dotnetType =
-        dotnetType = typeof<'Type>
-
     let isGenericType<'GenericType> (dotnetType: Type) =
         dotnetType.IsGenericType
         && dotnetType.GetGenericTypeDefinition() = typedefof<'GenericType>
@@ -226,23 +223,6 @@ module internal ValueConverter =
         let createFromValue = id
         ValueConverter.optionalConverter
             dotnetType valueConverter isNull getValue createNull createFromValue
-
-    let ofRecord dotnetType =
-        let fields =
-            FSharpType.GetRecordFields(dotnetType)
-            |> Array.map FieldConverter.ofProperty
-        let createFromFieldValues =
-            let constructor = FSharpValue.PreComputeRecordConstructorInfo(dotnetType)
-            fun (fieldValues: Expression[]) ->
-                Expression.New(constructor, fieldValues)
-                :> Expression
-        // TODO: F# records are not nullable by default, however Parquet.Net
-        // does not support struct fields that aren't nullable and a nullable
-        // struct field class can't easily be created since some of the relevant
-        // properties are internal. For now, wrap as a non-nullable reference
-        // type.
-        ValueConverter.recordConverter dotnetType fields createFromFieldValues
-        |> ValueConverter.ofNonNullableReferenceType
 
     let ofClass (dotnetType: Type) =
         let defaultConstructor = dotnetType.GetConstructor([||])
@@ -517,7 +497,7 @@ module private FieldConverter =
           FieldConverter.ValueConverter = valueConverter
           FieldConverter.GetValue = getValue }
 
-    let ofProperty (field: PropertyInfo) =
+    let ofProperty (field: PropertyInfo) : FieldConverter =
         let name = field.Name
         let valueConverter = ValueConverter.ofType field.PropertyType
         let getValue (record: Expression) =
@@ -547,12 +527,6 @@ module internal ValueConverterFactory =
         { new IValueConverterFactory with
             member this.TryCreateSerializer(dotnetType) = tryCreateSerializer dotnetType
             member this.TryCreateDeserializer(dotnetType) = tryCreateDeserializer dotnetType }
-
-    let private Record =
-        let isSupportedType = FSharpType.IsRecord
-        let createSerializer = ValueConverter.ofRecord
-        let createDeserializer = ValueConverter.ofRecord
-        create isSupportedType createSerializer createDeserializer
 
     let private Nullable =
         let isSupportedType = DotnetType.isGenericType<Nullable<_>>
@@ -603,7 +577,7 @@ module internal ValueConverterFactory =
         Array1dConverterFactory()
         GenericListConverterFactory()
         FSharpListConverterFactory()
-        Record
+        FSharpRecordConverterFactory()
         Nullable
         // This must come before the generic union type since option types are
         // handled in a special way.
@@ -806,5 +780,36 @@ type internal FSharpListConverterFactory() =
 
         member this.TryCreateDeserializer(dotnetType) =
             if isFSharpListType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+type internal FSharpRecordConverterFactory() =
+    let isFSharpRecordType = FSharpType.IsRecord
+
+    let createValueConverter (dotnetType: Type) =
+        let fields =
+            FSharpType.GetRecordFields(dotnetType)
+            |> Array.map FieldConverter.ofProperty
+        let createFromFieldValues =
+            let constructor = FSharpValue.PreComputeRecordConstructorInfo(dotnetType)
+            fun (fieldValues: Expression[]) ->
+                Expression.New(constructor, fieldValues)
+                :> Expression
+        // TODO: F# records are not nullable by default, however Parquet.Net
+        // does not support struct fields that aren't nullable and a nullable
+        // struct field class can't easily be created since some of the relevant
+        // properties are internal. For now, wrap as a non-nullable reference
+        // type.
+        ValueConverter.recordConverter dotnetType fields createFromFieldValues
+        |> ValueConverter.ofNonNullableReferenceType
+
+    interface IValueConverterFactory with
+        member this.TryCreateSerializer(dotnetType) =
+            if isFSharpRecordType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType) =
+            if isFSharpRecordType dotnetType
             then Option.Some (createValueConverter dotnetType)
             else Option.None

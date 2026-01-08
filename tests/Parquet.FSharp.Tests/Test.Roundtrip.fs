@@ -37,7 +37,7 @@ type ComplexUnionWithGuidCase = Case1 of field1:Guid
 type ComplexUnionWithArrayCase = Case1 of field1:array<int>
 type ComplexUnionWithGenericListCase = Case1 of field1:ResizeArray<int>
 type ComplexUnionWithFSharpListCase = Case1 of field1:list<int>
-type ComplexUnionWithRecordCase = Case1 of field1:{| Field1: int |}
+type ComplexUnionWithFSharpRecordCase = Case1 of field1:{| Field1: int |}
 type ComplexUnionWithSimpleUnionCase = Case1 of field1:SimpleUnion
 type ComplexUnionWithComplexUnionCase = Case1 of field1:ComplexUnion
 type ComplexUnionWithClassCase = Case1 of field1:Class
@@ -56,7 +56,7 @@ type ComplexUnionWithNullableDecimalCase = Case1 of field1:Nullable<decimal>
 type ComplexUnionWithNullableDateTimeCase = Case1 of field1:Nullable<DateTime>
 type ComplexUnionWithNullableDateTimeOffsetCase = Case1 of field1:Nullable<DateTimeOffset>
 type ComplexUnionWithNullableGuidCase = Case1 of field1:Nullable<Guid>
-type ComplexUnionWithNullableRecordCase = Case1 of field1:Nullable<struct {| Field1: int |}>
+type ComplexUnionWithNullableFSharpRecordCase = Case1 of field1:Nullable<struct {| Field1: int |}>
 type ComplexUnionWithOptionBoolCase = Case1 of field1:option<bool>
 type ComplexUnionWithOptionInt8Case = Case1 of field1:option<int8>
 type ComplexUnionWithOptionInt16Case = Case1 of field1:option<int16>
@@ -77,7 +77,7 @@ type ComplexUnionWithOptionGuidCase = Case1 of field1:option<Guid>
 type ComplexUnionWithOptionArrayCase = Case1 of field1:option<array<int>>
 type ComplexUnionWithOptionGenericListCase = Case1 of field1:option<ResizeArray<int>>
 type ComplexUnionWithOptionFSharpListCase = Case1 of field1:option<list<int>>
-type ComplexUnionWithOptionRecordCase = Case1 of field1:option<{| Field1: int |}>
+type ComplexUnionWithOptionFSharpRecordCase = Case1 of field1:option<{| Field1: int |}>
 type ComplexUnionWithOptionSimpleUnionCase = Case1 of field1:option<SimpleUnion>
 type ComplexUnionWithOptionComplexUnionCase = Case1 of field1:option<ComplexUnion>
 type ComplexUnionWithOptionClassCase = Case1 of field1:option<Class>
@@ -149,7 +149,7 @@ type ClassWithGenericListField() =
 type ClassWithFSharpListField() =
     member val Field1 = Unchecked.defaultof<list<int>> with get, set
 
-type ClassWithRecordField() =
+type ClassWithFSharpRecordField() =
     member val Field1 = Unchecked.defaultof<{| Field1: int |}> with get, set
 
 type ClassWithSimpleUnionField() =
@@ -206,7 +206,7 @@ type ClassWithNullableDateTimeOffsetField() =
 type ClassWithNullableGuidField() =
     member val Field1 = Unchecked.defaultof<Nullable<Guid>> with get, set
 
-type ClassWithNullableRecordField() =
+type ClassWithNullableFSharpRecordField() =
     member val Field1 = Unchecked.defaultof<Nullable<struct {| Field1: int |}>> with get, set
 
 type ClassWithOptionBoolField() =
@@ -269,7 +269,7 @@ type ClassWithOptionGenericListField() =
 type ClassWithOptionFSharpListField() =
     member val Field1 = Unchecked.defaultof<option<list<int>>> with get, set
 
-type ClassWithOptionRecordField() =
+type ClassWithOptionFSharpRecordField() =
     member val Field1 = Unchecked.defaultof<option<{| Field1: int |}>> with get, set
 
 type ClassWithOptionSimpleUnionField() =
@@ -287,10 +287,10 @@ type ClassWithOptionNullableField() =
 type ClassWithOptionOptionField() =
     member val Field1 = Unchecked.defaultof<option<option<int>>> with get, set
 
-let testRoundtrip<'Record> (records: 'Record[]) =
+let testRoundtrip<'FSharpRecord> (records: 'FSharpRecord[]) =
     let bytes = ParquetSerializer.Serialize(records)
-    let roundtrippedRecords = ParquetSerializer.Deserialize<'Record>(bytes)
-    Assert.equal records roundtrippedRecords
+    let roundtrippedFSharpRecords = ParquetSerializer.Deserialize<'FSharpRecord>(bytes)
+    Assert.equal records roundtrippedFSharpRecords
 
 [<Property>]
 let ``bool field`` records =
@@ -515,7 +515,7 @@ let ``array field with fsharp list elements`` records =
         records
 
 [<Property>]
-let ``array field with record elements`` records =
+let ``array field with fsharp record elements`` records =
     testRoundtrip<{|
         Field1: array<{|
             Field2: int |}> |}>
@@ -630,7 +630,7 @@ let ``array field with nullable guid elements`` records =
         records
 
 [<Property>]
-let ``array field with nullable record elements`` records =
+let ``array field with nullable fsharp record elements`` records =
     testRoundtrip<{|
         Field1: array<Nullable<struct {|
             Field2: int |}>> |}>
@@ -757,7 +757,7 @@ let ``array field with option fsharp list elements`` records =
         records
 
 [<Property>]
-let ``array field with option record elements`` records =
+let ``array field with option fsharp record elements`` records =
     testRoundtrip<{|
         Field1: array<option<{|
             Field2: int |}>> |}>
@@ -914,7 +914,7 @@ let ``generic list field with fsharp list elements`` records =
         records
 
 [<Property>]
-let ``generic list field with record elements`` records =
+let ``generic list field with fsharp record elements`` records =
     testRoundtrip<{|
         Field1: ResizeArray<{|
             Field2: int |}> |}>
@@ -1029,7 +1029,7 @@ let ``generic list field with nullable guid elements`` records =
         records
 
 [<Property>]
-let ``generic list field with nullable record elements`` records =
+let ``generic list field with nullable fsharp record elements`` records =
     testRoundtrip<{|
         Field1: ResizeArray<Nullable<struct {|
             Field2: int |}>> |}>
@@ -1156,7 +1156,7 @@ let ``generic list field with option fsharp list elements`` records =
         records
 
 [<Property>]
-let ``generic list field with option record elements`` records =
+let ``generic list field with option fsharp record elements`` records =
     testRoundtrip<{|
         Field1: ResizeArray<option<{|
             Field2: int |}>> |}>
@@ -1313,7 +1313,7 @@ let ``fsharp list field with fsharp list elements`` records =
         records
 
 [<Property>]
-let ``fsharp list field with record elements`` records =
+let ``fsharp list field with fsharp record elements`` records =
     testRoundtrip<{|
         Field1: list<{|
             Field2: int |}> |}>
@@ -1428,7 +1428,7 @@ let ``fsharp list field with nullable guid elements`` records =
         records
 
 [<Property>]
-let ``fsharp list field with nullable record elements`` records =
+let ``fsharp list field with nullable fsharp record elements`` records =
     testRoundtrip<{|
         Field1: list<Nullable<struct {|
             Field2: int |}>> |}>
@@ -1555,7 +1555,7 @@ let ``fsharp list field with option fsharp list elements`` records =
         records
 
 [<Property>]
-let ``fsharp list field with option record elements`` records =
+let ``fsharp list field with option fsharp record elements`` records =
     testRoundtrip<{|
         Field1: list<option<{|
             Field2: int |}>> |}>
@@ -1592,147 +1592,147 @@ let ``fsharp list field with option option elements`` records =
         records
 
 [<Property>]
-let ``record field with bool field`` records =
+let ``fsharp record field with bool field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: bool |} |}>
         records
 
 [<Property>]
-let ``record field with int8 field`` records =
+let ``fsharp record field with int8 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: int8 |} |}>
         records
 
 [<Property>]
-let ``record field with int16 field`` records =
+let ``fsharp record field with int16 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: int16 |} |}>
         records
 
 [<Property>]
-let ``record field with int32 field`` records =
+let ``fsharp record field with int32 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: int |} |}>
         records
 
 [<Property>]
-let ``record field with int64 field`` records =
+let ``fsharp record field with int64 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: int64 |} |}>
         records
 
 [<Property>]
-let ``record field with uint8 field`` records =
+let ``fsharp record field with uint8 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: uint8 |} |}>
         records
 
 [<Property>]
-let ``record field with uint16 field`` records =
+let ``fsharp record field with uint16 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: uint16 |} |}>
         records
 
 [<Property>]
-let ``record field with uint32 field`` records =
+let ``fsharp record field with uint32 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: uint |} |}>
         records
 
 [<Property>]
-let ``record field with uint64 field`` records =
+let ``fsharp record field with uint64 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: uint64 |} |}>
         records
 
 [<Property>]
-let ``record field with float32 field`` records =
+let ``fsharp record field with float32 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: float32 |} |}>
         records
 
 [<Property>]
-let ``record field with float64 field`` records =
+let ``fsharp record field with float64 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: float |} |}>
         records
 
 [<Property>]
-let ``record field with decimal field`` records =
+let ``fsharp record field with decimal field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: decimal |} |}>
         records
 
 [<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``record field with date time field`` records =
+let ``fsharp record field with date time field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: DateTime |} |}>
         records
 
 [<Property>]
-let ``record field with date time offset field`` records =
+let ``fsharp record field with date time offset field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: DateTimeOffset |} |}>
         records
 
 [<Property>]
-let ``record field with string field`` records =
+let ``fsharp record field with string field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: string |} |}>
         records
 
 [<Property>]
-let ``record field with byte array field`` records =
+let ``fsharp record field with byte array field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: byte[] |} |}>
         records
 
 [<Property>]
-let ``record field with guid field`` records =
+let ``fsharp record field with guid field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Guid |} |}>
         records
 
 [<Property>]
-let ``record field with array field`` records =
+let ``fsharp record field with array field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: array<int> |} |}>
         records
 
 [<Property>]
-let ``record field with generic list field`` records =
+let ``fsharp record field with generic list field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: ResizeArray<int> |} |}>
         records
 
 [<Property>]
-let ``record field with fsharp list field`` records =
+let ``fsharp record field with fsharp list field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: list<int> |} |}>
         records
 
 [<Property>]
-let ``record field with record field`` records =
+let ``fsharp record field with fsharp record field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: {|
@@ -1740,133 +1740,133 @@ let ``record field with record field`` records =
         records
 
 [<Property>]
-let ``record field with simple union field`` records =
+let ``fsharp record field with simple union field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: SimpleUnion |} |}>
         records
 
 [<Property>]
-let ``record field with complex union field`` records =
+let ``fsharp record field with complex union field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: ComplexUnion |} |}>
         records
 
 [<Property>]
-let ``record field with class field`` records =
+let ``fsharp record field with class field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Class |} |}>
         records
 
 [<Property>]
-let ``record field with nullable bool field`` records =
+let ``fsharp record field with nullable bool field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<bool> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable int8 field`` records =
+let ``fsharp record field with nullable int8 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<int8> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable int16 field`` records =
+let ``fsharp record field with nullable int16 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<int16> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable int32 field`` records =
+let ``fsharp record field with nullable int32 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<int> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable int64 field`` records =
+let ``fsharp record field with nullable int64 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<int64> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable uint8 field`` records =
+let ``fsharp record field with nullable uint8 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<uint8> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable uint16 field`` records =
+let ``fsharp record field with nullable uint16 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<uint16> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable uint32 field`` records =
+let ``fsharp record field with nullable uint32 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<uint> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable uint64 field`` records =
+let ``fsharp record field with nullable uint64 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<uint64> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable float32 field`` records =
+let ``fsharp record field with nullable float32 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<float32> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable float64 field`` records =
+let ``fsharp record field with nullable float64 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<float> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable decimal field`` records =
+let ``fsharp record field with nullable decimal field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<decimal> |} |}>
         records
 
 [<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``record field with nullable date time field`` records =
+let ``fsharp record field with nullable date time field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<DateTime> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable date time offset field`` records =
+let ``fsharp record field with nullable date time offset field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<DateTimeOffset> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable guid field`` records =
+let ``fsharp record field with nullable guid field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<Guid> |} |}>
         records
 
 [<Property>]
-let ``record field with nullable record field`` records =
+let ``fsharp record field with nullable fsharp record field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: Nullable<struct {|
@@ -1874,147 +1874,147 @@ let ``record field with nullable record field`` records =
         records
 
 [<Property>]
-let ``record field with option bool field`` records =
+let ``fsharp record field with option bool field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<bool> |} |}>
         records
 
 [<Property>]
-let ``record field with option int8 field`` records =
+let ``fsharp record field with option int8 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<int8> |} |}>
         records
 
 [<Property>]
-let ``record field with option int16 field`` records =
+let ``fsharp record field with option int16 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<int16> |} |}>
         records
 
 [<Property>]
-let ``record field with option int32 field`` records =
+let ``fsharp record field with option int32 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<int> |} |}>
         records
 
 [<Property>]
-let ``record field with option int64 field`` records =
+let ``fsharp record field with option int64 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<int64> |} |}>
         records
 
 [<Property>]
-let ``record field with option uint8 field`` records =
+let ``fsharp record field with option uint8 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<uint8> |} |}>
         records
 
 [<Property>]
-let ``record field with option uint16 field`` records =
+let ``fsharp record field with option uint16 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<uint16> |} |}>
         records
 
 [<Property>]
-let ``record field with option uint32 field`` records =
+let ``fsharp record field with option uint32 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<uint> |} |}>
         records
 
 [<Property>]
-let ``record field with option uint64 field`` records =
+let ``fsharp record field with option uint64 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<uint64> |} |}>
         records
 
 [<Property>]
-let ``record field with option float32 field`` records =
+let ``fsharp record field with option float32 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<float32> |} |}>
         records
 
 [<Property>]
-let ``record field with option float64 field`` records =
+let ``fsharp record field with option float64 field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<float> |} |}>
         records
 
 [<Property>]
-let ``record field with option decimal field`` records =
+let ``fsharp record field with option decimal field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<decimal> |} |}>
         records
 
 [<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``record field with option date time field`` records =
+let ``fsharp record field with option date time field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<DateTime> |} |}>
         records
 
 [<Property>]
-let ``record field with option date time offset field`` records =
+let ``fsharp record field with option date time offset field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<DateTimeOffset> |} |}>
         records
 
 [<Property>]
-let ``record field with option string field`` records =
+let ``fsharp record field with option string field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<string> |} |}>
         records
 
 [<Property>]
-let ``record field with option byte array field`` records =
+let ``fsharp record field with option byte array field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<byte[]> |} |}>
         records
 
 [<Property>]
-let ``record field with option guid field`` records =
+let ``fsharp record field with option guid field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<Guid> |} |}>
         records
 
 [<Property>]
-let ``record field with option array field`` records =
+let ``fsharp record field with option array field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<array<int>> |} |}>
         records
 
 [<Property>]
-let ``record field with option generic list field`` records =
+let ``fsharp record field with option generic list field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<ResizeArray<int>> |} |}>
         records
 
 [<Property>]
-let ``record field with option fsharp list field`` records =
+let ``fsharp record field with option fsharp list field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<list<int>> |} |}>
         records
 
 [<Property>]
-let ``record field with option record field`` records =
+let ``fsharp record field with option fsharp record field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<{|
@@ -2022,35 +2022,35 @@ let ``record field with option record field`` records =
         records
 
 [<Property>]
-let ``record field with option simple union field`` records =
+let ``fsharp record field with option simple union field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<SimpleUnion> |} |}>
         records
 
 [<Property>]
-let ``record field with option complex union field`` records =
+let ``fsharp record field with option complex union field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<ComplexUnion> |} |}>
         records
 
 [<Property>]
-let ``record field with option class field`` records =
+let ``fsharp record field with option class field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<Class> |} |}>
         records
 
 [<Property>]
-let ``record field with option nullable field`` records =
+let ``fsharp record field with option nullable field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<Nullable<int>> |} |}>
         records
 
 [<Property>]
-let ``record field with option option field`` records =
+let ``fsharp record field with option option field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: option<option<int>> |} |}>
@@ -2189,9 +2189,9 @@ let ``complex union field with fsharp list case`` records =
         records
 
 [<Property>]
-let ``complex union field with record case`` records =
+let ``complex union field with fsharp record case`` records =
     testRoundtrip<{|
-        Field1: ComplexUnionWithRecordCase |}>
+        Field1: ComplexUnionWithFSharpRecordCase |}>
         records
 
 [<Property>]
@@ -2303,9 +2303,9 @@ let ``complex union field with nullable guid case`` records =
         records
 
 [<Property>]
-let ``complex union field with nullable record case`` records =
+let ``complex union field with nullable fsharp record case`` records =
     testRoundtrip<{|
-        Field1: ComplexUnionWithNullableRecordCase |}>
+        Field1: ComplexUnionWithNullableFSharpRecordCase |}>
         records
 
 [<Property>]
@@ -2429,9 +2429,9 @@ let ``complex union field with option fsharp list case`` records =
         records
 
 [<Property>]
-let ``complex union field with option record case`` records =
+let ``complex union field with option fsharp record case`` records =
     testRoundtrip<{|
-        Field1: ComplexUnionWithOptionRecordCase |}>
+        Field1: ComplexUnionWithOptionFSharpRecordCase |}>
         records
 
 [<Property>]
@@ -2591,9 +2591,9 @@ let ``class field with fsharp list field`` records =
         records
 
 [<Property>]
-let ``class field with record field`` records =
+let ``class field with fsharp record field`` records =
     testRoundtrip<{|
-        Field1: ClassWithRecordField |}>
+        Field1: ClassWithFSharpRecordField |}>
         records
 
 [<Property>]
@@ -2705,9 +2705,9 @@ let ``class field with nullable guid field`` records =
         records
 
 [<Property>]
-let ``class field with nullable record field`` records =
+let ``class field with nullable fsharp record field`` records =
     testRoundtrip<{|
-        Field1: ClassWithNullableRecordField |}>
+        Field1: ClassWithNullableFSharpRecordField |}>
         records
 
 [<Property>]
@@ -2831,9 +2831,9 @@ let ``class field with option fsharp list field`` records =
         records
 
 [<Property>]
-let ``class field with option record field`` records =
+let ``class field with option fsharp record field`` records =
     testRoundtrip<{|
-        Field1: ClassWithOptionRecordField |}>
+        Field1: ClassWithOptionFSharpRecordField |}>
         records
 
 [<Property>]
@@ -2957,140 +2957,140 @@ let ``nullable guid field`` records =
         records
 
 [<Property>]
-let ``nullable record field with bool field`` records =
+let ``nullable fsharp record field with bool field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: bool |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with int8 field`` records =
+let ``nullable fsharp record field with int8 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: int8 |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with int16 field`` records =
+let ``nullable fsharp record field with int16 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: int16 |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with int32 field`` records =
+let ``nullable fsharp record field with int32 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: int |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with int64 field`` records =
+let ``nullable fsharp record field with int64 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: int64 |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with uint8 field`` records =
+let ``nullable fsharp record field with uint8 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: uint8 |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with uint16 field`` records =
+let ``nullable fsharp record field with uint16 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: uint16 |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with uint32 field`` records =
+let ``nullable fsharp record field with uint32 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: uint |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with uint64 field`` records =
+let ``nullable fsharp record field with uint64 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: uint64 |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with float32 field`` records =
+let ``nullable fsharp record field with float32 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: float32 |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with float64 field`` records =
+let ``nullable fsharp record field with float64 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: float |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with decimal field`` records =
+let ``nullable fsharp record field with decimal field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: decimal |}> |}>
         records
 
 [<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``nullable record field with date time field`` records =
+let ``nullable fsharp record field with date time field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: DateTime |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with date time offset field`` records =
+let ``nullable fsharp record field with date time offset field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: DateTimeOffset |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with string field`` records =
+let ``nullable fsharp record field with string field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: string |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with byte array field`` records =
+let ``nullable fsharp record field with byte array field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: byte[] |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with guid field`` records =
+let ``nullable fsharp record field with guid field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Guid |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with array field`` records =
+let ``nullable fsharp record field with array field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: array<int> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with generic list field`` records =
+let ``nullable fsharp record field with generic list field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: ResizeArray<int> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with record field`` records =
+let ``nullable fsharp record field with fsharp record field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: struct {|
@@ -3098,112 +3098,112 @@ let ``nullable record field with record field`` records =
         records
 
 [<Property>]
-let ``nullable record field with nullable bool field`` records =
+let ``nullable fsharp record field with nullable bool field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<bool> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable int8 field`` records =
+let ``nullable fsharp record field with nullable int8 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<int8> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable int16 field`` records =
+let ``nullable fsharp record field with nullable int16 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<int16> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable int32 field`` records =
+let ``nullable fsharp record field with nullable int32 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<int> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable int64 field`` records =
+let ``nullable fsharp record field with nullable int64 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<int64> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable uint8 field`` records =
+let ``nullable fsharp record field with nullable uint8 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<uint8> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable uint16 field`` records =
+let ``nullable fsharp record field with nullable uint16 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<uint16> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable uint32 field`` records =
+let ``nullable fsharp record field with nullable uint32 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<uint> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable uint64 field`` records =
+let ``nullable fsharp record field with nullable uint64 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<uint64> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable float32 field`` records =
+let ``nullable fsharp record field with nullable float32 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<float32> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable float64 field`` records =
+let ``nullable fsharp record field with nullable float64 field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<float> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable decimal field`` records =
+let ``nullable fsharp record field with nullable decimal field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<decimal> |}> |}>
         records
 
 [<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``nullable record field with nullable date time field`` records =
+let ``nullable fsharp record field with nullable date time field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<DateTime> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable date time offset field`` records =
+let ``nullable fsharp record field with nullable date time offset field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<DateTimeOffset> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable guid field`` records =
+let ``nullable fsharp record field with nullable guid field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<Guid> |}> |}>
         records
 
 [<Property>]
-let ``nullable record field with nullable record field`` records =
+let ``nullable fsharp record field with nullable fsharp record field`` records =
     testRoundtrip<{|
         Field1: Nullable<struct {|
             Field2: Nullable<struct {|
@@ -3433,7 +3433,7 @@ let ``option array field with fsharp list elements`` records =
         records
 
 [<Property>]
-let ``option array field with record elements`` records =
+let ``option array field with fsharp record elements`` records =
     testRoundtrip<{|
         Field1: option<array<{|
             Field2: int |}>> |}>
@@ -3548,7 +3548,7 @@ let ``option array field with nullable guid elements`` records =
         records
 
 [<Property>]
-let ``option array field with nullable record elements`` records =
+let ``option array field with nullable fsharp record elements`` records =
     testRoundtrip<{|
         Field1: option<array<Nullable<struct {|
             Field2: int |}>>> |}>
@@ -3675,7 +3675,7 @@ let ``option array field with option fsharp list elements`` records =
         records
 
 [<Property>]
-let ``option array field with option record elements`` records =
+let ``option array field with option fsharp record elements`` records =
     testRoundtrip<{|
         Field1: option<array<option<{|
             Field2: int |}>>> |}>
@@ -3832,7 +3832,7 @@ let ``option generic list field with fsharp list elements`` records =
         records
 
 [<Property>]
-let ``option generic list field with record elements`` records =
+let ``option generic list field with fsharp record elements`` records =
     testRoundtrip<{|
         Field1: option<ResizeArray<{|
             Field2: int |}>> |}>
@@ -3947,7 +3947,7 @@ let ``option generic list field with nullable guid elements`` records =
         records
 
 [<Property>]
-let ``option generic list field with nullable record elements`` records =
+let ``option generic list field with nullable fsharp record elements`` records =
     testRoundtrip<{|
         Field1: option<ResizeArray<Nullable<struct {|
             Field2: int |}>>> |}>
@@ -4074,7 +4074,7 @@ let ``option generic list field with option fsharp list elements`` records =
         records
 
 [<Property>]
-let ``option generic list field with option record elements`` records =
+let ``option generic list field with option fsharp record elements`` records =
     testRoundtrip<{|
         Field1: option<ResizeArray<option<{|
             Field2: int |}>>> |}>
@@ -4231,7 +4231,7 @@ let ``option fsharp list field with fsharp list elements`` records =
         records
 
 [<Property>]
-let ``option fsharp list field with record elements`` records =
+let ``option fsharp list field with fsharp record elements`` records =
     testRoundtrip<{|
         Field1: option<list<{|
             Field2: int |}>> |}>
@@ -4346,7 +4346,7 @@ let ``option fsharp list field with nullable guid elements`` records =
         records
 
 [<Property>]
-let ``option fsharp list field with nullable record elements`` records =
+let ``option fsharp list field with nullable fsharp record elements`` records =
     testRoundtrip<{|
         Field1: option<list<Nullable<struct {|
             Field2: int |}>>> |}>
@@ -4473,7 +4473,7 @@ let ``option fsharp list field with option fsharp list elements`` records =
         records
 
 [<Property>]
-let ``option fsharp list field with option record elements`` records =
+let ``option fsharp list field with option fsharp record elements`` records =
     testRoundtrip<{|
         Field1: option<list<option<{|
             Field2: int |}>>> |}>
@@ -4510,147 +4510,147 @@ let ``option fsharp list field with option option elements`` records =
         records
 
 [<Property>]
-let ``option record field with bool field`` records =
+let ``option fsharp record field with bool field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: bool |}> |}>
         records
 
 [<Property>]
-let ``option record field with int8 field`` records =
+let ``option fsharp record field with int8 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: int8 |}> |}>
         records
 
 [<Property>]
-let ``option record field with int16 field`` records =
+let ``option fsharp record field with int16 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: int16 |}> |}>
         records
 
 [<Property>]
-let ``option record field with int32 field`` records =
+let ``option fsharp record field with int32 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: int |}> |}>
         records
 
 [<Property>]
-let ``option record field with int64 field`` records =
+let ``option fsharp record field with int64 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: int64 |}> |}>
         records
 
 [<Property>]
-let ``option record field with uint8 field`` records =
+let ``option fsharp record field with uint8 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: uint8 |}> |}>
         records
 
 [<Property>]
-let ``option record field with uint16 field`` records =
+let ``option fsharp record field with uint16 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: uint16 |}> |}>
         records
 
 [<Property>]
-let ``option record field with uint32 field`` records =
+let ``option fsharp record field with uint32 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: uint |}> |}>
         records
 
 [<Property>]
-let ``option record field with uint64 field`` records =
+let ``option fsharp record field with uint64 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: uint64 |}> |}>
         records
 
 [<Property>]
-let ``option record field with float32 field`` records =
+let ``option fsharp record field with float32 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: float32 |}> |}>
         records
 
 [<Property>]
-let ``option record field with float64 field`` records =
+let ``option fsharp record field with float64 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: float |}> |}>
         records
 
 [<Property>]
-let ``option record field with decimal field`` records =
+let ``option fsharp record field with decimal field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: decimal |}> |}>
         records
 
 [<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``option record field with date time field`` records =
+let ``option fsharp record field with date time field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: DateTime |}> |}>
         records
 
 [<Property>]
-let ``option record field with date time offset field`` records =
+let ``option fsharp record field with date time offset field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: DateTimeOffset |}> |}>
         records
 
 [<Property>]
-let ``option record field with string field`` records =
+let ``option fsharp record field with string field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: string |}> |}>
         records
 
 [<Property>]
-let ``option record field with byte array field`` records =
+let ``option fsharp record field with byte array field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: byte[] |}> |}>
         records
 
 [<Property>]
-let ``option record field with guid field`` records =
+let ``option fsharp record field with guid field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Guid |}> |}>
         records
 
 [<Property>]
-let ``option record field with array field`` records =
+let ``option fsharp record field with array field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: array<int> |}> |}>
         records
 
 [<Property>]
-let ``option record field with generic list field`` records =
+let ``option fsharp record field with generic list field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: ResizeArray<int> |}> |}>
         records
 
 [<Property>]
-let ``option record field with fsharp list field`` records =
+let ``option fsharp record field with fsharp list field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: list<int> |}> |}>
         records
 
 [<Property>]
-let ``option record field with record field`` records =
+let ``option fsharp record field with fsharp record field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: {|
@@ -4658,133 +4658,133 @@ let ``option record field with record field`` records =
         records
 
 [<Property>]
-let ``option record field with simple union field`` records =
+let ``option fsharp record field with simple union field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: SimpleUnion |}> |}>
         records
 
 [<Property>]
-let ``option record field with complex union field`` records =
+let ``option fsharp record field with complex union field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: ComplexUnion |}> |}>
         records
 
 [<Property>]
-let ``option record field with class field`` records =
+let ``option fsharp record field with class field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Class |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable bool field`` records =
+let ``option fsharp record field with nullable bool field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<bool> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable int8 field`` records =
+let ``option fsharp record field with nullable int8 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<int8> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable int16 field`` records =
+let ``option fsharp record field with nullable int16 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<int16> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable int32 field`` records =
+let ``option fsharp record field with nullable int32 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<int> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable int64 field`` records =
+let ``option fsharp record field with nullable int64 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<int64> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable uint8 field`` records =
+let ``option fsharp record field with nullable uint8 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<uint8> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable uint16 field`` records =
+let ``option fsharp record field with nullable uint16 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<uint16> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable uint32 field`` records =
+let ``option fsharp record field with nullable uint32 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<uint> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable uint64 field`` records =
+let ``option fsharp record field with nullable uint64 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<uint64> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable float32 field`` records =
+let ``option fsharp record field with nullable float32 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<float32> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable float64 field`` records =
+let ``option fsharp record field with nullable float64 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<float> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable decimal field`` records =
+let ``option fsharp record field with nullable decimal field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<decimal> |}> |}>
         records
 
 [<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``option record field with nullable date time field`` records =
+let ``option fsharp record field with nullable date time field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<DateTime> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable date time offset field`` records =
+let ``option fsharp record field with nullable date time offset field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<DateTimeOffset> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable guid field`` records =
+let ``option fsharp record field with nullable guid field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<Guid> |}> |}>
         records
 
 [<Property>]
-let ``option record field with nullable record field`` records =
+let ``option fsharp record field with nullable fsharp record field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: Nullable<struct {|
@@ -4792,147 +4792,147 @@ let ``option record field with nullable record field`` records =
         records
 
 [<Property>]
-let ``option record field with option bool field`` records =
+let ``option fsharp record field with option bool field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<bool> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option int8 field`` records =
+let ``option fsharp record field with option int8 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<int8> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option int16 field`` records =
+let ``option fsharp record field with option int16 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<int16> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option int32 field`` records =
+let ``option fsharp record field with option int32 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<int> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option int64 field`` records =
+let ``option fsharp record field with option int64 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<int64> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option uint8 field`` records =
+let ``option fsharp record field with option uint8 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<uint8> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option uint16 field`` records =
+let ``option fsharp record field with option uint16 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<uint16> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option uint32 field`` records =
+let ``option fsharp record field with option uint32 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<uint> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option uint64 field`` records =
+let ``option fsharp record field with option uint64 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<uint64> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option float32 field`` records =
+let ``option fsharp record field with option float32 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<float32> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option float64 field`` records =
+let ``option fsharp record field with option float64 field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<float> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option decimal field`` records =
+let ``option fsharp record field with option decimal field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<decimal> |}> |}>
         records
 
 [<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``option record field with option date time field`` records =
+let ``option fsharp record field with option date time field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<DateTime> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option date time offset field`` records =
+let ``option fsharp record field with option date time offset field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<DateTimeOffset> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option string field`` records =
+let ``option fsharp record field with option string field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<string> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option byte array field`` records =
+let ``option fsharp record field with option byte array field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<byte[]> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option guid field`` records =
+let ``option fsharp record field with option guid field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<Guid> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option array field`` records =
+let ``option fsharp record field with option array field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<array<int>> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option generic list field`` records =
+let ``option fsharp record field with option generic list field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<ResizeArray<int>> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option fsharp list field`` records =
+let ``option fsharp record field with option fsharp list field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<list<int>> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option record field`` records =
+let ``option fsharp record field with option fsharp record field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<{|
@@ -4940,35 +4940,35 @@ let ``option record field with option record field`` records =
         records
 
 [<Property>]
-let ``option record field with option simple union field`` records =
+let ``option fsharp record field with option simple union field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<SimpleUnion> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option complex union field`` records =
+let ``option fsharp record field with option complex union field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<ComplexUnion> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option class field`` records =
+let ``option fsharp record field with option class field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<Class> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option nullable field`` records =
+let ``option fsharp record field with option nullable field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<Nullable<int>> |}> |}>
         records
 
 [<Property>]
-let ``option record field with option option field`` records =
+let ``option fsharp record field with option option field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: option<option<int>> |}> |}>
@@ -5107,9 +5107,9 @@ let ``option complex union field with fsharp list case`` records =
         records
 
 [<Property>]
-let ``option complex union field with record case`` records =
+let ``option complex union field with fsharp record case`` records =
     testRoundtrip<{|
-        Field1: option<ComplexUnionWithRecordCase> |}>
+        Field1: option<ComplexUnionWithFSharpRecordCase> |}>
         records
 
 [<Property>]
@@ -5221,9 +5221,9 @@ let ``option complex union field with nullable guid case`` records =
         records
 
 [<Property>]
-let ``option complex union field with nullable record case`` records =
+let ``option complex union field with nullable fsharp record case`` records =
     testRoundtrip<{|
-        Field1: option<ComplexUnionWithNullableRecordCase> |}>
+        Field1: option<ComplexUnionWithNullableFSharpRecordCase> |}>
         records
 
 [<Property>]
@@ -5347,9 +5347,9 @@ let ``option complex union field with option fsharp list case`` records =
         records
 
 [<Property>]
-let ``option complex union field with option record case`` records =
+let ``option complex union field with option fsharp record case`` records =
     testRoundtrip<{|
-        Field1: option<ComplexUnionWithOptionRecordCase> |}>
+        Field1: option<ComplexUnionWithOptionFSharpRecordCase> |}>
         records
 
 [<Property>]
@@ -5509,9 +5509,9 @@ let ``option class field with fsharp list field`` records =
         records
 
 [<Property>]
-let ``option class field with record field`` records =
+let ``option class field with fsharp record field`` records =
     testRoundtrip<{|
-        Field1: option<ClassWithRecordField> |}>
+        Field1: option<ClassWithFSharpRecordField> |}>
         records
 
 [<Property>]
@@ -5623,9 +5623,9 @@ let ``option class field with nullable guid field`` records =
         records
 
 [<Property>]
-let ``option class field with nullable record field`` records =
+let ``option class field with nullable fsharp record field`` records =
     testRoundtrip<{|
-        Field1: option<ClassWithNullableRecordField> |}>
+        Field1: option<ClassWithNullableFSharpRecordField> |}>
         records
 
 [<Property>]
@@ -5749,9 +5749,9 @@ let ``option class field with option fsharp list field`` records =
         records
 
 [<Property>]
-let ``option class field with option record field`` records =
+let ``option class field with option fsharp record field`` records =
     testRoundtrip<{|
-        Field1: option<ClassWithOptionRecordField> |}>
+        Field1: option<ClassWithOptionFSharpRecordField> |}>
         records
 
 [<Property>]

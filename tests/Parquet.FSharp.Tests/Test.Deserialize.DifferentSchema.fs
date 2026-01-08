@@ -7,7 +7,9 @@ open System
 
 // TODO: If this file gets large, could split into PartialSchema and ExtendedSchema.
 
-module ``record with subset of fields`` =
+// TODO: Record with additional optional field?
+
+module ``fsharp record with subset of fields`` =
     module Input =
         type Record1 = {
             Field1: int

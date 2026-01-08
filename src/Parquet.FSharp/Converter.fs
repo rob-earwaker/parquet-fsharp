@@ -29,6 +29,7 @@ open System.Reflection
 // TODO: Attribute to select specific converter type to use? Alternatively could
 // be part of the serializer configuration?
 
+// TODO: Eventually should be able to rename to remove 'Factory'
 type internal IValueConverterFactory =
     abstract member TryCreateSerializer : dotnetType:Type -> ValueConverter option
     // TODO: Eventually add the value schema as a parameter.
@@ -167,7 +168,7 @@ module internal ValueConverter =
         lock Cache (fun () ->
             Cache[dotnetType] <- valueConverter)
 
-    let private atomicConverter
+    let atomicConverter
         dotnetType dataDotnetType getDataValue createFromDataValue =
         ValueConverter.Atomic {
             AtomicConverter.DotnetType = dotnetType
@@ -175,13 +176,13 @@ module internal ValueConverter =
             AtomicConverter.GetDataValue = getDataValue
             AtomicConverter.CreateFromDataValue = createFromDataValue }
 
-    let private recordConverter dotnetType fields createFromFieldValues =
+    let recordConverter dotnetType fields createFromFieldValues =
         ValueConverter.Record {
             RecordConverter.DotnetType = dotnetType
             RecordConverter.Fields = fields
             RecordConverter.CreateFromFieldValues = createFromFieldValues }
 
-    let private listConverter
+    let listConverter
         dotnetType elementConverter
         getLength getElementValue createEmpty createFromElementValues =
         ValueConverter.List {
@@ -192,7 +193,7 @@ module internal ValueConverter =
             ListConverter.CreateEmpty = createEmpty
             ListConverter.CreateFromElementValues = createFromElementValues }
 
-    let private optionalConverter
+    let optionalConverter
         dotnetType valueConverter isNull getValue createNull createFromValue =
         ValueConverter.Optional {
             OptionalConverter.DotnetType = dotnetType
@@ -202,7 +203,7 @@ module internal ValueConverter =
             OptionalConverter.CreateNull = createNull
             OptionalConverter.CreateFromValue = createFromValue }
 
-    let private ofReferenceType (valueConverter: ValueConverter) =
+    let ofReferenceType (valueConverter: ValueConverter) =
         let dotnetType = valueConverter.DotnetType
         let isNull = Expression.IsNull
         let getValue = id
@@ -213,7 +214,7 @@ module internal ValueConverter =
 
     // TODO: This shouldn't really be necessary, but while Parquet.Net
     // treats all struct and list fields as optional it's necessary.
-    let private ofNonNullableReferenceType (valueConverter: ValueConverter) =
+    let ofNonNullableReferenceType (valueConverter: ValueConverter) =
         let dotnetType = valueConverter.DotnetType
         let isNull = fun value -> Expression.False
         let getValue = id
@@ -225,13 +226,6 @@ module internal ValueConverter =
         let createFromValue = id
         ValueConverter.optionalConverter
             dotnetType valueConverter isNull getValue createNull createFromValue
-
-    let ofPrimitive dotnetType =
-        let dataDotnetType = dotnetType
-        let getDataValue = id
-        let createFromDataValue = id
-        ValueConverter.atomicConverter
-            dotnetType dataDotnetType getDataValue createFromDataValue
 
     let DateTimeOffset =
         let dotnetType = typeof<DateTimeOffset>
@@ -651,21 +645,6 @@ module internal ValueConverterFactory =
             member this.TryCreateSerializer(dotnetType) = tryCreateSerializer dotnetType
             member this.TryCreateDeserializer(dotnetType) = tryCreateDeserializer dotnetType }
 
-    let private Bool = create DotnetType.isType<bool> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-    let private Int8 = create DotnetType.isType<int8> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-    let private Int16 = create DotnetType.isType<int16> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-    let private Int32 = create DotnetType.isType<int> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-    let private Int64 = create DotnetType.isType<int64> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-    let private UInt8 = create DotnetType.isType<uint8> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-    let private UInt16 = create DotnetType.isType<uint16> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-    let private UInt32 = create DotnetType.isType<uint32> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-    let private UInt64 = create DotnetType.isType<uint64> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-    let private Float32 = create DotnetType.isType<float32> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-    let private Float64 = create DotnetType.isType<float> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-    let private Decimal = create DotnetType.isType<decimal> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-    let private DateTime = create DotnetType.isType<DateTime> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-    let private Guid = create DotnetType.isType<Guid> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
-
     let private DateTimeOffset =
         let isSupportedType = DotnetType.isType<DateTimeOffset>
         let createSerializer = fun _ -> ValueConverter.DateTimeOffset
@@ -736,20 +715,20 @@ module internal ValueConverterFactory =
         create isSupportedType createSerializer createDeserializer
 
     let All : IValueConverterFactory[] = [|
-        Bool
-        Int8
-        Int16
-        Int32
-        Int64
-        UInt8
-        UInt16
-        UInt32
-        UInt64
-        Float32
-        Float64
-        Decimal
-        DateTime
-        Guid
+        PrimitiveConverterFactory<bool>()
+        PrimitiveConverterFactory<int8>()
+        PrimitiveConverterFactory<int16>()
+        PrimitiveConverterFactory<int>()
+        PrimitiveConverterFactory<int64>()
+        PrimitiveConverterFactory<uint8>()
+        PrimitiveConverterFactory<uint16>()
+        PrimitiveConverterFactory<uint32>()
+        PrimitiveConverterFactory<uint64>()
+        PrimitiveConverterFactory<float32>()
+        PrimitiveConverterFactory<float>()
+        PrimitiveConverterFactory<decimal>()
+        PrimitiveConverterFactory<DateTime>()
+        PrimitiveConverterFactory<Guid>()
         DateTimeOffset
         String
         // This must come before the generic array type since byte arrays are
@@ -767,3 +746,23 @@ module internal ValueConverterFactory =
         Union
         Class
     |]
+
+type internal PrimitiveConverterFactory<'Value>() =
+    let valueConverter =
+        let dotnetType = typeof<'Value>
+        let dataDotnetType = dotnetType
+        let getDataValue = id
+        let createFromDataValue = id
+        ValueConverter.atomicConverter
+            dotnetType dataDotnetType getDataValue createFromDataValue
+
+    interface IValueConverterFactory with
+        member this.TryCreateSerializer(dotnetType) =
+            if dotnetType <> typeof<'Value>
+            then Option.None
+            else Option.Some valueConverter
+
+        member this.TryCreateDeserializer(dotnetType) =
+            if dotnetType <> typeof<'Value>
+            then Option.None
+            else Option.Some valueConverter

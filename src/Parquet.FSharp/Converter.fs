@@ -336,146 +336,6 @@ module internal ValueConverter =
         then ValueConverter.ofOptionOptional dotnetType valueConverter
         else ValueConverter.ofOptionRequired dotnetType valueConverter
 
-    let private ofUnionSimple (unionInfo: UnionInfo) =
-        let dotnetType = unionInfo.DotnetType
-        // Unions in which all cases have no fields can be represented as a
-        // simple string value containing the case name. Since a union value
-        // can't be null and must be one of the possible cases, this value is
-        // not optional.
-        let dataDotnetType = typeof<string>
-        let getDataValue = unionInfo.GetCaseName
-        let createFromDataValue (caseName: Expression) =
-            let returnLabel = Expression.Label(dotnetType, "union")
-            Expression.Block(
-                seq<Expression> {
-                    yield! unionInfo.UnionCases
-                        |> Array.map (fun caseInfo ->
-                            Expression.IfThen(
-                                Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
-                                Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||]))
-                            :> Expression)
-                    yield Expression.FailWith(
-                        $"union of type '{dotnetType.FullName}' has invalid name value")
-                    yield Expression.Label(returnLabel, Expression.Default(dotnetType))
-                })
-            :> Expression
-        ValueConverter.atomicConverter
-            dotnetType dataDotnetType getDataValue createFromDataValue
-
-    let private ofUnionCase (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
-        // Union case data is represented as an optional record containing the
-        // field values for that case. The record needs to be optional since
-        // only one case from the union can be set and the others will be NULL.
-        let dotnetType = unionInfo.DotnetType
-        let valueConverter =
-            let dotnetType = unionInfo.DotnetType
-            let fields = unionCase.Fields |> Array.map (FieldConverter.ofUnionCaseField unionCase)
-            let createFromFieldValues = unionCase.CreateFromFieldValues
-            ValueConverter.recordConverter dotnetType fields createFromFieldValues
-        // The data for this case is NULL if the union tag does not match the
-        // tag for this case.
-        let isNull (union: Expression) =
-            Expression.NotEqual(unionInfo.GetTag union, unionCase.Tag)
-            :> Expression
-        let getValue = id
-        // We can't use {Expression.Null} here because union types are not
-        // nullable, however they do still have {null} as their default value
-        // because they are reference types.
-        let createNull = Expression.Default(dotnetType) :> Expression
-        let createFromValue = id
-        ValueConverter.optionalConverter
-            dotnetType valueConverter isNull getValue createNull createFromValue
-
-    let private ofUnionComplex (unionInfo: UnionInfo) =
-        // Unions that have one or more cases with one or more fields can not be
-        // represented as a simple string value. Instead, we have to model the
-        // union as a record with a field to capture the case name and
-        // additional fields to hold any associated case data.
-        let dotnetType = unionInfo.DotnetType
-        let unionCasesWithFields =
-            unionInfo.UnionCases
-            |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
-        // The 'Type' field holds the case name. Since unions are not nullable
-        // there must always be a case name present. We therefore model this
-        // as a non-optional string value.
-        let typeField =
-            // TODO: The name of this field could be configurable via an attribute.
-            let name = "Type"
-            let valueConverter =
-                let dotnetType = typeof<string>
-                let dataDotnetType = dotnetType
-                let getDataValue = id
-                let createFromDataValue = id
-                ValueConverter.atomicConverter
-                    dotnetType dataDotnetType getDataValue createFromDataValue
-            let getValue = unionInfo.GetCaseName
-            FieldConverter.create name valueConverter getValue
-        // Each union case with one or more fields is assigned an additional
-        // field within the record to hold its associated data. The name of this
-        // field matches the case name and the value is a record that contains
-        // the case's field values.
-        let caseFields =
-            unionCasesWithFields
-            |> Array.map (fun unionCase ->
-                let name = unionCase.Name
-                // Note that there's a chance the case name is the same as the
-                // field name chosen to store the union case name, in which case
-                // we'd have two fields with the same name. We could add a level
-                // of nesting to the object structure to avoid this potential
-                // name conflict, but this adds extra complexity.
-                if name = typeField.Name then
-                    failwith <|
-                        $"case name '{typeField.Name}' is not supported"
-                        + $" for union type '{dotnetType.FullName}'"
-                let valueConverter = ValueConverter.ofUnionCase unionInfo unionCase
-                let getValue = id
-                FieldConverter.create name valueConverter getValue)
-        let fields = Array.append [| typeField |] caseFields
-        let createFromFieldValues (fieldValues: Expression[]) =
-            let caseName = Expression.Variable(typeof<string>, "caseName")
-            let returnLabel = Expression.Label(dotnetType, "union")
-            Expression.Block(
-                [ caseName ],
-                seq<Expression> {
-                    yield Expression.Assign(caseName, fieldValues[0])
-                    for caseInfo in unionInfo.UnionCases do
-                        yield Expression.IfThen(
-                            Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
-                            if caseInfo.Fields.Length = 0
-                            then
-                                Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||])
-                                :> Expression
-                            else
-                                let caseIndex =
-                                    caseFields
-                                    |> Array.findIndex (fun field -> field.Name = caseInfo.Name)
-                                let fieldValue = fieldValues[caseIndex + 1]
-                                Expression.IfThenElse(
-                                    Expression.IsNull(Expression.Convert(fieldValue, typeof<obj>)),
-                                    Expression.FailWith(
-                                        $"no field values found for case '{caseInfo.Name}'"
-                                        + " of union type '{dotnetType.FullName}'"),
-                                    Expression.Return(returnLabel, fieldValue)))
-                    yield Expression.FailWith(
-                        $"unknown case name for union of type '{dotnetType.FullName}'")
-                    yield Expression.Label(returnLabel, Expression.Default(returnLabel.Type))
-                })
-            :> Expression
-        // TODO: F# unions are not nullable by default, however we are mapping
-        // to a struct and Parquet.Net does not support struct fields that
-        // aren't nullable, so wrap as a non-nullable reference type.
-        ValueConverter.recordConverter dotnetType fields createFromFieldValues
-        |> ValueConverter.ofNonNullableReferenceType
-
-    let ofUnion dotnetType =
-        // Unions are represented in one of two ways depending on whether any of
-        // the cases have associated data fields.
-        let unionInfo = UnionInfo.ofUnion dotnetType
-        if unionInfo.UnionCases
-            |> Array.forall (fun unionCase -> unionCase.Fields.Length = 0)
-        then ValueConverter.ofUnionSimple unionInfo
-        else ValueConverter.ofUnionComplex unionInfo
-
     let ofType (dotnetType: Type) : ValueConverter =
         match tryGetCached dotnetType with
         | Option.Some valueConverter -> valueConverter
@@ -540,12 +400,6 @@ module internal ValueConverterFactory =
         let createDeserializer = ValueConverter.ofOption
         create isSupportedType createSerializer createDeserializer
 
-    let private Union =
-        let isSupportedType = FSharpType.IsUnion
-        let createSerializer = ValueConverter.ofUnion
-        let createDeserializer = ValueConverter.ofUnion
-        create isSupportedType createSerializer createDeserializer
-
     let private Class =
         let isSupportedType (dotnetType: Type) =
             dotnetType.IsClass
@@ -582,7 +436,7 @@ module internal ValueConverterFactory =
         // This must come before the generic union type since option types are
         // handled in a special way.
         Option
-        Union
+        UnionConverterFactory()
         Class
     |]
 
@@ -811,5 +665,159 @@ type internal FSharpRecordConverterFactory() =
 
         member this.TryCreateDeserializer(dotnetType) =
             if isFSharpRecordType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+type internal UnionConverterFactory() =
+    let isUnionType = FSharpType.IsUnion
+
+    let ofUnionSimple (unionInfo: UnionInfo) =
+        let dotnetType = unionInfo.DotnetType
+        // Unions in which all cases have no fields can be represented as a
+        // simple string value containing the case name. Since a union value
+        // can't be null and must be one of the possible cases, this value is
+        // not optional.
+        let dataDotnetType = typeof<string>
+        let getDataValue = unionInfo.GetCaseName
+        let createFromDataValue (caseName: Expression) =
+            let returnLabel = Expression.Label(dotnetType, "union")
+            Expression.Block(
+                seq<Expression> {
+                    yield! unionInfo.UnionCases
+                        |> Array.map (fun caseInfo ->
+                            Expression.IfThen(
+                                Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
+                                Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||]))
+                            :> Expression)
+                    yield Expression.FailWith(
+                        $"union of type '{dotnetType.FullName}' has invalid name value")
+                    yield Expression.Label(returnLabel, Expression.Default(dotnetType))
+                })
+            :> Expression
+        ValueConverter.atomicConverter
+            dotnetType dataDotnetType getDataValue createFromDataValue
+
+    let ofUnionCase (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
+        // Union case data is represented as an optional record containing the
+        // field values for that case. The record needs to be optional since
+        // only one case from the union can be set and the others will be NULL.
+        let dotnetType = unionInfo.DotnetType
+        let valueConverter =
+            let dotnetType = unionInfo.DotnetType
+            let fields = unionCase.Fields |> Array.map (FieldConverter.ofUnionCaseField unionCase)
+            let createFromFieldValues = unionCase.CreateFromFieldValues
+            ValueConverter.recordConverter dotnetType fields createFromFieldValues
+        // The data for this case is NULL if the union tag does not match the
+        // tag for this case.
+        let isNull (union: Expression) =
+            Expression.NotEqual(unionInfo.GetTag union, unionCase.Tag)
+            :> Expression
+        let getValue = id
+        // We can't use {Expression.Null} here because union types are not
+        // nullable, however they do still have {null} as their default value
+        // because they are reference types.
+        let createNull = Expression.Default(dotnetType) :> Expression
+        let createFromValue = id
+        ValueConverter.optionalConverter
+            dotnetType valueConverter isNull getValue createNull createFromValue
+
+    let ofUnionComplex (unionInfo: UnionInfo) =
+        // Unions that have one or more cases with one or more fields can not be
+        // represented as a simple string value. Instead, we have to model the
+        // union as a record with a field to capture the case name and
+        // additional fields to hold any associated case data.
+        let dotnetType = unionInfo.DotnetType
+        let unionCasesWithFields =
+            unionInfo.UnionCases
+            |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
+        // The 'Type' field holds the case name. Since unions are not nullable
+        // there must always be a case name present. We therefore model this
+        // as a non-optional string value.
+        let typeField =
+            // TODO: The name of this field could be configurable via an attribute.
+            let name = "Type"
+            let valueConverter =
+                let dotnetType = typeof<string>
+                let dataDotnetType = dotnetType
+                let getDataValue = id
+                let createFromDataValue = id
+                ValueConverter.atomicConverter
+                    dotnetType dataDotnetType getDataValue createFromDataValue
+            let getValue = unionInfo.GetCaseName
+            FieldConverter.create name valueConverter getValue
+        // Each union case with one or more fields is assigned an additional
+        // field within the record to hold its associated data. The name of this
+        // field matches the case name and the value is a record that contains
+        // the case's field values.
+        let caseFields =
+            unionCasesWithFields
+            |> Array.map (fun unionCase ->
+                let name = unionCase.Name
+                // Note that there's a chance the case name is the same as the
+                // field name chosen to store the union case name, in which case
+                // we'd have two fields with the same name. We could add a level
+                // of nesting to the object structure to avoid this potential
+                // name conflict, but this adds extra complexity.
+                if name = typeField.Name then
+                    failwith <|
+                        $"case name '{typeField.Name}' is not supported"
+                        + $" for union type '{dotnetType.FullName}'"
+                let valueConverter = ofUnionCase unionInfo unionCase
+                let getValue = id
+                FieldConverter.create name valueConverter getValue)
+        let fields = Array.append [| typeField |] caseFields
+        let createFromFieldValues (fieldValues: Expression[]) =
+            let caseName = Expression.Variable(typeof<string>, "caseName")
+            let returnLabel = Expression.Label(dotnetType, "union")
+            Expression.Block(
+                [ caseName ],
+                seq<Expression> {
+                    yield Expression.Assign(caseName, fieldValues[0])
+                    for caseInfo in unionInfo.UnionCases do
+                        yield Expression.IfThen(
+                            Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
+                            if caseInfo.Fields.Length = 0
+                            then
+                                Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||])
+                                :> Expression
+                            else
+                                let caseIndex =
+                                    caseFields
+                                    |> Array.findIndex (fun field -> field.Name = caseInfo.Name)
+                                let fieldValue = fieldValues[caseIndex + 1]
+                                Expression.IfThenElse(
+                                    Expression.IsNull(Expression.Convert(fieldValue, typeof<obj>)),
+                                    Expression.FailWith(
+                                        $"no field values found for case '{caseInfo.Name}'"
+                                        + " of union type '{dotnetType.FullName}'"),
+                                    Expression.Return(returnLabel, fieldValue)))
+                    yield Expression.FailWith(
+                        $"unknown case name for union of type '{dotnetType.FullName}'")
+                    yield Expression.Label(returnLabel, Expression.Default(returnLabel.Type))
+                })
+            :> Expression
+        // TODO: F# unions are not nullable by default, however we are mapping
+        // to a struct and Parquet.Net does not support struct fields that
+        // aren't nullable, so wrap as a non-nullable reference type.
+        ValueConverter.recordConverter dotnetType fields createFromFieldValues
+        |> ValueConverter.ofNonNullableReferenceType
+
+    let createValueConverter dotnetType =
+        // Unions are represented in one of two ways depending on whether any of
+        // the cases have associated data fields.
+        let unionInfo = UnionInfo.ofUnion dotnetType
+        if unionInfo.UnionCases
+            |> Array.forall (fun unionCase -> unionCase.Fields.Length = 0)
+        then ofUnionSimple unionInfo
+        else ofUnionComplex unionInfo
+
+    interface IValueConverterFactory with
+        member this.TryCreateSerializer(dotnetType) =
+            if isUnionType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType) =
+            if isUnionType dotnetType
             then Option.Some (createValueConverter dotnetType)
             else Option.None

@@ -227,38 +227,6 @@ module internal ValueConverter =
         ValueConverter.optionalConverter
             dotnetType valueConverter isNull getValue createNull createFromValue
 
-    let DateTimeOffset =
-        let dotnetType = typeof<DateTimeOffset>
-        let dataDotnetType = typeof<DateTime>
-        let getDataValue (value: Expression) =
-            Expression.Property(value, "UtcDateTime")
-            :> Expression
-        let createFromDataValue (dataValue: Expression) =
-            Expression.New(
-                typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
-                Expression.Call(dataValue, "ToUniversalTime", []))
-            :> Expression
-        ValueConverter.atomicConverter
-            dotnetType dataDotnetType getDataValue createFromDataValue
-
-    let String =
-        let dotnetType = typeof<string>
-        let dataDotnetType = dotnetType
-        let getDataValue = id
-        let createFromDataValue = id
-        ValueConverter.atomicConverter
-            dotnetType dataDotnetType getDataValue createFromDataValue
-        |> ValueConverter.ofReferenceType
-
-    let ByteArray =
-        let dotnetType = typeof<byte[]>
-        let dataDotnetType = dotnetType
-        let getDataValue = id
-        let createFromDataValue = id
-        ValueConverter.atomicConverter
-            dotnetType dataDotnetType getDataValue createFromDataValue
-        |> ValueConverter.ofReferenceType
-
     let ofRecord dotnetType =
         let fields =
             FSharpType.GetRecordFields(dotnetType)
@@ -645,24 +613,6 @@ module internal ValueConverterFactory =
             member this.TryCreateSerializer(dotnetType) = tryCreateSerializer dotnetType
             member this.TryCreateDeserializer(dotnetType) = tryCreateDeserializer dotnetType }
 
-    let private DateTimeOffset =
-        let isSupportedType = DotnetType.isType<DateTimeOffset>
-        let createSerializer = fun _ -> ValueConverter.DateTimeOffset
-        let createDeserializer = fun _ -> ValueConverter.DateTimeOffset
-        create isSupportedType createSerializer createDeserializer
-
-    let private String =
-        let isSupportedType = DotnetType.isType<string>
-        let createSerializer = fun _ -> ValueConverter.String
-        let createDeserializer = fun _ -> ValueConverter.String
-        create isSupportedType createSerializer createDeserializer
-
-    let private ByteArray =
-        let isSupportedType = DotnetType.isType<byte[]>
-        let createSerializer = fun _ -> ValueConverter.ByteArray
-        let createDeserializer = fun _ -> ValueConverter.ByteArray
-        create isSupportedType createSerializer createDeserializer
-
     let private Array1d =
         let isSupportedType (dotnetType: Type) =
             dotnetType.IsArray
@@ -729,12 +679,12 @@ module internal ValueConverterFactory =
         PrimitiveConverterFactory<decimal>()
         PrimitiveConverterFactory<DateTime>()
         PrimitiveConverterFactory<Guid>()
-        DateTimeOffset
-        String
+        DateTimeOffsetConverterFactory()
+        StringConverterFactory()
         // This must come before the generic array type since byte arrays are
         // supported as a primitive type in Parquet and are therefore handled as
         // atomic values rather than lists.
-        ByteArray
+        ByteArrayConverterFactory()
         Array1d
         GenericList
         FSharpList
@@ -758,11 +708,79 @@ type internal PrimitiveConverterFactory<'Value>() =
 
     interface IValueConverterFactory with
         member this.TryCreateSerializer(dotnetType) =
-            if dotnetType <> typeof<'Value>
-            then Option.None
-            else Option.Some valueConverter
+            if dotnetType = valueConverter.DotnetType
+            then Option.Some valueConverter
+            else Option.None
 
         member this.TryCreateDeserializer(dotnetType) =
-            if dotnetType <> typeof<'Value>
-            then Option.None
-            else Option.Some valueConverter
+            if dotnetType = valueConverter.DotnetType
+            then Option.Some valueConverter
+            else Option.None
+
+type internal DateTimeOffsetConverterFactory() =
+    let valueConverter =
+        let dotnetType = typeof<DateTimeOffset>
+        let dataDotnetType = typeof<DateTime>
+        let getDataValue (value: Expression) =
+            Expression.Property(value, "UtcDateTime")
+            :> Expression
+        let createFromDataValue (dataValue: Expression) =
+            Expression.New(
+                typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
+                Expression.Call(dataValue, "ToUniversalTime", []))
+            :> Expression
+        ValueConverter.atomicConverter
+            dotnetType dataDotnetType getDataValue createFromDataValue
+
+    interface IValueConverterFactory with
+        member this.TryCreateSerializer(dotnetType) =
+            if dotnetType = valueConverter.DotnetType
+            then Option.Some valueConverter
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType) =
+            if dotnetType = valueConverter.DotnetType
+            then Option.Some valueConverter
+            else Option.None
+
+type internal StringConverterFactory() =
+    let valueConverter =
+        let dotnetType = typeof<string>
+        let dataDotnetType = dotnetType
+        let getDataValue = id
+        let createFromDataValue = id
+        ValueConverter.atomicConverter
+            dotnetType dataDotnetType getDataValue createFromDataValue
+        |> ValueConverter.ofReferenceType
+
+    interface IValueConverterFactory with
+        member this.TryCreateSerializer(dotnetType) =
+            if dotnetType = valueConverter.DotnetType
+            then Option.Some valueConverter
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType) =
+            if dotnetType = valueConverter.DotnetType
+            then Option.Some valueConverter
+            else Option.None
+
+type internal ByteArrayConverterFactory() =
+    let valueConverter =
+        let dotnetType = typeof<byte[]>
+        let dataDotnetType = dotnetType
+        let getDataValue = id
+        let createFromDataValue = id
+        ValueConverter.atomicConverter
+            dotnetType dataDotnetType getDataValue createFromDataValue
+        |> ValueConverter.ofReferenceType
+
+    interface IValueConverterFactory with
+        member this.TryCreateSerializer(dotnetType) =
+            if dotnetType = valueConverter.DotnetType
+            then Option.Some valueConverter
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType) =
+            if dotnetType = valueConverter.DotnetType
+            then Option.Some valueConverter
+            else Option.None

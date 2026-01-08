@@ -31,6 +31,8 @@ open System.Reflection
 
 type internal IValueConverterFactory =
     abstract member TryCreateSerializer : dotnetType:Type -> ValueConverter option
+    // TODO: Eventually add the value schema as a parameter.
+    abstract member TryCreateDeserializer : dotnetType:Type -> ValueConverter option
 
 type internal ValueConverter =
     | Atomic of AtomicConverter
@@ -636,86 +638,102 @@ module private FieldConverter =
         create name valueConverter getValue
 
 module internal ValueConverterFactory =
-    let private create isSupportedType createSerializer =
+    let private create isSupportedType createSerializer createDeserializer =
         let tryCreateSerializer dotnetType =
             if isSupportedType dotnetType
             then FSharp.Core.Option.Some (createSerializer dotnetType)
             else FSharp.Core.Option.None
+        let tryCreateDeserializer dotnetType =
+            if isSupportedType dotnetType
+            then FSharp.Core.Option.Some (createDeserializer dotnetType)
+            else FSharp.Core.Option.None
         { new IValueConverterFactory with
-            member this.TryCreateSerializer(dotnetType) = tryCreateSerializer dotnetType }
+            member this.TryCreateSerializer(dotnetType) = tryCreateSerializer dotnetType
+            member this.TryCreateDeserializer(dotnetType) = tryCreateDeserializer dotnetType }
 
-    let private Bool = create DotnetType.isType<bool> ValueConverter.ofPrimitive
-    let private Int8 = create DotnetType.isType<int8> ValueConverter.ofPrimitive
-    let private Int16 = create DotnetType.isType<int16> ValueConverter.ofPrimitive
-    let private Int32 = create DotnetType.isType<int> ValueConverter.ofPrimitive
-    let private Int64 = create DotnetType.isType<int64> ValueConverter.ofPrimitive
-    let private UInt8 = create DotnetType.isType<uint8> ValueConverter.ofPrimitive
-    let private UInt16 = create DotnetType.isType<uint16> ValueConverter.ofPrimitive
-    let private UInt32 = create DotnetType.isType<uint32> ValueConverter.ofPrimitive
-    let private UInt64 = create DotnetType.isType<uint64> ValueConverter.ofPrimitive
-    let private Float32 = create DotnetType.isType<float32> ValueConverter.ofPrimitive
-    let private Float64 = create DotnetType.isType<float> ValueConverter.ofPrimitive
-    let private Decimal = create DotnetType.isType<decimal> ValueConverter.ofPrimitive
-    let private DateTime = create DotnetType.isType<DateTime> ValueConverter.ofPrimitive
-    let private Guid = create DotnetType.isType<Guid> ValueConverter.ofPrimitive
+    let private Bool = create DotnetType.isType<bool> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
+    let private Int8 = create DotnetType.isType<int8> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
+    let private Int16 = create DotnetType.isType<int16> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
+    let private Int32 = create DotnetType.isType<int> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
+    let private Int64 = create DotnetType.isType<int64> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
+    let private UInt8 = create DotnetType.isType<uint8> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
+    let private UInt16 = create DotnetType.isType<uint16> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
+    let private UInt32 = create DotnetType.isType<uint32> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
+    let private UInt64 = create DotnetType.isType<uint64> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
+    let private Float32 = create DotnetType.isType<float32> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
+    let private Float64 = create DotnetType.isType<float> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
+    let private Decimal = create DotnetType.isType<decimal> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
+    let private DateTime = create DotnetType.isType<DateTime> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
+    let private Guid = create DotnetType.isType<Guid> ValueConverter.ofPrimitive ValueConverter.ofPrimitive
 
     let private DateTimeOffset =
         let isSupportedType = DotnetType.isType<DateTimeOffset>
         let createSerializer = fun _ -> ValueConverter.DateTimeOffset
-        create isSupportedType createSerializer
+        let createDeserializer = fun _ -> ValueConverter.DateTimeOffset
+        create isSupportedType createSerializer createDeserializer
 
     let private String =
         let isSupportedType = DotnetType.isType<string>
         let createSerializer = fun _ -> ValueConverter.String
-        create isSupportedType createSerializer
+        let createDeserializer = fun _ -> ValueConverter.String
+        create isSupportedType createSerializer createDeserializer
 
     let private ByteArray =
         let isSupportedType = DotnetType.isType<byte[]>
         let createSerializer = fun _ -> ValueConverter.ByteArray
-        create isSupportedType createSerializer
+        let createDeserializer = fun _ -> ValueConverter.ByteArray
+        create isSupportedType createSerializer createDeserializer
 
     let private Array1d =
         let isSupportedType (dotnetType: Type) =
             dotnetType.IsArray
             && dotnetType.GetArrayRank() = 1
         let createSerializer = ValueConverter.ofArray1d
-        ValueConverterFactory.create isSupportedType createSerializer
+        let createDeserializer = ValueConverter.ofArray1d
+        create isSupportedType createSerializer createDeserializer
 
     let private GenericList =
         let isSupportedType = DotnetType.isGenericType<ResizeArray<_>>
         let createSerializer = ValueConverter.ofGenericList
-        ValueConverterFactory.create isSupportedType createSerializer
+        let createDeserializer = ValueConverter.ofGenericList
+        create isSupportedType createSerializer createDeserializer
 
     let private FSharpList =
         let isSupportedType = DotnetType.isGenericType<list<_>>
         let createSerializer = ValueConverter.ofFSharpList
-        ValueConverterFactory.create isSupportedType createSerializer
+        let createDeserializer = ValueConverter.ofFSharpList
+        create isSupportedType createSerializer createDeserializer
 
     let private Record =
         let isSupportedType = FSharpType.IsRecord
         let createSerializer = ValueConverter.ofRecord
-        ValueConverterFactory.create isSupportedType createSerializer
+        let createDeserializer = ValueConverter.ofRecord
+        create isSupportedType createSerializer createDeserializer
 
     let private Nullable =
         let isSupportedType = DotnetType.isGenericType<Nullable<_>>
         let createSerializer = ValueConverter.ofNullable
-        ValueConverterFactory.create isSupportedType createSerializer
+        let createDeserializer = ValueConverter.ofNullable
+        create isSupportedType createSerializer createDeserializer
 
     let private Option =
         let isSupportedType = DotnetType.isGenericType<option<_>>
         let createSerializer = ValueConverter.ofOption
-        ValueConverterFactory.create isSupportedType createSerializer
+        let createDeserializer = ValueConverter.ofOption
+        create isSupportedType createSerializer createDeserializer
 
     let private Union =
         let isSupportedType = FSharpType.IsUnion
         let createSerializer = ValueConverter.ofUnion
-        ValueConverterFactory.create isSupportedType createSerializer
+        let createDeserializer = ValueConverter.ofUnion
+        create isSupportedType createSerializer createDeserializer
 
     let private Class =
         let isSupportedType (dotnetType: Type) =
             dotnetType.IsClass
         let createSerializer = ValueConverter.ofClass
-        ValueConverterFactory.create isSupportedType createSerializer
+        let createDeserializer = ValueConverter.ofClass
+        create isSupportedType createSerializer createDeserializer
 
     let All : IValueConverterFactory[] = [|
         Bool

@@ -224,118 +224,6 @@ module internal ValueConverter =
         ValueConverter.optionalConverter
             dotnetType valueConverter isNull getValue createNull createFromValue
 
-    let ofClass (dotnetType: Type) =
-        let defaultConstructor = dotnetType.GetConstructor([||])
-        if isNull defaultConstructor then
-            failwith $"type '{dotnetType.FullName}' does not have a default constructor"
-        let fields =
-            dotnetType.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
-            |> Array.map FieldConverter.ofProperty
-        let createFromFieldValues =
-            fun (fieldValues: Expression[]) ->
-                let record = Expression.Variable(dotnetType, "record")
-                Expression.Block(
-                    [ record ],
-                    seq<Expression> {
-                        yield Expression.Assign(record, Expression.New(defaultConstructor))
-                        yield! Array.zip fields fieldValues
-                            |> Array.map (fun (field, fieldValue) ->
-                                Expression.Assign(
-                                    Expression.Property(record, field.Name),
-                                    fieldValue)
-                                :> Expression)
-                        yield record
-                    })
-                :> Expression
-        ValueConverter.recordConverter dotnetType fields createFromFieldValues
-        |> ValueConverter.ofReferenceType
-
-    let private ofNullableRequired dotnetType (valueConverter: ValueConverter) =
-        let isNull (nullable: Expression) =
-            Expression.Not(Expression.Property(nullable, "HasValue"))
-            :> Expression
-        let getValue (nullable: Expression) =
-            Expression.Property(nullable, "Value")
-            :> Expression
-        let createNull = Expression.Null(dotnetType)
-        let createFromValue =
-            let constructor = dotnetType.GetConstructor([| valueConverter.DotnetType |])
-            fun (value: Expression) ->
-                Expression.New(constructor, value)
-                :> Expression
-        ValueConverter.optionalConverter
-            dotnetType valueConverter isNull getValue createNull createFromValue
-
-    let private ofNullableOptional (dotnetType: Type) (valueConverter: ValueConverter) =
-        let fields =
-            let valueField =
-                // TODO: The name of this field could be configurable via an attribute.
-                let name = "Value"
-                let getValue = id
-                FieldConverter.create name valueConverter getValue
-            [| valueField |]
-        let createFromFieldValues (fieldValues: Expression[]) =
-            fieldValues[0]
-        ValueConverter.recordConverter valueConverter.DotnetType fields createFromFieldValues
-        |> ValueConverter.ofNullableRequired dotnetType
-
-    let ofNullable (dotnetType: Type) =
-        let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
-        let valueConverter = ValueConverter.ofType valueDotnetType
-        if valueConverter.IsOptional
-        // TODO: This shouldn't really be possible as nullable values have to be
-        // value types and therefore can't be null, but while we need to treat
-        // all record types as optional we need to handle this case.
-        then ValueConverter.ofNullableOptional dotnetType valueConverter
-        else ValueConverter.ofNullableRequired dotnetType valueConverter
-
-    let private ofOptionRequired dotnetType (valueConverter: ValueConverter) =
-        let unionCases = FSharpType.GetUnionCases(dotnetType)
-        let isNull =
-            let optionModuleType =
-                Assembly.Load("FSharp.Core").GetTypes()
-                |> Array.filter (fun type' -> type'.Name = "OptionModule")
-                |> Array.exactlyOne
-            fun (option: Expression) ->
-                Expression.Call(optionModuleType, "IsNone", [| valueConverter.DotnetType |], option)
-                :> Expression
-        let getValue (option: Expression) =
-            Expression.Property(option, "Value")
-            :> Expression
-        let createNull =
-            let noneCase = unionCases |> Array.find _.Name.Equals("None")
-            let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(noneCase)
-            Expression.Call(constructorMethod, [||])
-            :> Expression
-        let createFromValue =
-            let someCase = unionCases |> Array.find _.Name.Equals("Some")
-            let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(someCase)
-            fun (value: Expression) ->
-                Expression.Call(constructorMethod, value)
-                :> Expression
-        ValueConverter.optionalConverter
-            dotnetType valueConverter isNull getValue createNull createFromValue
-
-    let private ofOptionOptional (dotnetType: Type) (valueConverter: ValueConverter) =
-        let fields =
-            let valueField =
-                // TODO: The name of this field could be configurable via an attribute.
-                let name = "Value"
-                let getValue = id
-                FieldConverter.create name valueConverter getValue
-            [| valueField |]
-        let createFromFieldValues (fieldValues: Expression[]) =
-            fieldValues[0]
-        ValueConverter.recordConverter valueConverter.DotnetType fields createFromFieldValues
-        |> ValueConverter.ofOptionRequired dotnetType
-
-    let ofOption (dotnetType: Type) =
-        let valueDotnetType = dotnetType.GetGenericArguments()[0]
-        let valueConverter = ValueConverter.ofType valueDotnetType
-        if valueConverter.IsOptional
-        then ValueConverter.ofOptionOptional dotnetType valueConverter
-        else ValueConverter.ofOptionRequired dotnetType valueConverter
-
     let ofType (dotnetType: Type) : ValueConverter =
         match tryGetCached dotnetType with
         | Option.Some valueConverter -> valueConverter
@@ -375,38 +263,6 @@ module private FieldConverter =
         create name valueConverter getValue
 
 module internal ValueConverterFactory =
-    let private create isSupportedType createSerializer createDeserializer =
-        let tryCreateSerializer dotnetType =
-            if isSupportedType dotnetType
-            then FSharp.Core.Option.Some (createSerializer dotnetType)
-            else FSharp.Core.Option.None
-        let tryCreateDeserializer dotnetType =
-            if isSupportedType dotnetType
-            then FSharp.Core.Option.Some (createDeserializer dotnetType)
-            else FSharp.Core.Option.None
-        { new IValueConverterFactory with
-            member this.TryCreateSerializer(dotnetType) = tryCreateSerializer dotnetType
-            member this.TryCreateDeserializer(dotnetType) = tryCreateDeserializer dotnetType }
-
-    let private Nullable =
-        let isSupportedType = DotnetType.isGenericType<Nullable<_>>
-        let createSerializer = ValueConverter.ofNullable
-        let createDeserializer = ValueConverter.ofNullable
-        create isSupportedType createSerializer createDeserializer
-
-    let private Option =
-        let isSupportedType = DotnetType.isGenericType<option<_>>
-        let createSerializer = ValueConverter.ofOption
-        let createDeserializer = ValueConverter.ofOption
-        create isSupportedType createSerializer createDeserializer
-
-    let private Class =
-        let isSupportedType (dotnetType: Type) =
-            dotnetType.IsClass
-        let createSerializer = ValueConverter.ofClass
-        let createDeserializer = ValueConverter.ofClass
-        create isSupportedType createSerializer createDeserializer
-
     let All : IValueConverterFactory[] = [|
         PrimitiveConverterFactory<bool>()
         PrimitiveConverterFactory<int8>()
@@ -432,12 +288,12 @@ module internal ValueConverterFactory =
         GenericListConverterFactory()
         FSharpListConverterFactory()
         FSharpRecordConverterFactory()
-        Nullable
+        NullableConverterFactory()
         // This must come before the generic union type since option types are
         // handled in a special way.
-        Option
+        OptionConverterFactory()
         UnionConverterFactory()
-        Class
+        ClassConverterFactory()
     |]
 
 type internal PrimitiveConverterFactory<'Value>() =
@@ -819,5 +675,160 @@ type internal UnionConverterFactory() =
 
         member this.TryCreateDeserializer(dotnetType) =
             if isUnionType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+type internal NullableConverterFactory() =
+    let isNullableType = DotnetType.isGenericType<Nullable<_>>
+
+    let ofNullableRequired dotnetType (valueConverter: ValueConverter) =
+        let isNull (nullable: Expression) =
+            Expression.Not(Expression.Property(nullable, "HasValue"))
+            :> Expression
+        let getValue (nullable: Expression) =
+            Expression.Property(nullable, "Value")
+            :> Expression
+        let createNull = Expression.Null(dotnetType)
+        let createFromValue =
+            let constructor = dotnetType.GetConstructor([| valueConverter.DotnetType |])
+            fun (value: Expression) ->
+                Expression.New(constructor, value)
+                :> Expression
+        ValueConverter.optionalConverter
+            dotnetType valueConverter isNull getValue createNull createFromValue
+
+    let ofNullableOptional (dotnetType: Type) (valueConverter: ValueConverter) =
+        let fields =
+            let valueField =
+                // TODO: The name of this field could be configurable via an attribute.
+                let name = "Value"
+                let getValue = id
+                FieldConverter.create name valueConverter getValue
+            [| valueField |]
+        let createFromFieldValues (fieldValues: Expression[]) =
+            fieldValues[0]
+        ValueConverter.recordConverter valueConverter.DotnetType fields createFromFieldValues
+        |> ofNullableRequired dotnetType
+
+    let createValueConverter (dotnetType: Type) =
+        let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
+        let valueConverter = ValueConverter.ofType valueDotnetType
+        if valueConverter.IsOptional
+        // TODO: This shouldn't really be possible as nullable values have to be
+        // value types and therefore can't be null, but while we need to treat
+        // all record types as optional we need to handle this case.
+        then ofNullableOptional dotnetType valueConverter
+        else ofNullableRequired dotnetType valueConverter
+
+    interface IValueConverterFactory with
+        member this.TryCreateSerializer(dotnetType) =
+            if isNullableType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType) =
+            if isNullableType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+type internal OptionConverterFactory() =
+    let isOptionType = DotnetType.isGenericType<option<_>>
+
+    let ofOptionRequired dotnetType (valueConverter: ValueConverter) =
+        let unionCases = FSharpType.GetUnionCases(dotnetType)
+        let isNull =
+            let optionModuleType =
+                Assembly.Load("FSharp.Core").GetTypes()
+                |> Array.filter (fun type' -> type'.Name = "OptionModule")
+                |> Array.exactlyOne
+            fun (option: Expression) ->
+                Expression.Call(optionModuleType, "IsNone", [| valueConverter.DotnetType |], option)
+                :> Expression
+        let getValue (option: Expression) =
+            Expression.Property(option, "Value")
+            :> Expression
+        let createNull =
+            let noneCase = unionCases |> Array.find _.Name.Equals("None")
+            let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(noneCase)
+            Expression.Call(constructorMethod, [||])
+            :> Expression
+        let createFromValue =
+            let someCase = unionCases |> Array.find _.Name.Equals("Some")
+            let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(someCase)
+            fun (value: Expression) ->
+                Expression.Call(constructorMethod, value)
+                :> Expression
+        ValueConverter.optionalConverter
+            dotnetType valueConverter isNull getValue createNull createFromValue
+
+    let ofOptionOptional (dotnetType: Type) (valueConverter: ValueConverter) =
+        let fields =
+            let valueField =
+                // TODO: The name of this field could be configurable via an attribute.
+                let name = "Value"
+                let getValue = id
+                FieldConverter.create name valueConverter getValue
+            [| valueField |]
+        let createFromFieldValues (fieldValues: Expression[]) =
+            fieldValues[0]
+        ValueConverter.recordConverter valueConverter.DotnetType fields createFromFieldValues
+        |> ofOptionRequired dotnetType
+
+    let createValueConverter (dotnetType: Type) =
+        let valueDotnetType = dotnetType.GetGenericArguments()[0]
+        let valueConverter = ValueConverter.ofType valueDotnetType
+        if valueConverter.IsOptional
+        then ofOptionOptional dotnetType valueConverter
+        else ofOptionRequired dotnetType valueConverter
+
+    interface IValueConverterFactory with
+        member this.TryCreateSerializer(dotnetType) =
+            if isOptionType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType) =
+            if isOptionType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+type internal ClassConverterFactory() =
+    let isClassType (dotnetType: Type) =
+        dotnetType.IsClass
+
+    let createValueConverter (dotnetType: Type) =
+        let defaultConstructor = dotnetType.GetConstructor([||])
+        if isNull defaultConstructor then
+            failwith $"type '{dotnetType.FullName}' does not have a default constructor"
+        let fields =
+            dotnetType.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
+            |> Array.map FieldConverter.ofProperty
+        let createFromFieldValues =
+            fun (fieldValues: Expression[]) ->
+                let record = Expression.Variable(dotnetType, "record")
+                Expression.Block(
+                    [ record ],
+                    seq<Expression> {
+                        yield Expression.Assign(record, Expression.New(defaultConstructor))
+                        yield! Array.zip fields fieldValues
+                            |> Array.map (fun (field, fieldValue) ->
+                                Expression.Assign(
+                                    Expression.Property(record, field.Name),
+                                    fieldValue)
+                                :> Expression)
+                        yield record
+                    })
+                :> Expression
+        ValueConverter.recordConverter dotnetType fields createFromFieldValues
+        |> ValueConverter.ofReferenceType
+
+    interface IValueConverterFactory with
+        member this.TryCreateSerializer(dotnetType) =
+            if isClassType dotnetType
+            then Option.Some (createValueConverter dotnetType)
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType) =
+            if isClassType dotnetType
             then Option.Some (createValueConverter dotnetType)
             else Option.None

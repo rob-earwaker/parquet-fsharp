@@ -165,7 +165,7 @@ module internal ValueConverter =
         lock Cache (fun () ->
             Cache[dotnetType] <- valueConverter)
 
-    let atomicConverter
+    let createAtomic
         dotnetType dataDotnetType getDataValue createFromDataValue =
         ValueConverter.Atomic {
             AtomicConverter.DotnetType = dotnetType
@@ -173,13 +173,13 @@ module internal ValueConverter =
             AtomicConverter.GetDataValue = getDataValue
             AtomicConverter.CreateFromDataValue = createFromDataValue }
 
-    let recordConverter dotnetType fields createFromFieldValues =
+    let createRecord dotnetType fields createFromFieldValues =
         ValueConverter.Record {
             RecordConverter.DotnetType = dotnetType
             RecordConverter.Fields = fields
             RecordConverter.CreateFromFieldValues = createFromFieldValues }
 
-    let listConverter
+    let createList
         dotnetType elementConverter
         getLength getElementValue createEmpty createFromElementValues =
         ValueConverter.List {
@@ -190,7 +190,7 @@ module internal ValueConverter =
             ListConverter.CreateEmpty = createEmpty
             ListConverter.CreateFromElementValues = createFromElementValues }
 
-    let optionalConverter
+    let createOptional
         dotnetType valueConverter isNull getValue createNull createFromValue =
         ValueConverter.Optional {
             OptionalConverter.DotnetType = dotnetType
@@ -200,18 +200,18 @@ module internal ValueConverter =
             OptionalConverter.CreateNull = createNull
             OptionalConverter.CreateFromValue = createFromValue }
 
-    let ofReferenceType (valueConverter: ValueConverter) =
+    let forReferenceTypeConverter (valueConverter: ValueConverter) =
         let dotnetType = valueConverter.DotnetType
         let isNull = Expression.IsNull
         let getValue = id
         let createNull = Expression.Null(dotnetType)
         let createFromValue = id
-        ValueConverter.optionalConverter
+        ValueConverter.createOptional
             dotnetType valueConverter isNull getValue createNull createFromValue
 
     // TODO: This shouldn't really be necessary, but while Parquet.Net
     // treats all struct and list fields as optional it's necessary.
-    let ofNonNullableReferenceType (valueConverter: ValueConverter) =
+    let forNonNullableReferenceTypeConverter (valueConverter: ValueConverter) =
         let dotnetType = valueConverter.DotnetType
         let isNull = fun value -> Expression.False
         let getValue = id
@@ -221,7 +221,7 @@ module internal ValueConverter =
                 Expression.Default(dotnetType))
             :> Expression
         let createFromValue = id
-        ValueConverter.optionalConverter
+        ValueConverter.createOptional
             dotnetType valueConverter isNull getValue createNull createFromValue
 
     let ofType (dotnetType: Type) : ValueConverter =
@@ -302,7 +302,7 @@ type internal PrimitiveConverterFactory<'Value>() =
         let dataDotnetType = dotnetType
         let getDataValue = id
         let createFromDataValue = id
-        ValueConverter.atomicConverter
+        ValueConverter.createAtomic
             dotnetType dataDotnetType getDataValue createFromDataValue
 
     interface IValueConverterFactory with
@@ -328,7 +328,7 @@ type internal DateTimeOffsetConverterFactory() =
                 typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
                 Expression.Call(dataValue, "ToUniversalTime", []))
             :> Expression
-        ValueConverter.atomicConverter
+        ValueConverter.createAtomic
             dotnetType dataDotnetType getDataValue createFromDataValue
 
     interface IValueConverterFactory with
@@ -348,9 +348,9 @@ type internal StringConverterFactory() =
         let dataDotnetType = dotnetType
         let getDataValue = id
         let createFromDataValue = id
-        ValueConverter.atomicConverter
+        ValueConverter.createAtomic
             dotnetType dataDotnetType getDataValue createFromDataValue
-        |> ValueConverter.ofReferenceType
+        |> ValueConverter.forReferenceTypeConverter
 
     interface IValueConverterFactory with
         member this.TryCreateSerializer(dotnetType) =
@@ -369,9 +369,9 @@ type internal ByteArrayConverterFactory() =
         let dataDotnetType = dotnetType
         let getDataValue = id
         let createFromDataValue = id
-        ValueConverter.atomicConverter
+        ValueConverter.createAtomic
             dotnetType dataDotnetType getDataValue createFromDataValue
-        |> ValueConverter.ofReferenceType
+        |> ValueConverter.forReferenceTypeConverter
 
     interface IValueConverterFactory with
         member this.TryCreateSerializer(dotnetType) =
@@ -402,10 +402,10 @@ type internal Array1dConverterFactory() =
             Expression.NewArrayBounds(elementDotnetType, Expression.Constant(0))
         let createFromElementValues (elementValues: Expression) =
             Expression.Call(elementValues, "ToArray", [])
-        ValueConverter.listConverter
+        ValueConverter.createList
             dotnetType elementConverter
             getLength getElementValue createEmpty createFromElementValues
-        |> ValueConverter.ofReferenceType
+        |> ValueConverter.forReferenceTypeConverter
 
     interface IValueConverterFactory with
         member this.TryCreateSerializer(dotnetType) =
@@ -432,10 +432,10 @@ type internal GenericListConverterFactory() =
             :> Expression
         let createEmpty = Expression.New(dotnetType)
         let createFromElementValues = id
-        ValueConverter.listConverter
+        ValueConverter.createList
             dotnetType elementConverter
             getLength getElementValue createEmpty createFromElementValues
-        |> ValueConverter.ofReferenceType
+        |> ValueConverter.forReferenceTypeConverter
 
     interface IValueConverterFactory with
         member this.TryCreateSerializer(dotnetType) =
@@ -477,10 +477,10 @@ type internal FSharpListConverterFactory() =
         // list field class can't easily be created since some of the relevant
         // properties are internal. For now, wrap as a non-nullable reference
         // type.
-        ValueConverter.listConverter
+        ValueConverter.createList
             dotnetType elementConverter
             getLength getElementValue createEmpty createFromElementValues
-        |> ValueConverter.ofNonNullableReferenceType
+        |> ValueConverter.forNonNullableReferenceTypeConverter
 
     interface IValueConverterFactory with
         member this.TryCreateSerializer(dotnetType) =
@@ -510,8 +510,8 @@ type internal FSharpRecordConverterFactory() =
         // struct field class can't easily be created since some of the relevant
         // properties are internal. For now, wrap as a non-nullable reference
         // type.
-        ValueConverter.recordConverter dotnetType fields createFromFieldValues
-        |> ValueConverter.ofNonNullableReferenceType
+        ValueConverter.createRecord dotnetType fields createFromFieldValues
+        |> ValueConverter.forNonNullableReferenceTypeConverter
 
     interface IValueConverterFactory with
         member this.TryCreateSerializer(dotnetType) =
@@ -550,7 +550,7 @@ type internal UnionConverterFactory() =
                     yield Expression.Label(returnLabel, Expression.Default(dotnetType))
                 })
             :> Expression
-        ValueConverter.atomicConverter
+        ValueConverter.createAtomic
             dotnetType dataDotnetType getDataValue createFromDataValue
 
     let ofUnionCase (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
@@ -562,7 +562,7 @@ type internal UnionConverterFactory() =
             let dotnetType = unionInfo.DotnetType
             let fields = unionCase.Fields |> Array.map (FieldConverter.ofUnionCaseField unionCase)
             let createFromFieldValues = unionCase.CreateFromFieldValues
-            ValueConverter.recordConverter dotnetType fields createFromFieldValues
+            ValueConverter.createRecord dotnetType fields createFromFieldValues
         // The data for this case is NULL if the union tag does not match the
         // tag for this case.
         let isNull (union: Expression) =
@@ -574,7 +574,7 @@ type internal UnionConverterFactory() =
         // because they are reference types.
         let createNull = Expression.Default(dotnetType) :> Expression
         let createFromValue = id
-        ValueConverter.optionalConverter
+        ValueConverter.createOptional
             dotnetType valueConverter isNull getValue createNull createFromValue
 
     let ofUnionComplex (unionInfo: UnionInfo) =
@@ -597,7 +597,7 @@ type internal UnionConverterFactory() =
                 let dataDotnetType = dotnetType
                 let getDataValue = id
                 let createFromDataValue = id
-                ValueConverter.atomicConverter
+                ValueConverter.createAtomic
                     dotnetType dataDotnetType getDataValue createFromDataValue
             let getValue = unionInfo.GetCaseName
             FieldConverter.create name valueConverter getValue
@@ -655,8 +655,8 @@ type internal UnionConverterFactory() =
         // TODO: F# unions are not nullable by default, however we are mapping
         // to a struct and Parquet.Net does not support struct fields that
         // aren't nullable, so wrap as a non-nullable reference type.
-        ValueConverter.recordConverter dotnetType fields createFromFieldValues
-        |> ValueConverter.ofNonNullableReferenceType
+        ValueConverter.createRecord dotnetType fields createFromFieldValues
+        |> ValueConverter.forNonNullableReferenceTypeConverter
 
     let createValueConverter dotnetType =
         // Unions are represented in one of two ways depending on whether any of
@@ -694,7 +694,7 @@ type internal NullableConverterFactory() =
             fun (value: Expression) ->
                 Expression.New(constructor, value)
                 :> Expression
-        ValueConverter.optionalConverter
+        ValueConverter.createOptional
             dotnetType valueConverter isNull getValue createNull createFromValue
 
     let ofNullableOptional (dotnetType: Type) (valueConverter: ValueConverter) =
@@ -707,7 +707,7 @@ type internal NullableConverterFactory() =
             [| valueField |]
         let createFromFieldValues (fieldValues: Expression[]) =
             fieldValues[0]
-        ValueConverter.recordConverter valueConverter.DotnetType fields createFromFieldValues
+        ValueConverter.createRecord valueConverter.DotnetType fields createFromFieldValues
         |> ofNullableRequired dotnetType
 
     let createValueConverter (dotnetType: Type) =
@@ -758,7 +758,7 @@ type internal OptionConverterFactory() =
             fun (value: Expression) ->
                 Expression.Call(constructorMethod, value)
                 :> Expression
-        ValueConverter.optionalConverter
+        ValueConverter.createOptional
             dotnetType valueConverter isNull getValue createNull createFromValue
 
     let ofOptionOptional (dotnetType: Type) (valueConverter: ValueConverter) =
@@ -771,7 +771,7 @@ type internal OptionConverterFactory() =
             [| valueField |]
         let createFromFieldValues (fieldValues: Expression[]) =
             fieldValues[0]
-        ValueConverter.recordConverter valueConverter.DotnetType fields createFromFieldValues
+        ValueConverter.createRecord valueConverter.DotnetType fields createFromFieldValues
         |> ofOptionRequired dotnetType
 
     let createValueConverter (dotnetType: Type) =
@@ -819,8 +819,8 @@ type internal ClassConverterFactory() =
                         yield record
                     })
                 :> Expression
-        ValueConverter.recordConverter dotnetType fields createFromFieldValues
-        |> ValueConverter.ofReferenceType
+        ValueConverter.createRecord dotnetType fields createFromFieldValues
+        |> ValueConverter.forReferenceTypeConverter
 
     interface IValueConverterFactory with
         member this.TryCreateSerializer(dotnetType) =

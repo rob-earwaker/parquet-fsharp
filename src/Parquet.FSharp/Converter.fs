@@ -7,22 +7,6 @@ open System.Collections.Generic
 open System.Linq.Expressions
 open System.Reflection
 
-type internal IValueConverterFactory =
-    abstract member TryCreateValueConverter : dotnetType:Type -> ValueConverter option
-
-type internal ValueConverter =
-    | Atomic of AtomicConverter
-    | List of ListConverter
-    | Record of RecordConverter
-    | Optional of OptionalConverter
-    with
-    member this.DotnetType =
-        match this with
-        | ValueConverter.Atomic atomicConverter -> atomicConverter.DotnetType
-        | ValueConverter.List listConverter -> listConverter.DotnetType
-        | ValueConverter.Record recordConverter -> recordConverter.DotnetType
-        | ValueConverter.Optional optionalConverter -> optionalConverter.DotnetType
-
 // TODO: Types supported by Parquet.Net:
 
 //   Implemented:
@@ -44,6 +28,22 @@ type internal ValueConverter =
 
 // TODO: Attribute to select specific converter type to use? Alternatively could
 // be part of the serializer configuration?
+
+type internal IValueConverterFactory =
+    abstract member TryCreateValueConverter : dotnetType:Type -> ValueConverter option
+
+type internal ValueConverter =
+    | Atomic of AtomicConverter
+    | List of ListConverter
+    | Record of RecordConverter
+    | Optional of OptionalConverter
+    with
+    member this.DotnetType =
+        match this with
+        | ValueConverter.Atomic atomicConverter -> atomicConverter.DotnetType
+        | ValueConverter.List listConverter -> listConverter.DotnetType
+        | ValueConverter.Record recordConverter -> recordConverter.DotnetType
+        | ValueConverter.Optional optionalConverter -> optionalConverter.DotnetType
 
 type internal AtomicConverter = {
     DotnetType: Type

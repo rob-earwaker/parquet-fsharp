@@ -1,10 +1,12 @@
-﻿module internal rec Parquet.FSharp.Schema
+﻿namespace rec Parquet.FSharp
 
 open Parquet.Schema
 open System
 
-// TODO: Is this useful?
-type ValueSchema =
+type internal Schema = {
+    Fields: FieldSchema[] }
+
+type internal ValueSchema =
     | Atomic of AtomicSchema
     | List of ListSchema
     | Record of RecordSchema
@@ -15,55 +17,98 @@ type ValueSchema =
         | ValueSchema.List list -> list.IsOptional
         | ValueSchema.Record record -> record.IsOptional
 
-type AtomicSchema = {
+type internal AtomicSchema = {
     IsOptional: bool
-    PrimitiveType: Type }
+    DotnetType: Type }
 
-type ListSchema = {
+type internal ListSchema = {
     IsOptional: bool
-    ElementSchema: ValueSchema }
+    Element: ValueSchema }
 
-type FieldSchema = {
+type internal FieldSchema = {
     Name: string
-    ValueSchema: ValueSchema }
+    Value: ValueSchema }
 
-type RecordSchema = {
+type internal RecordSchema = {
     IsOptional: bool
-    FieldSchemas: FieldSchema[] }
+    Fields: FieldSchema[] }
 
-let private getValueSchema fieldName valueConverter =
-    match valueConverter with
-    | ValueConverter.Atomic atomicConverter ->
-        // TODO: Should we use some of the custom DataField types here, e.g. DecimalDataField?
-        let dataType = atomicConverter.DataDotnetType
-        // Nullability in the schema is handled at the {OptionalConverter} level, so
-        // despite some atomic values being nullable, e.g. {string} and
-        // {byte[]}, we specify as not nullable here. Note that if nullability
-        // is not explicitly specified then it will be inferred from the data
-        // type as part of the {DataField} constructor, so always specify as
-        // {false} to avoid this.
-        let isNullable = false
-        DataField(fieldName, dataType, isNullable) :> Field
-    | ValueConverter.List listConverter ->
-        let element = getValueSchema ListField.ElementName listConverter.ElementConverter
-        ListField(fieldName, element) :> Field
-    | ValueConverter.Record recordConverter ->
-        let fields = getRecordFields recordConverter
-        StructField(fieldName, fields) :> Field
-    | ValueConverter.Optional optionalConverter ->
-        // TODO: Is there a better way to deal with this nesting?
-        let valueField = getValueSchema fieldName optionalConverter.ValueConverter
-        if valueField.IsNullable
-        then valueField
-        else
-            match valueField with
-            | :? DataField as dataField ->
-                DataField(dataField.Name, dataField.ClrType, isNullable = true)
-            | _ -> failwith "not implemented"
+module internal ValueSchema =
+    let private ofConverter' isOptional valueConverter =
+        match valueConverter with
+        | ValueConverter.Atomic atomicConverter ->
+            ValueSchema.Atomic {
+                IsOptional = isOptional
+                DotnetType = atomicConverter.DataDotnetType }
+        | ValueConverter.List listConverter ->
+            ValueSchema.List {
+                IsOptional = isOptional
+                Element = ValueSchema.ofConverter listConverter.ElementConverter }
+        | ValueConverter.Record recordConverter ->
+            ValueSchema.Record {
+                IsOptional = isOptional
+                Fields = recordConverter.Fields |> Array.map FieldSchema.ofConverter }
+        | ValueConverter.Optional optionalConverter ->
+            ValueSchema.ofConverter' true optionalConverter.ValueConverter
 
-let private getRecordFields (recordConverter: RecordConverter) =
-    recordConverter.Fields
-    |> Array.map (fun field -> getValueSchema field.Name field.ValueConverter)
+    let ofConverter valueConverter =
+        ValueSchema.ofConverter' false valueConverter
 
-let ofRecordConverter recordConverter =
-    ParquetSchema(getRecordFields recordConverter)
+    let ofParquetNet (field: Field) =
+        match field with
+        | :? DataField as dataField ->
+            ValueSchema.Atomic {
+                IsOptional = dataField.IsNullable
+                DotnetType = dataField.ClrType }
+        | :? ListField as listField ->
+            ValueSchema.List {
+                IsOptional = listField.IsNullable
+                Element = ValueSchema.ofParquetNet listField.Item }
+        | :? StructField as structField ->
+            ValueSchema.Record {
+                IsOptional = structField.IsNullable
+                Fields =
+                    structField.Fields
+                    |> Seq.map FieldSchema.ofParquetNet
+                    |> Array.ofSeq }
+        | _ -> failwith $"unsupported field type '{field.GetType().FullName}'"
+
+    let toParquetNet fieldName valueSchema =
+        match valueSchema with
+        | ValueSchema.Atomic atomicSchema ->
+            // TODO: We should eventually need to use some of the custom
+            // DataField types here, e.g. DecimalDataField
+            DataField(fieldName, atomicSchema.DotnetType, atomicSchema.IsOptional)
+            :> Field
+        | ValueSchema.List listSchema ->
+            let element = toParquetNet ListField.ElementName listSchema.Element
+            ListField(fieldName, element) :> Field
+        | ValueSchema.Record recordSchema ->
+            let fields = recordSchema.Fields |> Array.map FieldSchema.toParquetNet
+            StructField(fieldName, fields) :> Field
+
+module internal FieldSchema =
+    let ofConverter (fieldConverter: FieldConverter) =
+        { FieldSchema.Name = fieldConverter.Name
+          FieldSchema.Value = ValueSchema.ofConverter fieldConverter.ValueConverter }
+
+    let ofParquetNet (field: Field) =
+        { FieldSchema.Name = field.Name
+          FieldSchema.Value = ValueSchema.ofParquetNet field }
+
+    let toParquetNet (fieldSchema: FieldSchema) =
+        ValueSchema.toParquetNet fieldSchema.Name fieldSchema.Value
+
+module internal Schema =
+    let ofConverter (recordConverter: RecordConverter) =
+        { Schema.Fields = recordConverter.Fields |> Array.map FieldSchema.ofConverter }
+
+    let ofParquetNet (schema: ParquetSchema) =
+        { Schema.Fields =
+            schema.Fields
+            |> Seq.map FieldSchema.ofParquetNet
+            |> Array.ofSeq }
+
+    let toParquetNet (schema: Schema) =
+        let fields = schema.Fields |> Array.map FieldSchema.toParquetNet
+        ParquetSchema(fields)

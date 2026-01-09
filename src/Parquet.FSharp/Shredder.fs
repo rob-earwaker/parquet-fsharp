@@ -319,13 +319,14 @@ type private Shredder<'Record>() =
             | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
         | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
 
-    let schema = Schema.ofRecordConverter recordConverter
+    let schema = Schema.ofConverter recordConverter
+    let parquetNetSchema = Schema.toParquetNet schema
 
     let recordShredder =
         let maxRepLevel = 0
         let maxDefLevel = 0
         ValueShredder.forRecord
-            recordConverter maxRepLevel maxDefLevel schema.Fields
+            recordConverter maxRepLevel maxDefLevel parquetNetSchema.Fields
 
     let shredExpr =
         let records = Expression.Parameter(typeof<'Record seq>, "records")
@@ -392,6 +393,9 @@ type private Shredder<'Record>() =
         shred.Invoke(records)
 
 module private Shredder =
+    // TODO: We probably won;t be able to cache at this level eventually when
+    // we introduce settings that control deserialization, since the behaviour
+    // will depend on the settings, e.g. which converters are registered.
     let private Cache = Dictionary<Type, obj>()
 
     let private tryGetCached<'Record> =

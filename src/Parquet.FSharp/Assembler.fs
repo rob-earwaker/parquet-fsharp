@@ -529,7 +529,7 @@ type internal Assembler<'Record>() =
             | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
         | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
 
-    let schema = Schema.ofRecordConverter recordConverter
+    let schema = Schema.ofConverter recordConverter
 
     let recordAssembler =
         let maxRepLevel = 0
@@ -593,23 +593,27 @@ type internal Assembler<'Record>() =
         assemble.Invoke(columns)
 
 module private Assembler =
-    let private Cache = Dictionary<Type, obj>()
+    // TODO: We probably won;t be able to cache at this level eventually when
+    // we introduce settings that control deserialization, since the behaviour
+    // will depend on the settings, e.g. which converters are registered.
+    let private Cache = Dictionary<Type * Schema, obj>()
 
-    let private tryGetCached<'Record> =
+    let private tryGetCached<'Record> schema =
         lock Cache (fun () ->
-            match Cache.TryGetValue(typeof<'Record>) with
+            match Cache.TryGetValue((typeof<'Record>, schema)) with
             | false, _ -> Option.None
             | true, assembler ->
                 Option.Some (assembler :?> Assembler<'Record>))
 
-    let private addToCache<'Record> (assembler: Assembler<'Record>) =
+    let private addToCache<'Record> schema (assembler: Assembler<'Record>) =
         lock Cache (fun () ->
-            Cache[typeof<'Record>] <- assembler)
+            Cache[(typeof<'Record>, schema)] <- assembler)
 
-    let of'<'Record> =
-        match tryGetCached<'Record> with
+    let create<'Record> schema =
+        match tryGetCached<'Record> schema with
         | Option.Some assembler -> assembler
         | Option.None ->
+            // TODO: Check schema compatability.
             let assembler = Assembler<'Record>()
-            addToCache assembler
+            addToCache schema assembler
             assembler

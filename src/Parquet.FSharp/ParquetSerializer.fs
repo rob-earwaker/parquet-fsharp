@@ -11,10 +11,11 @@ type ParquetSerializer =
     static member AsyncSerialize<'Record>(records: 'Record seq, stream: Stream) =
         async {
             let shredder = Shredder.of'<'Record>
+            let parquetNetSchema = Schema.toParquetNet shredder.Schema
             let! cancellationToken = Async.CancellationToken
             use! fileWriter =
                 ParquetWriter.CreateAsync(
-                    shredder.Schema,
+                    parquetNetSchema,
                     stream,
                     cancellationToken = cancellationToken)
                 |> Async.AwaitTask
@@ -46,18 +47,23 @@ type ParquetSerializer =
     /// Asynchronously deserialize an array of records from a stream.
     static member AsyncDeserialize<'Record>(stream: Stream) =
         async {
-            let assembler = Assembler.of'<'Record>
             let! cancellationToken = Async.CancellationToken
             use! fileReader =
                 ParquetReader.CreateAsync(
                     stream,
                     cancellationToken = cancellationToken)
                 |> Async.AwaitTask
-            // TODO: Check schema compatability.
             // TODO: Support reading multiple row groups.
+            let fileSchema = Schema.ofParquetNet fileReader.Schema
+            let assembler = Assembler.create<'Record> fileSchema
             use rowGroupReader = fileReader.OpenRowGroupReader(0)
             let! columns =
-                assembler.Schema.DataFields
+                // Choose which columns to read based on the assembler schema
+                // rather than the file schema. The type we're deserializing
+                // into may not include all of the columns. This is what allows
+                // for efficient loading of subsets of the file.
+                Schema.toParquetNet assembler.Schema
+                |> fun schema -> schema.DataFields
                 |> Array.map (fun field ->
                     rowGroupReader.ReadColumnAsync(field, cancellationToken)
                     |> Async.AwaitTask)

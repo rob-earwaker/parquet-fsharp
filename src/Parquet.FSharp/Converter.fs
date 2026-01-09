@@ -31,9 +31,10 @@ open System.Reflection
 
 // TODO: Eventually should be able to rename to remove 'Factory'
 type internal IValueConverterFactory =
-    abstract member TryCreateSerializer : dotnetType:Type -> ValueConverter option
-    // TODO: Eventually add the value schema as a parameter.
-    abstract member TryCreateDeserializer : dotnetType:Type -> ValueConverter option
+    abstract member TryCreateSerializer
+        : dotnetType:Type -> ValueConverter option
+    abstract member TryCreateDeserializer
+        : dotnetType:Type * schema:ValueSchema -> ValueConverter option
 
 type internal ValueConverter =
     | Atomic of AtomicConverter
@@ -341,7 +342,7 @@ type internal PrimitiveConverterFactory<'Value>() =
             then Option.Some valueConverter
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType) =
+        member this.TryCreateDeserializer(dotnetType, schema) =
             if dotnetType = valueConverter.DotnetType
             then Option.Some valueConverter
             else Option.None
@@ -367,7 +368,7 @@ type internal DateTimeOffsetConverterFactory() =
             then Option.Some valueConverter
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType) =
+        member this.TryCreateDeserializer(dotnetType, schema) =
             if dotnetType = valueConverter.DotnetType
             then Option.Some valueConverter
             else Option.None
@@ -388,7 +389,7 @@ type internal StringConverterFactory() =
             then Option.Some valueConverter
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType) =
+        member this.TryCreateDeserializer(dotnetType, schema) =
             if dotnetType = valueConverter.DotnetType
             then Option.Some valueConverter
             else Option.None
@@ -409,7 +410,7 @@ type internal ByteArrayConverterFactory() =
             then Option.Some valueConverter
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType) =
+        member this.TryCreateDeserializer(dotnetType, schema) =
             if dotnetType = valueConverter.DotnetType
             then Option.Some valueConverter
             else Option.None
@@ -443,7 +444,7 @@ type internal Array1dConverterFactory() =
             then Option.Some (createValueConverter dotnetType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType) =
+        member this.TryCreateDeserializer(dotnetType, schema) =
             if isArray1dType dotnetType
             then Option.Some (createValueConverter dotnetType)
             else Option.None
@@ -473,7 +474,7 @@ type internal GenericListConverterFactory() =
             then Option.Some (createValueConverter dotnetType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType) =
+        member this.TryCreateDeserializer(dotnetType, schema) =
             if isGenericListType dotnetType
             then Option.Some (createValueConverter dotnetType)
             else Option.None
@@ -518,7 +519,7 @@ type internal FSharpListConverterFactory() =
             then Option.Some (createValueConverter dotnetType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType) =
+        member this.TryCreateDeserializer(dotnetType, schema) =
             if isFSharpListType dotnetType
             then Option.Some (createValueConverter dotnetType)
             else Option.None
@@ -549,7 +550,7 @@ type internal FSharpRecordConverterFactory() =
             then Option.Some (createValueConverter dotnetType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType) =
+        member this.TryCreateDeserializer(dotnetType, schema) =
             if isFSharpRecordType dotnetType
             then Option.Some (createValueConverter dotnetType)
             else Option.None
@@ -703,7 +704,7 @@ type internal UnionConverterFactory() =
             then Option.Some (createValueConverter dotnetType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType) =
+        member this.TryCreateDeserializer(dotnetType, schema) =
             if isUnionType dotnetType
             then Option.Some (createValueConverter dotnetType)
             else Option.None
@@ -756,7 +757,7 @@ type internal NullableConverterFactory() =
             then Option.Some (createValueConverter dotnetType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType) =
+        member this.TryCreateDeserializer(dotnetType, schema) =
             if isNullableType dotnetType
             then Option.Some (createValueConverter dotnetType)
             else Option.None
@@ -817,7 +818,7 @@ type internal OptionConverterFactory() =
             then Option.Some (createValueConverter dotnetType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType) =
+        member this.TryCreateDeserializer(dotnetType, schema) =
             if isOptionType dotnetType
             then Option.Some (createValueConverter dotnetType)
             else Option.None
@@ -858,7 +859,7 @@ type internal ClassConverterFactory() =
             then Option.Some (createValueConverter dotnetType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType) =
+        member this.TryCreateDeserializer(dotnetType, schema) =
             if isClassType dotnetType
             then Option.Some (createValueConverter dotnetType)
             else Option.None

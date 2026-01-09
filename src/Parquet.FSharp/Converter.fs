@@ -224,6 +224,26 @@ module internal ValueConverter =
         ValueConverter.createOptional
             dotnetType valueConverter isNull getValue createNull createFromValue
 
+    let private getSchema' isOptional valueConverter =
+        match valueConverter with
+        | ValueConverter.Atomic atomicConverter ->
+            ValueSchema.Atomic {
+                IsOptional = isOptional
+                DotnetType = atomicConverter.DataDotnetType }
+        | ValueConverter.List listConverter ->
+            ValueSchema.List {
+                IsOptional = isOptional
+                Element = ValueConverter.getSchema listConverter.ElementConverter }
+        | ValueConverter.Record recordConverter ->
+            ValueSchema.Record {
+                IsOptional = isOptional
+                Fields = recordConverter.Fields |> Array.map FieldConverter.getSchema }
+        | ValueConverter.Optional optionalConverter ->
+            ValueConverter.getSchema' true optionalConverter.ValueConverter
+
+    let getSchema valueConverter =
+        ValueConverter.getSchema' false valueConverter
+
     let ofType (dotnetType: Type) : ValueConverter =
         match tryGetCached dotnetType with
         | Option.Some valueConverter -> valueConverter
@@ -261,6 +281,16 @@ module private FieldConverter =
                 Expression.Convert(union, unionCase.DotnetType), field)
             :> Expression
         create name valueConverter getValue
+
+    let getSchema (fieldConverter: FieldConverter) =
+        { FieldSchema.Name = fieldConverter.Name
+          FieldSchema.Value = ValueConverter.getSchema fieldConverter.ValueConverter }
+
+module internal RecordConverter =
+    let getRootSchema (recordConverter: RecordConverter) =
+        { Schema.Fields =
+            recordConverter.Fields
+            |> Array.map FieldConverter.getSchema }
 
 module internal ValueConverterFactory =
     let All : IValueConverterFactory[] = [|

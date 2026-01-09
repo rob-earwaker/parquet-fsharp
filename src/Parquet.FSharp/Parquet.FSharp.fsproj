@@ -24,8 +24,8 @@
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <Compile Include="Expression.fs" />
-    <Compile Include="Converter.fs" />
     <Compile Include="Schema.fs" />
+    <Compile Include="Converter.fs" />
     <Compile Include="Shredder.fs" />
     <Compile Include="Assembler.fs" />
     <Compile Include="ParquetSerializer.fs" />

@@ -529,7 +529,7 @@ type internal Assembler<'Record>() =
             | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
         | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
 
-    let schema = Schema.ofConverter recordConverter
+    let schema = RecordConverter.getRootSchema recordConverter
 
     let recordAssembler =
         let maxRepLevel = 0

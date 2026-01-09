@@ -34,26 +34,6 @@ type internal RecordSchema = {
     Fields: FieldSchema[] }
 
 module internal ValueSchema =
-    let private ofConverter' isOptional valueConverter =
-        match valueConverter with
-        | ValueConverter.Atomic atomicConverter ->
-            ValueSchema.Atomic {
-                IsOptional = isOptional
-                DotnetType = atomicConverter.DataDotnetType }
-        | ValueConverter.List listConverter ->
-            ValueSchema.List {
-                IsOptional = isOptional
-                Element = ValueSchema.ofConverter listConverter.ElementConverter }
-        | ValueConverter.Record recordConverter ->
-            ValueSchema.Record {
-                IsOptional = isOptional
-                Fields = recordConverter.Fields |> Array.map FieldSchema.ofConverter }
-        | ValueConverter.Optional optionalConverter ->
-            ValueSchema.ofConverter' true optionalConverter.ValueConverter
-
-    let ofConverter valueConverter =
-        ValueSchema.ofConverter' false valueConverter
-
     let ofParquetNet (field: Field) =
         match field with
         | :? DataField as dataField ->
@@ -88,10 +68,6 @@ module internal ValueSchema =
             StructField(fieldName, fields) :> Field
 
 module internal FieldSchema =
-    let ofConverter (fieldConverter: FieldConverter) =
-        { FieldSchema.Name = fieldConverter.Name
-          FieldSchema.Value = ValueSchema.ofConverter fieldConverter.ValueConverter }
-
     let ofParquetNet (field: Field) =
         { FieldSchema.Name = field.Name
           FieldSchema.Value = ValueSchema.ofParquetNet field }
@@ -100,9 +76,6 @@ module internal FieldSchema =
         ValueSchema.toParquetNet fieldSchema.Name fieldSchema.Value
 
 module internal Schema =
-    let ofConverter (recordConverter: RecordConverter) =
-        { Schema.Fields = recordConverter.Fields |> Array.map FieldSchema.ofConverter }
-
     let ofParquetNet (schema: ParquetSchema) =
         { Schema.Fields =
             schema.Fields

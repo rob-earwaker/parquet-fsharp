@@ -69,11 +69,11 @@ type private ValueShredder() =
         : parentRepLevel:Expression * parentDefLevel:Expression * value:Expression
         -> Expression
 
-type private AtomicShredder(atomicConverter: AtomicConverter, maxRepLevel, maxDefLevel, field: DataField) =
+type private AtomicShredder(atomicSerializer: AtomicSerializer, maxRepLevel, maxDefLevel, field: DataField) =
     inherit ValueShredder()
 
     let columnBuilderType =
-        typedefof<ColumnBuilder<_>>.MakeGenericType(atomicConverter.DataDotnetType)
+        typedefof<ColumnBuilder<_>>.MakeGenericType(atomicSerializer.DataDotnetType)
 
     let columnBuilder = Expression.Variable(columnBuilderType, "columnBuilder")
 
@@ -98,21 +98,21 @@ type private AtomicShredder(atomicConverter: AtomicConverter, maxRepLevel, maxDe
     override this.ShredValue(parentRepLevel, parentDefLevel, value) =
         // The value is REQUIRED. The definition level will be the same as
         // the parent, so just add the value using the parent levels.
-        let dataValue = Expression.Variable(atomicConverter.DataDotnetType, "dataValue")
+        let dataValue = Expression.Variable(atomicSerializer.DataDotnetType, "dataValue")
         Expression.Block(
             [ dataValue ],
-            Expression.Assign(dataValue, atomicConverter.GetDataValue(value)),
+            Expression.Assign(dataValue, atomicSerializer.GetDataValue(value)),
             Expression.Call(
                 columnBuilder, "AddDataValue",
                 [ parentRepLevel; parentDefLevel; dataValue ]))
 
-type private ListShredder(listConverter: ListConverter, elementMaxRepLevel, elementShredder: ValueShredder) =
+type private ListShredder(listSerializer: ListSerializer, elementMaxRepLevel, elementShredder: ValueShredder) =
     inherit ValueShredder()
 
     let shredElement =
         let repLevel = Expression.Parameter(typeof<int>, "repLevel")
         let defLevel = Expression.Parameter(typeof<int>, "defLevel")
-        let element = Expression.Parameter(listConverter.ElementConverter.DotnetType, "element")
+        let element = Expression.Parameter(listSerializer.ElementSerializer.DotnetType, "element")
         Expression.Lambda(
             elementShredder.ShredValue(repLevel, defLevel, element),
             "shredElement",
@@ -139,7 +139,7 @@ type private ListShredder(listConverter: ListConverter, elementMaxRepLevel, elem
         Expression.Block(
             [ elementCount ],
             // Get the element count.
-            Expression.Assign(elementCount, listConverter.GetLength(list)),
+            Expression.Assign(elementCount, listSerializer.GetLength(list)),
             Expression.IfThenElse(
                 // Check if the list is empty.
                 Expression.Equal(elementCount, Expression.Constant(0)),
@@ -163,7 +163,7 @@ type private ListShredder(listConverter: ListConverter, elementMaxRepLevel, elem
                         shredElement,
                         firstElementRepLevel,
                         elementDefLevel,
-                        listConverter.GetElementValue(list, Expression.Constant(0))),
+                        listSerializer.GetElementValue(list, Expression.Constant(0))),
                     Expression.Assign(elementIndex, Expression.Constant(1)),
                     Expression.Loop(
                         // while True do
@@ -180,24 +180,24 @@ type private ListShredder(listConverter: ListConverter, elementMaxRepLevel, elem
                                     shredElement,
                                     otherElementRepLevel,
                                     elementDefLevel,
-                                    listConverter.GetElementValue(list, elementIndex)),
+                                    listSerializer.GetElementValue(list, elementIndex)),
                                 Expression.AddAssign(elementIndex, Expression.Constant(1)))),
                         loopBreakLabel))))
 
-type private RecordShredder(recordConverter: RecordConverter, fieldShredders: ValueShredder[]) =
+type private RecordShredder(recordSerializer: RecordSerializer, fieldShredders: ValueShredder[]) =
     inherit ValueShredder()
 
     let shredFieldLambdas =
-        Array.zip recordConverter.Fields fieldShredders
-        |> Array.map (fun (fieldConverter, fieldShredder) ->
+        Array.zip recordSerializer.Fields fieldShredders
+        |> Array.map (fun (fieldSerializer, fieldShredder) ->
             let recordRepLevel = Expression.Parameter(typeof<int>, "recordRepLevel")
             let recordDefLevel = Expression.Parameter(typeof<int>, "recordDefLevel")
-            let record = Expression.Parameter(recordConverter.DotnetType, "record")
-            let fieldValue = Expression.Variable(fieldConverter.ValueConverter.DotnetType, "fieldValue")
+            let record = Expression.Parameter(recordSerializer.DotnetType, "record")
+            let fieldValue = Expression.Variable(fieldSerializer.ValueSerializer.DotnetType, "fieldValue")
             Expression.Lambda(
                 Expression.Block(
                     [ fieldValue ],
-                    Expression.Assign(fieldValue, fieldConverter.GetValue record),
+                    Expression.Assign(fieldValue, fieldSerializer.GetValue record),
                     fieldShredder.ShredValue(recordRepLevel, recordDefLevel, fieldValue)),
                 "shredField",
                 [ recordRepLevel; recordDefLevel; record ]))
@@ -224,7 +224,7 @@ type private RecordShredder(recordConverter: RecordConverter, fieldShredders: Va
                 Expression.Invoke(shredField, parentRepLevel, parentDefLevel, record)
                 :> Expression))
 
-type private OptionalShredder(optionalConverter: OptionalConverter, maxDefLevel, valueShredder: ValueShredder) =
+type private OptionalShredder(optionalSerializer: OptionalSerializer, maxDefLevel, valueShredder: ValueShredder) =
     inherit ValueShredder()
 
     override this.CollectColumnBuilderVariables() =
@@ -237,10 +237,10 @@ type private OptionalShredder(optionalConverter: OptionalConverter, maxDefLevel,
         valueShredder.AddNull(repLevel, defLevel)
 
     override this.ShredValue(parentRepLevel, parentDefLevel, optionalValue) =
-        let value = Expression.Variable(optionalConverter.ValueConverter.DotnetType, "value")
+        let value = Expression.Variable(optionalSerializer.ValueSerializer.DotnetType, "value")
         Expression.IfThenElse(
             // The value is OPTIONAL, so check for NULL.
-            optionalConverter.IsNull(optionalValue),
+            optionalSerializer.IsNull(optionalValue),
             // If the value is NULL, add a NULL value using the parent levels to
             // indicate the last definition level at which a value was present.
             this.AddNull(parentRepLevel, parentDefLevel),
@@ -249,84 +249,84 @@ type private OptionalShredder(optionalConverter: OptionalConverter, maxDefLevel,
             // should be one more than the parent definition level.
             Expression.Block(
                 [ value ],
-                Expression.Assign(value, optionalConverter.GetValue(optionalValue)),
+                Expression.Assign(value, optionalSerializer.GetValue(optionalValue)),
                 valueShredder.ShredValue(
                     parentRepLevel,
                     Expression.Constant(maxDefLevel),
                     value)))
 
 module private rec ValueShredder =
-    let forAtomic (atomicConverter: AtomicConverter) parentMaxRepLevel parentMaxDefLevel dataField =
+    let forAtomic (atomicSerializer: AtomicSerializer) parentMaxRepLevel parentMaxDefLevel dataField =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel
-        AtomicShredder(atomicConverter, maxRepLevel, maxDefLevel, dataField)
+        AtomicShredder(atomicSerializer, maxRepLevel, maxDefLevel, dataField)
         :> ValueShredder
 
-    let forList (listConverter: ListConverter) parentMaxRepLevel parentMaxDefLevel (listField: ListField) =
+    let forList (listSerializer: ListSerializer) parentMaxRepLevel parentMaxDefLevel (listField: ListField) =
         let listMaxRepLevel = parentMaxRepLevel
         let listMaxDefLevel = parentMaxDefLevel
         let elementMaxRepLevel = listMaxRepLevel + 1
         let elementMaxDefLevel = listMaxDefLevel + 1
         let elementShredder =
             ValueShredder.forValue
-                listConverter.ElementConverter elementMaxRepLevel elementMaxDefLevel listField.Item
-        ListShredder(listConverter, elementMaxRepLevel, elementShredder)
+                listSerializer.ElementSerializer elementMaxRepLevel elementMaxDefLevel listField.Item
+        ListShredder(listSerializer, elementMaxRepLevel, elementShredder)
         :> ValueShredder
 
-    let forRecord (recordConverter: RecordConverter) parentMaxRepLevel parentMaxDefLevel (fields: Field seq) =
+    let forRecord (recordSerializer: RecordSerializer) parentMaxRepLevel parentMaxDefLevel (fields: Field seq) =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel
         let fieldShredders =
-            Seq.zip recordConverter.Fields fields
-            |> Seq.map (fun (fieldConverter, field) ->
-                ValueShredder.forValue fieldConverter.ValueConverter maxRepLevel maxDefLevel field)
+            Seq.zip recordSerializer.Fields fields
+            |> Seq.map (fun (fieldSerializer, field) ->
+                ValueShredder.forValue fieldSerializer.ValueSerializer maxRepLevel maxDefLevel field)
             |> Array.ofSeq
-        RecordShredder(recordConverter, fieldShredders)
+        RecordShredder(recordSerializer, fieldShredders)
         :> ValueShredder
 
-    let forOptional (optionalConverter: OptionalConverter) parentMaxRepLevel parentMaxDefLevel field =
+    let forOptional (optionalSerializer: OptionalSerializer) parentMaxRepLevel parentMaxDefLevel field =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel + 1
         let valueShredder =
-            ValueShredder.forValue optionalConverter.ValueConverter maxRepLevel maxDefLevel field
-        OptionalShredder(optionalConverter, maxDefLevel, valueShredder)
+            ValueShredder.forValue optionalSerializer.ValueSerializer maxRepLevel maxDefLevel field
+        OptionalShredder(optionalSerializer, maxDefLevel, valueShredder)
         :> ValueShredder
 
-    let forValue (valueConverter: ValueConverter) parentMaxRepLevel parentMaxDefLevel (field: Field) =
-        match valueConverter with
-        | ValueConverter.Atomic atomicConverter ->
+    let forValue (valueSerializer: ValueSerializer) parentMaxRepLevel parentMaxDefLevel (field: Field) =
+        match valueSerializer with
+        | ValueSerializer.Atomic atomicSerializer ->
             let dataField = field :?> DataField
-            ValueShredder.forAtomic atomicConverter parentMaxRepLevel parentMaxDefLevel dataField
-        | ValueConverter.List listConverter ->
+            ValueShredder.forAtomic atomicSerializer parentMaxRepLevel parentMaxDefLevel dataField
+        | ValueSerializer.List listSerializer ->
             let listField = field :?> ListField
-            ValueShredder.forList listConverter parentMaxRepLevel parentMaxDefLevel listField
-        | ValueConverter.Record recordConverter ->
+            ValueShredder.forList listSerializer parentMaxRepLevel parentMaxDefLevel listField
+        | ValueSerializer.Record recordSerializer ->
             let structField = field :?> StructField
-            ValueShredder.forRecord recordConverter parentMaxRepLevel parentMaxDefLevel structField.Fields
-        | ValueConverter.Optional optionalConverter ->
-            ValueShredder.forOptional optionalConverter parentMaxRepLevel parentMaxDefLevel field
+            ValueShredder.forRecord recordSerializer parentMaxRepLevel parentMaxDefLevel structField.Fields
+        | ValueSerializer.Optional optionalSerializer ->
+            ValueShredder.forOptional optionalSerializer parentMaxRepLevel parentMaxDefLevel field
 
 type private Shredder<'Record>() =
-    let recordConverter =
-        match ValueConverter.of'<'Record> with
-        | ValueConverter.Record recordConverter -> recordConverter
+    let recordSerializer =
+        match ValueSerializer.of'<'Record> with
+        | ValueSerializer.Record recordSerializer -> recordSerializer
         // TODO: F# records are currently treated as optional for compatability
         // with Parquet.Net, but the root record should never be optional.
         // Unwrap the record info to remove this optionality.
-        | ValueConverter.Optional optionalConverter ->
-            match optionalConverter.ValueConverter with
-            | ValueConverter.Record recordConverter -> recordConverter
+        | ValueSerializer.Optional optionalSerializer ->
+            match optionalSerializer.ValueSerializer with
+            | ValueSerializer.Record recordSerializer -> recordSerializer
             | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
         | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
 
-    let schema = RecordConverter.getRootSchema recordConverter
+    let schema = RecordSerializer.getRootSchema recordSerializer
     let parquetNetSchema = Schema.toParquetNet schema
 
     let recordShredder =
         let maxRepLevel = 0
         let maxDefLevel = 0
         ValueShredder.forRecord
-            recordConverter maxRepLevel maxDefLevel parquetNetSchema.Fields
+            recordSerializer maxRepLevel maxDefLevel parquetNetSchema.Fields
 
     let shredExpr =
         let records = Expression.Parameter(typeof<'Record seq>, "records")
@@ -395,7 +395,7 @@ type private Shredder<'Record>() =
 module private Shredder =
     // TODO: We probably won;t be able to cache at this level eventually when
     // we introduce settings that control deserialization, since the behaviour
-    // will depend on the settings, e.g. which converters are registered.
+    // will depend on the settings, e.g. which serializers are registered.
     let private Cache = Dictionary<Type, obj>()
 
     let private tryGetCached<'Record> =

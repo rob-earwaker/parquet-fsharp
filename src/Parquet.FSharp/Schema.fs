@@ -19,6 +19,7 @@ type internal ValueSchema =
 
 type internal AtomicSchema = {
     IsOptional: bool
+    // TODO: All of the atomic deserializers should check against this type.
     DotnetType: Type }
 
 type internal ListSchema = {

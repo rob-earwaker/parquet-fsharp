@@ -148,11 +148,11 @@ type private ValueAssembler(dotnetType: Type) =
     member this.SkipPeekedValue =
         this.MarkCurrentValueUsed
 
-type private AtomicAssembler(atomicConverter: AtomicConverter, maxRepLevel, maxDefLevel) =
-    inherit ValueAssembler(atomicConverter.DotnetType)
+type private AtomicAssembler(atomicDeserializer: AtomicDeserializer, maxRepLevel, maxDefLevel) =
+    inherit ValueAssembler(atomicDeserializer.DotnetType)
 
     let columnEnumeratorType =
-        typedefof<ColumnEnumerator<_>>.MakeGenericType(atomicConverter.DataDotnetType)
+        typedefof<ColumnEnumerator<_>>.MakeGenericType(atomicDeserializer.DataDotnetType)
 
     let columnEnumerator = Expression.Variable(columnEnumeratorType, "valueEnumerator")
 
@@ -185,8 +185,8 @@ type private AtomicAssembler(atomicConverter: AtomicConverter, maxRepLevel, maxD
     override this.TryAssembleNextValue =
         let repLevel = Expression.Variable(typeof<int>, "repLevel")
         let defLevel = Expression.Variable(typeof<int>, "defLevel")
-        let dataValue = Expression.Variable(atomicConverter.DataDotnetType, "dataValue")
-        let value = Expression.Variable(atomicConverter.DotnetType, "value")
+        let dataValue = Expression.Variable(atomicDeserializer.DataDotnetType, "dataValue")
+        let value = Expression.Variable(atomicDeserializer.DotnetType, "value")
         let returnValue = Expression.Label(typeof<bool>, "valueAvailable")
         // fun () ->
         Expression.Lambda(
@@ -210,8 +210,8 @@ type private AtomicAssembler(atomicConverter: AtomicConverter, maxRepLevel, maxD
                     Expression.Block(
                         // let dataValue = columnEnumerator.CurrentDataValue
                         Expression.Assign(dataValue, columnEnumeratorProperty "CurrentDataValue"),
-                        // let value = atomicConverter.CreateFromDataValue dataValue
-                        Expression.Assign(value, atomicConverter.CreateFromDataValue(dataValue)),
+                        // let value = atomicDeserializer.CreateFromDataValue dataValue
+                        Expression.Assign(value, atomicDeserializer.CreateFromDataValue(dataValue)),
                         // this.CurrentValue.SetValue(repLevel, defLevel, value)
                         this.SetCurrentValue(repLevel, defLevel, value))),
                 // return true
@@ -219,8 +219,8 @@ type private AtomicAssembler(atomicConverter: AtomicConverter, maxRepLevel, maxD
             "tryAssembleNextValue",
             [||])
 
-type private ListAssembler(listConverter: ListConverter, maxDefLevel, elementMaxRepLevel, elementAssembler: ValueAssembler) =
-    inherit ValueAssembler(listConverter.DotnetType)
+type private ListAssembler(listDeserializer: ListDeserializer, maxDefLevel, elementMaxRepLevel, elementAssembler: ValueAssembler) =
+    inherit ValueAssembler(listDeserializer.DotnetType)
 
     override this.CollectColumnEnumeratorVariables() =
         elementAssembler.CollectColumnEnumeratorVariables()
@@ -236,9 +236,9 @@ type private ListAssembler(listConverter: ListConverter, maxDefLevel, elementMax
         let firstElementDefLevel = Expression.Variable(typeof<int>, "firstElementDefLevel")
         let elementValues =
             Expression.Variable(
-                typedefof<ResizeArray<_>>.MakeGenericType(listConverter.ElementConverter.DotnetType),
+                typedefof<ResizeArray<_>>.MakeGenericType(listDeserializer.ElementDeserializer.DotnetType),
                 "elementValues")
-        let list = Expression.Variable(listConverter.DotnetType, "list")
+        let list = Expression.Variable(listDeserializer.DotnetType, "list")
         let loopBreakLabel = Expression.Label("loopBreak")
         let returnValue = Expression.Label(typeof<bool>, "valueAvailable")
         // fun () ->
@@ -300,7 +300,7 @@ type private ListAssembler(listConverter: ListConverter, maxDefLevel, elementMax
                             this.SetCurrentValue(
                                 firstElementRepLevel,
                                 firstElementDefLevel,
-                                listConverter.CreateEmpty),
+                                listDeserializer.CreateEmpty),
                             // else
                             Expression.Block(
                                 // If the list is not UNDEFINED or empty then it has one or more
@@ -339,7 +339,7 @@ type private ListAssembler(listConverter: ListConverter, maxDefLevel, elementMax
                                                 [ elementAssembler.CurrentValue ]),
                                             elementAssembler.SkipPeekedValue)),
                                     loopBreakLabel),
-                                Expression.Assign(list, listConverter.CreateFromElementValues(elementValues)),
+                                Expression.Assign(list, listDeserializer.CreateFromElementValues(elementValues)),
                                 this.SetCurrentValue(
                                     firstElementRepLevel,
                                     firstElementDefLevel,
@@ -350,8 +350,8 @@ type private ListAssembler(listConverter: ListConverter, maxDefLevel, elementMax
             "tryAssembleNextList",
             [||])
 
-type private RecordAssembler(recordConverter: RecordConverter, maxDefLevel, fieldAssemblers: ValueAssembler[]) =
-    inherit ValueAssembler(recordConverter.DotnetType)
+type private RecordAssembler(recordDeserializer: RecordDeserializer, maxDefLevel, fieldAssemblers: ValueAssembler[]) =
+    inherit ValueAssembler(recordDeserializer.DotnetType)
 
     override this.CollectColumnEnumeratorVariables() =
         fieldAssemblers
@@ -368,7 +368,7 @@ type private RecordAssembler(recordConverter: RecordConverter, maxDefLevel, fiel
     override this.TryAssembleNextValue =
         let repLevel = Expression.Variable(typeof<int>, "repLevel")
         let defLevel = Expression.Variable(typeof<int>, "defLevel")
-        let record = Expression.Variable(recordConverter.DotnetType, "record")
+        let record = Expression.Variable(recordDeserializer.DotnetType, "record")
         let returnValue = Expression.Label(typeof<bool>, "valueAvailable")
         // fun () ->
         Expression.Lambda(
@@ -398,7 +398,7 @@ type private RecordAssembler(recordConverter: RecordConverter, maxDefLevel, fiel
                         // else
                         Expression.Block(
                             // let record =
-                            //     recordConverter.CreateFromFieldValues(
+                            //     recordDeserializer.CreateFromFieldValues(
                             //         fieldAssembler1.CurrentValue.Value,
                             //         fieldAssembler2.CurrentValue.Value,
                             //         ...)
@@ -406,7 +406,7 @@ type private RecordAssembler(recordConverter: RecordConverter, maxDefLevel, fiel
                                 record,
                                 fieldAssemblers
                                 |> Array.map (fun fieldAssembler -> fieldAssembler.CurrentValue)
-                                |> recordConverter.CreateFromFieldValues),
+                                |> recordDeserializer.CreateFromFieldValues),
                             // this.CurrentValue.SetValue(repLevel, defLevel, value)
                             this.SetCurrentValue(repLevel, defLevel, record)))
                     // return true
@@ -415,8 +415,8 @@ type private RecordAssembler(recordConverter: RecordConverter, maxDefLevel, fiel
             "tryAssembleNextRecord",
             [||])
 
-type private OptionalAssembler(optionalConverter: OptionalConverter, maxDefLevel, valueAssembler: ValueAssembler) =
-    inherit ValueAssembler(optionalConverter.DotnetType)
+type private OptionalAssembler(optionalDeserializer: OptionalDeserializer, maxDefLevel, valueAssembler: ValueAssembler) =
+    inherit ValueAssembler(optionalDeserializer.DotnetType)
 
     override this.CollectColumnEnumeratorVariables() =
         valueAssembler.CollectColumnEnumeratorVariables()
@@ -430,8 +430,8 @@ type private OptionalAssembler(optionalConverter: OptionalConverter, maxDefLevel
     override this.TryAssembleNextValue =
         let repLevel = Expression.Variable(typeof<int>, "repLevel")
         let defLevel = Expression.Variable(typeof<int>, "defLevel")
-        let value = Expression.Variable(optionalConverter.ValueConverter.DotnetType, "value")
-        let optionalValue = Expression.Variable(optionalConverter.DotnetType, "optionalValue")
+        let value = Expression.Variable(optionalDeserializer.ValueDeserializer.DotnetType, "value")
+        let optionalValue = Expression.Variable(optionalDeserializer.DotnetType, "optionalValue")
         let returnValue = Expression.Label(typeof<bool>, "valueAvailable")
         // fun () ->
         Expression.Lambda(
@@ -454,15 +454,15 @@ type private OptionalAssembler(optionalConverter: OptionalConverter, maxDefLevel
                         // if defLevel = maxDefLevel - 1
                         Expression.Equal(defLevel, Expression.Constant(maxDefLevel - 1)),
                         // then this.CurrentValue.SetValue(repLevel, defLevel, <null>)
-                        this.SetCurrentValue(repLevel, defLevel, optionalConverter.CreateNull),
+                        this.SetCurrentValue(repLevel, defLevel, optionalDeserializer.CreateNull),
                         // else this.CurrentValue.SetUndefined(repLevel, defLevel)
                         this.SetCurrentValueUndefined(repLevel, defLevel)),
                     // else
                     Expression.Block(
                         // let value = valueAssembler.CurrentValue.Value
                         Expression.Assign(value, valueAssembler.CurrentValue),
-                        // let optionalValue = optionalConverter.CreateFromValue(value)
-                        Expression.Assign(optionalValue, optionalConverter.CreateFromValue(value)),
+                        // let optionalValue = optionalDeserializer.CreateFromValue(value)
+                        Expression.Assign(optionalValue, optionalDeserializer.CreateFromValue(value)),
                         // this.CurrentValue.SetValue(repLevel, defLevel, value)
                         this.SetCurrentValue(repLevel, defLevel, optionalValue))),
                 // return true
@@ -471,70 +471,74 @@ type private OptionalAssembler(optionalConverter: OptionalConverter, maxDefLevel
             [||])
 
 module private rec ValueAssembler =
-    let forAtomic (atomicConverter: AtomicConverter) parentMaxRepLevel parentMaxDefLevel =
+    let forAtomic (atomicDeserializer: AtomicDeserializer) parentMaxRepLevel parentMaxDefLevel =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel
-        AtomicAssembler(atomicConverter, maxRepLevel, maxDefLevel)
+        AtomicAssembler(atomicDeserializer, maxRepLevel, maxDefLevel)
         :> ValueAssembler
 
-    let forList (listConverter: ListConverter) parentMaxRepLevel parentMaxDefLevel =
+    let forList (listDeserializer: ListDeserializer) parentMaxRepLevel parentMaxDefLevel =
         let listMaxRepLevel = parentMaxRepLevel
         let listMaxDefLevel = parentMaxDefLevel
         let elementMaxRepLevel = listMaxRepLevel + 1
         let elementMaxDefLevel = listMaxDefLevel + 1
         let elementAssembler =
             ValueAssembler.forValue
-                listConverter.ElementConverter elementMaxRepLevel elementMaxDefLevel
-        ListAssembler(listConverter, listMaxDefLevel, elementMaxRepLevel, elementAssembler)
+                listDeserializer.ElementDeserializer elementMaxRepLevel elementMaxDefLevel
+        ListAssembler(listDeserializer, listMaxDefLevel, elementMaxRepLevel, elementAssembler)
         :> ValueAssembler
 
-    let forRecord (recordConverter: RecordConverter) parentMaxRepLevel parentMaxDefLevel =
+    let forRecord (recordDeserializer: RecordDeserializer) parentMaxRepLevel parentMaxDefLevel =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel
         let fieldAssemblers =
-            recordConverter.Fields
-            |> Array.map (fun fieldConverter ->
-                ValueAssembler.forValue fieldConverter.ValueConverter maxRepLevel maxDefLevel)
-        RecordAssembler(recordConverter, maxDefLevel, fieldAssemblers)
+            recordDeserializer.Fields
+            |> Array.map (fun fieldDeserializer ->
+                ValueAssembler.forValue fieldDeserializer.ValueDeserializer maxRepLevel maxDefLevel)
+        RecordAssembler(recordDeserializer, maxDefLevel, fieldAssemblers)
         :> ValueAssembler
 
-    let forOptional (optionalConverter: OptionalConverter) parentMaxRepLevel parentMaxDefLevel =
+    let forOptional (optionalDeserializer: OptionalDeserializer) parentMaxRepLevel parentMaxDefLevel =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel + 1
-        let valueAssembler = ValueAssembler.forValue optionalConverter.ValueConverter maxRepLevel maxDefLevel
-        OptionalAssembler(optionalConverter, maxDefLevel, valueAssembler)
+        let valueAssembler = ValueAssembler.forValue optionalDeserializer.ValueDeserializer maxRepLevel maxDefLevel
+        OptionalAssembler(optionalDeserializer, maxDefLevel, valueAssembler)
         :> ValueAssembler
 
-    let forValue (valueConverter: ValueConverter) parentMaxRepLevel parentMaxDefLevel =
-        match valueConverter with
-        | ValueConverter.Atomic atomicConverter ->
-            ValueAssembler.forAtomic atomicConverter parentMaxRepLevel parentMaxDefLevel
-        | ValueConverter.List listConverter ->
-            ValueAssembler.forList listConverter parentMaxRepLevel parentMaxDefLevel
-        | ValueConverter.Record recordConverter ->
-            ValueAssembler.forRecord recordConverter parentMaxRepLevel parentMaxDefLevel
-        | ValueConverter.Optional optionalConverter ->
-            ValueAssembler.forOptional optionalConverter parentMaxRepLevel parentMaxDefLevel
+    let forValue (valueDeserializer: ValueDeserializer) parentMaxRepLevel parentMaxDefLevel =
+        match valueDeserializer with
+        | ValueDeserializer.Atomic atomicDeserializer ->
+            ValueAssembler.forAtomic atomicDeserializer parentMaxRepLevel parentMaxDefLevel
+        | ValueDeserializer.List listDeserializer ->
+            ValueAssembler.forList listDeserializer parentMaxRepLevel parentMaxDefLevel
+        | ValueDeserializer.Record recordDeserializer ->
+            ValueAssembler.forRecord recordDeserializer parentMaxRepLevel parentMaxDefLevel
+        | ValueDeserializer.Optional optionalDeserializer ->
+            ValueAssembler.forOptional optionalDeserializer parentMaxRepLevel parentMaxDefLevel
 
-type internal Assembler<'Record>() =
-    let recordConverter =
-        match ValueConverter.of'<'Record> with
-        | ValueConverter.Record recordConverter -> recordConverter
+type internal Assembler<'Record>(schema: Schema) =
+    let recordDeserializer =
+        let schema =
+            ValueSchema.Record {
+                IsOptional = false
+                Fields = schema.Fields }
+        match ValueDeserializer.of'<'Record> schema with
+        | ValueDeserializer.Record recordDeserializer -> recordDeserializer
         // TODO: F# records are currently treated as optional for compatability
         // with Parquet.Net, but the root record should never be optional.
         // Unwrap the record info to remove this optionality.
-        | ValueConverter.Optional optionalConverter ->
-            match optionalConverter.ValueConverter with
-            | ValueConverter.Record recordConverter -> recordConverter
+        | ValueDeserializer.Optional optionalDeserializer ->
+            match optionalDeserializer.ValueDeserializer with
+            | ValueDeserializer.Record recordDeserializer -> recordDeserializer
             | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
         | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
 
-    let schema = RecordConverter.getRootSchema recordConverter
+    let schema = RecordDeserializer.getRootSchema recordDeserializer
 
     let recordAssembler =
         let maxRepLevel = 0
         let maxDefLevel = 0
-        ValueAssembler.forRecord recordConverter maxRepLevel maxDefLevel
+        ValueAssembler.forRecord recordDeserializer maxRepLevel maxDefLevel
 
     let assembleExpr =
         let dataColumns = Expression.Parameter(typeof<DataColumn[]>, "dataColumns")
@@ -595,7 +599,7 @@ type internal Assembler<'Record>() =
 module private Assembler =
     // TODO: We probably won;t be able to cache at this level eventually when
     // we introduce settings that control deserialization, since the behaviour
-    // will depend on the settings, e.g. which converters are registered.
+    // will depend on the settings, e.g. which deserializers are registered.
     let private Cache = Dictionary<Type * Schema, obj>()
 
     let private tryGetCached<'Record> schema =
@@ -614,6 +618,6 @@ module private Assembler =
         | Option.Some assembler -> assembler
         | Option.None ->
             // TODO: Check schema compatability.
-            let assembler = Assembler<'Record>()
+            let assembler = Assembler<'Record>(schema)
             addToCache schema assembler
             assembler

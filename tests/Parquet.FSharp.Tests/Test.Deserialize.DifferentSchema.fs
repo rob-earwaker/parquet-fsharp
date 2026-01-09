@@ -7,6 +7,7 @@ open System
 
 // TODO: If this file gets large, could split into PartialSchema and ExtendedSchema.
 
+// TODO: Record with fields in different order
 // TODO: Record with additional optional field?
 
 module ``fsharp record with subset of fields`` =

@@ -609,7 +609,7 @@ module private Assembler =
         lock Cache (fun () ->
             Cache[(typeof<'Record>, schema)] <- assembler)
 
-    let create<'Record> schema =
+    let createFor<'Record> schema =
         match tryGetCached<'Record> schema with
         | Option.Some assembler -> assembler
         | Option.None ->

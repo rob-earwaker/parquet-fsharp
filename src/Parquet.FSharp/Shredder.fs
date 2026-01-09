@@ -409,7 +409,7 @@ module private Shredder =
         lock Cache (fun () ->
             Cache[typeof<'Record>] <- shredder)
 
-    let of'<'Record> =
+    let createFor<'Record> =
         match tryGetCached<'Record> with
         | Option.Some shredder -> shredder
         | Option.None ->

@@ -10,7 +10,7 @@ type ParquetSerializer =
     /// Asynchronously serialize a sequence of records to a stream.
     static member AsyncSerialize<'Record>(records: 'Record seq, stream: Stream) =
         async {
-            let shredder = Shredder.of'<'Record>
+            let shredder = Shredder.createFor<'Record>
             let parquetNetSchema = Schema.toParquetNet shredder.Schema
             let! cancellationToken = Async.CancellationToken
             use! fileWriter =
@@ -55,7 +55,7 @@ type ParquetSerializer =
                 |> Async.AwaitTask
             // TODO: Support reading multiple row groups.
             let fileSchema = Schema.ofParquetNet fileReader.Schema
-            let assembler = Assembler.create<'Record> fileSchema
+            let assembler = Assembler.createFor<'Record> fileSchema
             use rowGroupReader = fileReader.OpenRowGroupReader(0)
             let! columns =
                 // Choose which columns to read based on the assembler schema

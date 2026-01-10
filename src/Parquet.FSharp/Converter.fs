@@ -391,14 +391,14 @@ module internal RecordDeserializer =
 module internal ValueConverter =
     let All : IValueConverter[] = [|
         PrimitiveConverter<bool>()
-        PrimitiveConverter<int8>()
+        Int8Converter()
         Int16Converter()
         Int32Converter()
         Int64Converter()
-        PrimitiveConverter<uint8>()
-        PrimitiveConverter<uint16>()
-        PrimitiveConverter<uint32>()
-        PrimitiveConverter<uint64>()
+        UInt8Converter()
+        UInt16Converter()
+        UInt32Converter()
+        UInt64Converter()
         PrimitiveConverter<float32>()
         PrimitiveConverter<float>()
         PrimitiveConverter<decimal>()
@@ -444,6 +444,37 @@ type internal PrimitiveConverter<'Value>() =
             if dotnetType = serializer.DotnetType
             then Option.Some deserializer
             else Option.None
+
+type internal Int8Converter() =
+    let dotnetType = typeof<int8>
+
+    let serializer =
+        let dataDotnetType = dotnetType
+        let getDataValue = id
+        Serializer.atomic dotnetType dataDotnetType getDataValue
+
+    let createDeserializer dataDotnetType =
+        let createFromDataValue dataValue =
+            Expression.Convert(dataValue, dotnetType)
+            :> Expression
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    interface IValueConverter with
+        member this.TryCreateSerializer(dotnetType) =
+            if dotnetType = serializer.DotnetType
+            then Option.Some serializer
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType, schema) =
+            if dotnetType <> typeof<int8>
+            then Option.None
+            else
+                match schema with
+                | ValueSchema.Atomic atomicSchema
+                    when not atomicSchema.IsOptional
+                        && atomicSchema.DotnetType = typeof<int8> ->
+                    Option.Some (createDeserializer atomicSchema.DotnetType)
+                | _ -> Option.None
 
 type internal Int16Converter() =
     let dotnetType = typeof<int16>
@@ -544,6 +575,136 @@ type internal Int64Converter() =
                             || atomicSchema.DotnetType = typeof<int32>
                             || atomicSchema.DotnetType = typeof<int16>
                             || atomicSchema.DotnetType = typeof<int8>
+                            || atomicSchema.DotnetType = typeof<uint32>
+                            || atomicSchema.DotnetType = typeof<uint16>
+                            || atomicSchema.DotnetType = typeof<uint8>) ->
+                    Option.Some (createDeserializer atomicSchema.DotnetType)
+                | _ -> Option.None
+
+type internal UInt8Converter() =
+    let dotnetType = typeof<uint8>
+
+    let serializer =
+        let dataDotnetType = dotnetType
+        let getDataValue = id
+        Serializer.atomic dotnetType dataDotnetType getDataValue
+
+    let createDeserializer dataDotnetType =
+        let createFromDataValue dataValue =
+            Expression.Convert(dataValue, dotnetType)
+            :> Expression
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    interface IValueConverter with
+        member this.TryCreateSerializer(dotnetType) =
+            if dotnetType = serializer.DotnetType
+            then Option.Some serializer
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType, schema) =
+            if dotnetType <> typeof<uint8>
+            then Option.None
+            else
+                match schema with
+                | ValueSchema.Atomic atomicSchema
+                    when not atomicSchema.IsOptional
+                        && atomicSchema.DotnetType = typeof<uint8> ->
+                    Option.Some (createDeserializer atomicSchema.DotnetType)
+                | _ -> Option.None
+
+type internal UInt16Converter() =
+    let dotnetType = typeof<uint16>
+
+    let serializer =
+        let dataDotnetType = dotnetType
+        let getDataValue = id
+        Serializer.atomic dotnetType dataDotnetType getDataValue
+
+    let createDeserializer dataDotnetType =
+        let createFromDataValue dataValue =
+            Expression.Convert(dataValue, dotnetType)
+            :> Expression
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    interface IValueConverter with
+        member this.TryCreateSerializer(dotnetType) =
+            if dotnetType = serializer.DotnetType
+            then Option.Some serializer
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType, schema) =
+            if dotnetType <> typeof<uint16>
+            then Option.None
+            else
+                match schema with
+                | ValueSchema.Atomic atomicSchema
+                    when not atomicSchema.IsOptional
+                        && (atomicSchema.DotnetType = typeof<uint16>
+                            || atomicSchema.DotnetType = typeof<uint8>) ->
+                    Option.Some (createDeserializer atomicSchema.DotnetType)
+                | _ -> Option.None
+
+type internal UInt32Converter() =
+    let dotnetType = typeof<uint32>
+
+    let serializer =
+        let dataDotnetType = dotnetType
+        let getDataValue = id
+        Serializer.atomic dotnetType dataDotnetType getDataValue
+
+    let createDeserializer dataDotnetType =
+        let createFromDataValue dataValue =
+            Expression.Convert(dataValue, dotnetType)
+            :> Expression
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    interface IValueConverter with
+        member this.TryCreateSerializer(dotnetType) =
+            if dotnetType = serializer.DotnetType
+            then Option.Some serializer
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType, schema) =
+            if dotnetType <> typeof<uint32>
+            then Option.None
+            else
+                match schema with
+                | ValueSchema.Atomic atomicSchema
+                    when not atomicSchema.IsOptional
+                        && (atomicSchema.DotnetType = typeof<uint32>
+                            || atomicSchema.DotnetType = typeof<uint16>
+                            || atomicSchema.DotnetType = typeof<uint8>) ->
+                    Option.Some (createDeserializer atomicSchema.DotnetType)
+                | _ -> Option.None
+
+type internal UInt64Converter() =
+    let dotnetType = typeof<uint64>
+
+    let serializer =
+        let dataDotnetType = dotnetType
+        let getDataValue = id
+        Serializer.atomic dotnetType dataDotnetType getDataValue
+
+    let createDeserializer dataDotnetType =
+        let createFromDataValue dataValue =
+            Expression.Convert(dataValue, dotnetType)
+            :> Expression
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    interface IValueConverter with
+        member this.TryCreateSerializer(dotnetType) =
+            if dotnetType = serializer.DotnetType
+            then Option.Some serializer
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType, schema) =
+            if dotnetType <> typeof<uint64>
+            then Option.None
+            else
+                match schema with
+                | ValueSchema.Atomic atomicSchema
+                    when not atomicSchema.IsOptional
+                        && (atomicSchema.DotnetType = typeof<uint64>
                             || atomicSchema.DotnetType = typeof<uint32>
                             || atomicSchema.DotnetType = typeof<uint16>
                             || atomicSchema.DotnetType = typeof<uint8>) ->

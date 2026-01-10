@@ -33,8 +33,10 @@ open System.Reflection
 
 // TODO: Eventually should be able to rename to remove 'Factory'
 type internal IValueConverter =
+    // TODO: Rename to sourceType?
     abstract member TryCreateSerializer
         : dotnetType:Type -> Serializer option
+    // TODO: Rename to targetType and sourceSchema?
     abstract member TryCreateDeserializer
         : dotnetType:Type * schema:ValueSchema -> Deserializer option
 
@@ -391,7 +393,7 @@ module internal ValueConverter =
         PrimitiveConverter<bool>()
         PrimitiveConverter<int8>()
         PrimitiveConverter<int16>()
-        PrimitiveConverter<int>()
+        Int32Converter()
         PrimitiveConverter<int64>()
         PrimitiveConverter<uint8>()
         PrimitiveConverter<uint16>()
@@ -442,6 +444,41 @@ type internal PrimitiveConverter<'Value>() =
             if dotnetType = serializer.DotnetType
             then Option.Some deserializer
             else Option.None
+
+type internal Int32Converter() =
+    let dotnetType = typeof<int32>
+
+    let serializer =
+        let dataDotnetType = dotnetType
+        let getDataValue = id
+        Serializer.atomic dotnetType dataDotnetType getDataValue
+
+    let createDeserializer dataDotnetType =
+        let createFromDataValue dataValue =
+            Expression.Convert(dataValue, dotnetType)
+            :> Expression
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    interface IValueConverter with
+        member this.TryCreateSerializer(dotnetType) =
+            if dotnetType = serializer.DotnetType
+            then Option.Some serializer
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType, schema) =
+            if dotnetType <> typeof<int32>
+            then Option.None
+            else
+                match schema with
+                | ValueSchema.Atomic atomicSchema
+                    when not atomicSchema.IsOptional
+                        && (atomicSchema.DotnetType = typeof<int32>
+                            || atomicSchema.DotnetType = typeof<int16>
+                            || atomicSchema.DotnetType = typeof<int8>
+                            || atomicSchema.DotnetType = typeof<uint16>
+                            || atomicSchema.DotnetType = typeof<uint8>) ->
+                    Option.Some (createDeserializer atomicSchema.DotnetType)
+                | _ -> Option.None
 
 type internal DateTimeOffsetConverter() =
     let dotnetType = typeof<DateTimeOffset>
@@ -1056,12 +1093,17 @@ type internal NullableConverter() =
                 let isValueOptional, valueSchema =
                     match schema with
                     | ValueSchema.Record recordSchema ->
+                        // TODO: This seems a bit hacky!
                         if recordSchema.Fields.Length = 1
                             && recordSchema.Fields[0].Name = "Value"
                         then true, recordSchema.Fields[0].Value
                         else false, schema
                     | _ -> false, schema
                 let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
+                let valueSchema =
+                    if not isValueOptional
+                    then valueSchema.MakeRequired()
+                    else valueSchema
                 let deserializer =
                     Deserializer.ofType valueDotnetType valueSchema
                 if isValueOptional
@@ -1147,12 +1189,17 @@ type internal OptionConverter() =
                 let isValueOptional, valueSchema =
                     match schema with
                     | ValueSchema.Record recordSchema ->
+                        // TODO: This seems a bit hacky!
                         if recordSchema.Fields.Length = 1
                             && recordSchema.Fields[0].Name = "Value"
                         then true, recordSchema.Fields[0].Value
                         else false, schema
                     | _ -> false, schema
                 let valueDotnetType = dotnetType.GetGenericArguments()[0]
+                let valueSchema =
+                    if not isValueOptional
+                    then valueSchema.MakeRequired()
+                    else valueSchema
                 let deserializer =
                     Deserializer.ofType valueDotnetType valueSchema
                 if isValueOptional

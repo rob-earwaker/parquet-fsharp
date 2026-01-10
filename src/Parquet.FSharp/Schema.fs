@@ -17,6 +17,15 @@ type internal ValueSchema =
         | ValueSchema.List list -> list.IsOptional
         | ValueSchema.Record record -> record.IsOptional
 
+    member this.MakeRequired() =
+        match this with
+        | ValueSchema.Atomic atomic ->
+            ValueSchema.Atomic { atomic with IsOptional = false }
+        | ValueSchema.List list ->
+            ValueSchema.List { list with IsOptional = false }
+        | ValueSchema.Record record ->
+            ValueSchema.Record { record with IsOptional = false }
+
 type internal AtomicSchema = {
     IsOptional: bool
     // TODO: All of the atomic deserializers should check against this type.

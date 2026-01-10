@@ -24,7 +24,7 @@ let testTypeCompatibility<'Input, 'Output> convert inputRecords =
 let ``int8 deserialized as int16`` inputRecords =
     testTypeCompatibility<int8, int16> int16 inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``int8 deserialized as int32`` inputRecords =
     testTypeCompatibility<int8, int32> int32 inputRecords
 
@@ -44,7 +44,7 @@ let ``int8 deserialized as float64`` inputRecords =
 let ``int8 deserialized as decimal`` inputRecords =
     testTypeCompatibility<int8, decimal> decimal inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``int16 deserialized as int32`` inputRecords =
     testTypeCompatibility<int16, int32> int32 inputRecords
 
@@ -84,7 +84,7 @@ let ``int64 deserialized as decimal`` inputRecords =
 let ``uint8 deserialized as int16`` inputRecords =
     testTypeCompatibility<uint8, int16> int16 inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``uint8 deserialized as int32`` inputRecords =
     testTypeCompatibility<uint8, int32> int32 inputRecords
 
@@ -116,7 +116,7 @@ let ``uint8 deserialized as float64`` inputRecords =
 let ``uint8 deserialized as decimal`` inputRecords =
     testTypeCompatibility<uint8, decimal> decimal inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``uint16 deserialized as int32`` inputRecords =
     testTypeCompatibility<uint16, int32> int32 inputRecords
 

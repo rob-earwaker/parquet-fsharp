@@ -430,7 +430,7 @@ type private OptionalAssembler(optionalDeserializer: OptionalDeserializer, maxDe
     override this.TryAssembleNextValue =
         let repLevel = Expression.Variable(typeof<int>, "repLevel")
         let defLevel = Expression.Variable(typeof<int>, "defLevel")
-        let value = Expression.Variable(optionalDeserializer.ValueDeserializer.DotnetType, "value")
+        let value = Expression.Variable(optionalDeserializer.Deserializer.DotnetType, "value")
         let optionalValue = Expression.Variable(optionalDeserializer.DotnetType, "optionalValue")
         let returnValue = Expression.Label(typeof<bool>, "valueAvailable")
         // fun () ->
@@ -494,26 +494,26 @@ module private rec ValueAssembler =
         let fieldAssemblers =
             recordDeserializer.Fields
             |> Array.map (fun fieldDeserializer ->
-                ValueAssembler.forValue fieldDeserializer.ValueDeserializer maxRepLevel maxDefLevel)
+                ValueAssembler.forValue fieldDeserializer.Deserializer maxRepLevel maxDefLevel)
         RecordAssembler(recordDeserializer, maxDefLevel, fieldAssemblers)
         :> ValueAssembler
 
     let forOptional (optionalDeserializer: OptionalDeserializer) parentMaxRepLevel parentMaxDefLevel =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel + 1
-        let valueAssembler = ValueAssembler.forValue optionalDeserializer.ValueDeserializer maxRepLevel maxDefLevel
+        let valueAssembler = ValueAssembler.forValue optionalDeserializer.Deserializer maxRepLevel maxDefLevel
         OptionalAssembler(optionalDeserializer, maxDefLevel, valueAssembler)
         :> ValueAssembler
 
-    let forValue (valueDeserializer: ValueDeserializer) parentMaxRepLevel parentMaxDefLevel =
-        match valueDeserializer with
-        | ValueDeserializer.Atomic atomicDeserializer ->
+    let forValue (deserializer: Deserializer) parentMaxRepLevel parentMaxDefLevel =
+        match deserializer with
+        | Deserializer.Atomic atomicDeserializer ->
             ValueAssembler.forAtomic atomicDeserializer parentMaxRepLevel parentMaxDefLevel
-        | ValueDeserializer.List listDeserializer ->
+        | Deserializer.List listDeserializer ->
             ValueAssembler.forList listDeserializer parentMaxRepLevel parentMaxDefLevel
-        | ValueDeserializer.Record recordDeserializer ->
+        | Deserializer.Record recordDeserializer ->
             ValueAssembler.forRecord recordDeserializer parentMaxRepLevel parentMaxDefLevel
-        | ValueDeserializer.Optional optionalDeserializer ->
+        | Deserializer.Optional optionalDeserializer ->
             ValueAssembler.forOptional optionalDeserializer parentMaxRepLevel parentMaxDefLevel
 
 type internal Assembler<'Record>(schema: Schema) =
@@ -522,14 +522,14 @@ type internal Assembler<'Record>(schema: Schema) =
             ValueSchema.Record {
                 IsOptional = false
                 Fields = schema.Fields }
-        match ValueDeserializer.of'<'Record> schema with
-        | ValueDeserializer.Record recordDeserializer -> recordDeserializer
+        match Deserializer.of'<'Record> schema with
+        | Deserializer.Record recordDeserializer -> recordDeserializer
         // TODO: F# records are currently treated as optional for compatability
         // with Parquet.Net, but the root record should never be optional.
         // Unwrap the record info to remove this optionality.
-        | ValueDeserializer.Optional optionalDeserializer ->
-            match optionalDeserializer.ValueDeserializer with
-            | ValueDeserializer.Record recordDeserializer -> recordDeserializer
+        | Deserializer.Optional optionalDeserializer ->
+            match optionalDeserializer.Deserializer with
+            | Deserializer.Record recordDeserializer -> recordDeserializer
             | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
         | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
 

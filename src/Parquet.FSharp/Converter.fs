@@ -32,11 +32,11 @@ open System.Reflection
 // TODO: Eventually should be able to rename to remove 'Factory'
 type internal IValueConverter =
     abstract member TryCreateSerializer
-        : dotnetType:Type -> ValueSerializer option
+        : dotnetType:Type -> Serializer option
     abstract member TryCreateDeserializer
-        : dotnetType:Type * schema:ValueSchema -> ValueDeserializer option
+        : dotnetType:Type * schema:ValueSchema -> Deserializer option
 
-type internal ValueSerializer =
+type internal Serializer =
     | Atomic of AtomicSerializer
     | List of ListSerializer
     | Record of RecordSerializer
@@ -44,10 +44,10 @@ type internal ValueSerializer =
     with
     member this.DotnetType =
         match this with
-        | ValueSerializer.Atomic atomicSerializer -> atomicSerializer.DotnetType
-        | ValueSerializer.List listSerializer -> listSerializer.DotnetType
-        | ValueSerializer.Record recordSerializer -> recordSerializer.DotnetType
-        | ValueSerializer.Optional optionalSerializer -> optionalSerializer.DotnetType
+        | Serializer.Atomic atomicSerializer -> atomicSerializer.DotnetType
+        | Serializer.List listSerializer -> listSerializer.DotnetType
+        | Serializer.Record recordSerializer -> recordSerializer.DotnetType
+        | Serializer.Optional optionalSerializer -> optionalSerializer.DotnetType
 
 type internal AtomicSerializer = {
     DotnetType: Type
@@ -56,13 +56,13 @@ type internal AtomicSerializer = {
 
 type internal ListSerializer = {
     DotnetType: Type
-    ElementSerializer: ValueSerializer
+    ElementSerializer: Serializer
     GetLength: Expression -> Expression
     GetElementValue: Expression * Expression -> Expression }
 
 type internal FieldSerializer = {
     Name: string
-    ValueSerializer: ValueSerializer
+    Serializer: Serializer
     GetValue: Expression -> Expression }
 
 type internal RecordSerializer = {
@@ -71,11 +71,11 @@ type internal RecordSerializer = {
 
 type internal OptionalSerializer = {
     DotnetType: Type
-    ValueSerializer: ValueSerializer
+    Serializer: Serializer
     IsNull: Expression -> Expression
     GetValue: Expression -> Expression }
 
-type internal ValueDeserializer =
+type internal Deserializer =
     | Atomic of AtomicDeserializer
     | List of ListDeserializer
     | Record of RecordDeserializer
@@ -83,10 +83,10 @@ type internal ValueDeserializer =
     with
     member this.DotnetType =
         match this with
-        | ValueDeserializer.Atomic atomicDeserializer -> atomicDeserializer.DotnetType
-        | ValueDeserializer.List listDeserializer -> listDeserializer.DotnetType
-        | ValueDeserializer.Record recordDeserializer -> recordDeserializer.DotnetType
-        | ValueDeserializer.Optional optionalDeserializer -> optionalDeserializer.DotnetType
+        | Deserializer.Atomic atomicDeserializer -> atomicDeserializer.DotnetType
+        | Deserializer.List listDeserializer -> listDeserializer.DotnetType
+        | Deserializer.Record recordDeserializer -> recordDeserializer.DotnetType
+        | Deserializer.Optional optionalDeserializer -> optionalDeserializer.DotnetType
 
 type internal AtomicDeserializer = {
     DotnetType: Type
@@ -95,13 +95,13 @@ type internal AtomicDeserializer = {
 
 type internal ListDeserializer = {
     DotnetType: Type
-    ElementDeserializer: ValueDeserializer
+    ElementDeserializer: Deserializer
     CreateEmpty: Expression
     CreateFromElementValues: Expression -> Expression }
 
 type internal FieldDeserializer = {
     Name: string
-    ValueDeserializer: ValueDeserializer }
+    Deserializer: Deserializer }
 
 type internal RecordDeserializer = {
     DotnetType: Type
@@ -110,7 +110,7 @@ type internal RecordDeserializer = {
 
 type internal OptionalDeserializer = {
     DotnetType: Type
-    ValueDeserializer: ValueDeserializer
+    Deserializer: Deserializer
     CreateNull: Expression
     CreateFromValue: Expression -> Expression }
 
@@ -186,229 +186,229 @@ module private DotnetType =
         dotnetType.IsGenericType
         && dotnetType.GetGenericTypeDefinition() = typedefof<'GenericType>
 
-module internal ValueSerializer =
+module internal Serializer =
     // TODO: This probably isn't valid any more!
-    let private Cache = Dictionary<Type, ValueSerializer>()
+    let private Cache = Dictionary<Type, Serializer>()
 
     let private tryGetCached dotnetType =
         lock Cache (fun () ->
             match Cache.TryGetValue(dotnetType) with
             | false, _ -> Option.None
-            | true, valueSerializer -> Option.Some valueSerializer)
+            | true, serializer -> Option.Some serializer)
 
-    let private addToCache dotnetType valueSerializer =
+    let private addToCache dotnetType serializer =
         lock Cache (fun () ->
-            Cache[dotnetType] <- valueSerializer)
+            Cache[dotnetType] <- serializer)
 
     let atomic dotnetType dataDotnetType getDataValue =
-        ValueSerializer.Atomic {
+        Serializer.Atomic {
             AtomicSerializer.DotnetType = dotnetType
             AtomicSerializer.DataDotnetType = dataDotnetType
             AtomicSerializer.GetDataValue = getDataValue }
 
     let record dotnetType fields =
-        ValueSerializer.Record {
+        Serializer.Record {
             RecordSerializer.DotnetType = dotnetType
             RecordSerializer.Fields = fields }
 
     let list dotnetType elementSerializer getLength getElementValue =
-        ValueSerializer.List {
+        Serializer.List {
             ListSerializer.DotnetType = dotnetType
             ListSerializer.ElementSerializer = elementSerializer
             ListSerializer.GetLength = getLength
             ListSerializer.GetElementValue = getElementValue }
 
-    let optional dotnetType valueSerializer isNull getValue =
-        ValueSerializer.Optional {
+    let optional dotnetType serializer isNull getValue =
+        Serializer.Optional {
             OptionalSerializer.DotnetType = dotnetType
-            OptionalSerializer.ValueSerializer = valueSerializer
+            OptionalSerializer.Serializer = serializer
             OptionalSerializer.IsNull = isNull
             OptionalSerializer.GetValue = getValue }
 
-    let referenceTypeWrapper (valueSerializer: ValueSerializer) =
-        let dotnetType = valueSerializer.DotnetType
+    let referenceTypeWrapper (serializer: Serializer) =
+        let dotnetType = serializer.DotnetType
         let isNull = Expression.IsNull
         let getValue = id
-        ValueSerializer.optional dotnetType valueSerializer isNull getValue
+        Serializer.optional dotnetType serializer isNull getValue
 
     // TODO: This shouldn't really be necessary, but while Parquet.Net
     // treats all struct and list fields as optional it's necessary.
-    let nonNullableReferenceTypeWrapper (valueSerializer: ValueSerializer) =
-        let dotnetType = valueSerializer.DotnetType
+    let nonNullableReferenceTypeWrapper (serializer: Serializer) =
+        let dotnetType = serializer.DotnetType
         let isNull = fun value -> Expression.False
         let getValue = id
-        ValueSerializer.optional dotnetType valueSerializer isNull getValue
+        Serializer.optional dotnetType serializer isNull getValue
 
-    let private getSchema' isOptional valueSerializer =
-        match valueSerializer with
-        | ValueSerializer.Atomic atomicSerializer ->
+    let private getSchema' isOptional serializer =
+        match serializer with
+        | Serializer.Atomic atomicSerializer ->
             ValueSchema.Atomic {
                 IsOptional = isOptional
                 DotnetType = atomicSerializer.DataDotnetType }
-        | ValueSerializer.List listSerializer ->
+        | Serializer.List listSerializer ->
             ValueSchema.List {
                 IsOptional = isOptional
-                Element = ValueSerializer.getSchema listSerializer.ElementSerializer }
-        | ValueSerializer.Record recordSerializer ->
+                Element = Serializer.getSchema listSerializer.ElementSerializer }
+        | Serializer.Record recordSerializer ->
             ValueSchema.Record {
                 IsOptional = isOptional
                 Fields = recordSerializer.Fields |> Array.map FieldSerializer.getSchema }
-        | ValueSerializer.Optional optionalSerializer ->
-            ValueSerializer.getSchema' true optionalSerializer.ValueSerializer
+        | Serializer.Optional optionalSerializer ->
+            Serializer.getSchema' true optionalSerializer.Serializer
 
-    let getSchema valueSerializer =
-        ValueSerializer.getSchema' false valueSerializer
+    let getSchema serializer =
+        Serializer.getSchema' false serializer
 
-    let ofType (dotnetType: Type) : ValueSerializer =
+    let ofType (dotnetType: Type) : Serializer =
         match tryGetCached dotnetType with
-        | Option.Some valueSerializer -> valueSerializer
+        | Option.Some serializer -> serializer
         | Option.None ->
-            let valueSerializer =
+            let serializer =
                 ValueConverter.All
                 |> Array.tryPick _.TryCreateSerializer(dotnetType)
                 |> Option.defaultWith (fun () ->
                     failwith $"unsupported type '{dotnetType.FullName}'")
-            addToCache dotnetType valueSerializer
-            valueSerializer
+            addToCache dotnetType serializer
+            serializer
 
     let of'<'Value> =
         ofType typeof<'Value>
 
-module internal ValueDeserializer =
+module internal Deserializer =
     // TODO: This probably isn't valid any more!
-    let private Cache = Dictionary<Type, ValueDeserializer>()
+    let private Cache = Dictionary<Type, Deserializer>()
 
     let private tryGetCached dotnetType =
         lock Cache (fun () ->
             match Cache.TryGetValue(dotnetType) with
             | false, _ -> Option.None
-            | true, valueDeserializer -> Option.Some valueDeserializer)
+            | true, deserializer -> Option.Some deserializer)
 
-    let private addToCache dotnetType valueDeserializer =
+    let private addToCache dotnetType deserializer =
         lock Cache (fun () ->
-            Cache[dotnetType] <- valueDeserializer)
+            Cache[dotnetType] <- deserializer)
 
     let atomic dotnetType dataDotnetType createFromDataValue =
-        ValueDeserializer.Atomic {
+        Deserializer.Atomic {
             AtomicDeserializer.DotnetType = dotnetType
             AtomicDeserializer.DataDotnetType = dataDotnetType
             AtomicDeserializer.CreateFromDataValue = createFromDataValue }
 
     let record dotnetType fields createFromFieldValues =
-        ValueDeserializer.Record {
+        Deserializer.Record {
             RecordDeserializer.DotnetType = dotnetType
             RecordDeserializer.Fields = fields
             RecordDeserializer.CreateFromFieldValues = createFromFieldValues }
 
     let list dotnetType elementDeserializer createEmpty createFromElementValues =
-        ValueDeserializer.List {
+        Deserializer.List {
             ListDeserializer.DotnetType = dotnetType
             ListDeserializer.ElementDeserializer = elementDeserializer
             ListDeserializer.CreateEmpty = createEmpty
             ListDeserializer.CreateFromElementValues = createFromElementValues }
 
-    let optional dotnetType valueDeserializer createNull createFromValue =
-        ValueDeserializer.Optional {
+    let optional dotnetType deserializer createNull createFromValue =
+        Deserializer.Optional {
             OptionalDeserializer.DotnetType = dotnetType
-            OptionalDeserializer.ValueDeserializer = valueDeserializer
+            OptionalDeserializer.Deserializer = deserializer
             OptionalDeserializer.CreateNull = createNull
             OptionalDeserializer.CreateFromValue = createFromValue }
 
-    let referenceTypeWrapper (valueDeserializer: ValueDeserializer) =
-        let dotnetType = valueDeserializer.DotnetType
+    let referenceTypeWrapper (deserializer: Deserializer) =
+        let dotnetType = deserializer.DotnetType
         let createNull = Expression.Null(dotnetType)
         let createFromValue = id
-        ValueDeserializer.optional
-            dotnetType valueDeserializer createNull createFromValue
+        Deserializer.optional
+            dotnetType deserializer createNull createFromValue
 
     // TODO: This shouldn't really be necessary, but while Parquet.Net
     // treats all struct and list fields as optional it's necessary.
-    let nonNullableReferenceTypeWrapper (valueDeserializer: ValueDeserializer) =
-        let dotnetType = valueDeserializer.DotnetType
+    let nonNullableReferenceTypeWrapper (deserializer: Deserializer) =
+        let dotnetType = deserializer.DotnetType
         let createNull =
             Expression.Block(
                 Expression.FailWith($"type '{dotnetType.FullName}' is not nullable"),
                 Expression.Default(dotnetType))
             :> Expression
         let createFromValue = id
-        ValueDeserializer.optional
-            dotnetType valueDeserializer createNull createFromValue
+        Deserializer.optional
+            dotnetType deserializer createNull createFromValue
 
-    let private getSchema' isOptional valueDeserializer =
-        match valueDeserializer with
-        | ValueDeserializer.Atomic atomicDeserializer ->
+    let private getSchema' isOptional deserializer =
+        match deserializer with
+        | Deserializer.Atomic atomicDeserializer ->
             ValueSchema.Atomic {
                 IsOptional = isOptional
                 DotnetType = atomicDeserializer.DataDotnetType }
-        | ValueDeserializer.List listDeserializer ->
+        | Deserializer.List listDeserializer ->
             ValueSchema.List {
                 IsOptional = isOptional
-                Element = ValueDeserializer.getSchema listDeserializer.ElementDeserializer }
-        | ValueDeserializer.Record recordDeserializer ->
+                Element = Deserializer.getSchema listDeserializer.ElementDeserializer }
+        | Deserializer.Record recordDeserializer ->
             ValueSchema.Record {
                 IsOptional = isOptional
                 Fields = recordDeserializer.Fields |> Array.map FieldDeserializer.getSchema }
-        | ValueDeserializer.Optional optionalDeserializer ->
-            ValueDeserializer.getSchema' true optionalDeserializer.ValueDeserializer
+        | Deserializer.Optional optionalDeserializer ->
+            Deserializer.getSchema' true optionalDeserializer.Deserializer
 
-    let getSchema valueDeserializer =
-        ValueDeserializer.getSchema' false valueDeserializer
+    let getSchema deserializer =
+        Deserializer.getSchema' false deserializer
 
-    let ofType (dotnetType: Type) schema : ValueDeserializer =
+    let ofType (dotnetType: Type) schema : Deserializer =
         match tryGetCached dotnetType with
-        | Option.Some valueDeserializer -> valueDeserializer
+        | Option.Some deserializer -> deserializer
         | Option.None ->
-            let valueDeserializer =
+            let deserializer =
                 ValueConverter.All
                 |> Array.tryPick _.TryCreateDeserializer(dotnetType, schema)
                 |> Option.defaultWith (fun () ->
                     failwith $"unsupported type '{dotnetType.FullName}'")
-            addToCache dotnetType valueDeserializer
-            valueDeserializer
+            addToCache dotnetType deserializer
+            deserializer
 
     let of'<'Value> schema =
         ofType typeof<'Value> schema
 
 module private FieldSerializer =
-    let create name valueSerializer getValue =
+    let create name serializer getValue =
         { FieldSerializer.Name = name
-          FieldSerializer.ValueSerializer = valueSerializer
+          FieldSerializer.Serializer = serializer
           FieldSerializer.GetValue = getValue }
 
     let ofProperty (field: PropertyInfo) : FieldSerializer =
         let name = field.Name
-        let valueSerializer = ValueSerializer.ofType field.PropertyType
+        let serializer = Serializer.ofType field.PropertyType
         let getValue (record: Expression) =
             Expression.Property(record, field)
             :> Expression
-        create name valueSerializer getValue
+        create name serializer getValue
 
     let ofUnionCaseField (unionCase: UnionCaseInfo) (field: PropertyInfo) =
         let name = field.Name
-        let valueSerializer = ValueSerializer.ofType field.PropertyType
+        let serializer = Serializer.ofType field.PropertyType
         let getValue (union: Expression) =
             Expression.Property(
                 Expression.Convert(union, unionCase.DotnetType), field)
             :> Expression
-        create name valueSerializer getValue
+        create name serializer getValue
 
     let getSchema (fieldSerializer: FieldSerializer) =
         { FieldSchema.Name = fieldSerializer.Name
-          FieldSchema.Value = ValueSerializer.getSchema fieldSerializer.ValueSerializer }
+          FieldSchema.Value = Serializer.getSchema fieldSerializer.Serializer }
 
 module private FieldDeserializer =
-    let create name valueDeserializer =
+    let create name deserializer =
         { FieldDeserializer.Name = name
-          FieldDeserializer.ValueDeserializer = valueDeserializer }
+          FieldDeserializer.Deserializer = deserializer }
 
     let ofProperty (field: PropertyInfo) schema : FieldDeserializer =
         let name = field.Name
-        let valueDeserializer = ValueDeserializer.ofType field.PropertyType schema
-        create name valueDeserializer
+        let deserializer = Deserializer.ofType field.PropertyType schema
+        create name deserializer
 
     let getSchema (fieldDeserializer: FieldDeserializer) =
         { FieldSchema.Name = fieldDeserializer.Name
-          FieldSchema.Value = ValueDeserializer.getSchema fieldDeserializer.ValueDeserializer }
+          FieldSchema.Value = Deserializer.getSchema fieldDeserializer.Deserializer }
 
 module internal RecordSerializer =
     let getRootSchema (recordSerializer: RecordSerializer) =
@@ -460,102 +460,102 @@ type internal PrimitiveConverter<'Value>() =
     let dotnetType = typeof<'Value>
     let dataDotnetType = dotnetType
 
-    let valueSerializer =
+    let serializer =
         let getDataValue = id
-        ValueSerializer.atomic dotnetType dataDotnetType getDataValue
+        Serializer.atomic dotnetType dataDotnetType getDataValue
 
-    let valueDeserializer =
+    let deserializer =
         let createFromDataValue = id
-        ValueDeserializer.atomic dotnetType dataDotnetType createFromDataValue
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
 
     interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
-            if dotnetType = valueSerializer.DotnetType
-            then Option.Some valueSerializer
+            if dotnetType = serializer.DotnetType
+            then Option.Some serializer
             else Option.None
 
         member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType = valueSerializer.DotnetType
-            then Option.Some valueDeserializer
+            if dotnetType = serializer.DotnetType
+            then Option.Some deserializer
             else Option.None
 
 type internal DateTimeOffsetConverter() =
     let dotnetType = typeof<DateTimeOffset>
     let dataDotnetType = typeof<DateTime>
 
-    let valueSerializer =
+    let serializer =
         let getDataValue (value: Expression) =
             Expression.Property(value, "UtcDateTime")
             :> Expression
-        ValueSerializer.atomic dotnetType dataDotnetType getDataValue
+        Serializer.atomic dotnetType dataDotnetType getDataValue
 
-    let valueDeserializer =
+    let deserializer =
         let createFromDataValue (dataValue: Expression) =
             Expression.New(
                 typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
                 Expression.Call(dataValue, "ToUniversalTime", []))
             :> Expression
-        ValueDeserializer.atomic dotnetType dataDotnetType createFromDataValue
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
 
     interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
-            if dotnetType = valueSerializer.DotnetType
-            then Option.Some valueSerializer
+            if dotnetType = serializer.DotnetType
+            then Option.Some serializer
             else Option.None
 
         member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType = valueSerializer.DotnetType
-            then Option.Some valueDeserializer
+            if dotnetType = serializer.DotnetType
+            then Option.Some deserializer
             else Option.None
 
 type internal StringConverter() =
     let dotnetType = typeof<string>
     let dataDotnetType = dotnetType
 
-    let valueSerializer =
+    let serializer =
         let getDataValue = id
-        ValueSerializer.atomic dotnetType dataDotnetType getDataValue
-        |> ValueSerializer.referenceTypeWrapper
+        Serializer.atomic dotnetType dataDotnetType getDataValue
+        |> Serializer.referenceTypeWrapper
 
-    let valueDeserializer =
+    let deserializer =
         let createFromDataValue = id
-        ValueDeserializer.atomic dotnetType dataDotnetType createFromDataValue
-        |> ValueDeserializer.referenceTypeWrapper
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+        |> Deserializer.referenceTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
-            if dotnetType = valueSerializer.DotnetType
-            then Option.Some valueSerializer
+            if dotnetType = serializer.DotnetType
+            then Option.Some serializer
             else Option.None
 
         member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType = valueSerializer.DotnetType
-            then Option.Some valueDeserializer
+            if dotnetType = serializer.DotnetType
+            then Option.Some deserializer
             else Option.None
 
 type internal ByteArrayConverter() =
     let dotnetType = typeof<byte[]>
     let dataDotnetType = dotnetType
 
-    let valueSerializer =
+    let serializer =
         let getDataValue = id
-        ValueSerializer.atomic dotnetType dataDotnetType getDataValue
-        |> ValueSerializer.referenceTypeWrapper
+        Serializer.atomic dotnetType dataDotnetType getDataValue
+        |> Serializer.referenceTypeWrapper
 
-    let valueDeserializer =
+    let deserializer =
         let createFromDataValue = id
-        ValueDeserializer.atomic dotnetType dataDotnetType createFromDataValue
-        |> ValueDeserializer.referenceTypeWrapper
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+        |> Deserializer.referenceTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
-            if dotnetType = valueSerializer.DotnetType
-            then Option.Some valueSerializer
+            if dotnetType = serializer.DotnetType
+            then Option.Some serializer
             else Option.None
 
         member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType = valueSerializer.DotnetType
-            then Option.Some valueDeserializer
+            if dotnetType = serializer.DotnetType
+            then Option.Some deserializer
             else Option.None
 
 type internal Array1dConverter() =
@@ -563,34 +563,34 @@ type internal Array1dConverter() =
         dotnetType.IsArray
         && dotnetType.GetArrayRank() = 1
 
-    let createValueSerializer (dotnetType: Type) =
+    let createSerializer (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetElementType()
-        let elementSerializer = ValueSerializer.ofType elementDotnetType
+        let elementSerializer = Serializer.ofType elementDotnetType
         let getLength (array: Expression) =
             Expression.Property(array, "Length")
             :> Expression
         let getElementValue (array: Expression, index: Expression) =
             Expression.ArrayIndex(array, [ index ])
             :> Expression
-        ValueSerializer.list dotnetType elementSerializer getLength getElementValue
-        |> ValueSerializer.referenceTypeWrapper
+        Serializer.list dotnetType elementSerializer getLength getElementValue
+        |> Serializer.referenceTypeWrapper
 
-    let createValueDeserializer (dotnetType: Type) (schema: ListSchema) =
+    let createDeserializer (dotnetType: Type) (schema: ListSchema) =
         let elementDotnetType = dotnetType.GetElementType()
         let elementDeserializer =
-            ValueDeserializer.ofType elementDotnetType schema.Element
+            Deserializer.ofType elementDotnetType schema.Element
         let createEmpty =
             Expression.NewArrayBounds(elementDotnetType, Expression.Constant(0))
         let createFromElementValues (elementValues: Expression) =
             Expression.Call(elementValues, "ToArray", [])
-        ValueDeserializer.list
+        Deserializer.list
             dotnetType elementDeserializer createEmpty createFromElementValues
-        |> ValueDeserializer.referenceTypeWrapper
+        |> Deserializer.referenceTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isArray1dType dotnetType
-            then Option.Some (createValueSerializer dotnetType)
+            then Option.Some (createSerializer dotnetType)
             else Option.None
 
         member this.TryCreateDeserializer(dotnetType, schema) =
@@ -599,38 +599,38 @@ type internal Array1dConverter() =
             else
                 match schema with
                 | ValueSchema.List listSchema ->
-                    Option.Some (createValueDeserializer dotnetType listSchema)
+                    Option.Some (createDeserializer dotnetType listSchema)
                 | _ -> Option.None
 
 type internal GenericListConverter() =
     let isGenericListType = DotnetType.isGenericType<ResizeArray<_>>
 
-    let createValueSerializer (dotnetType: Type) =
+    let createSerializer (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
-        let elementSerializer = ValueSerializer.ofType elementDotnetType
+        let elementSerializer = Serializer.ofType elementDotnetType
         let getLength (list: Expression) =
             Expression.Property(list, "Count")
             :> Expression
         let getElementValue (list: Expression, index: Expression) =
             Expression.MakeIndex(list, dotnetType.GetProperty("Item"), [ index ])
             :> Expression
-        ValueSerializer.list dotnetType elementSerializer getLength getElementValue
-        |> ValueSerializer.referenceTypeWrapper
+        Serializer.list dotnetType elementSerializer getLength getElementValue
+        |> Serializer.referenceTypeWrapper
 
-    let createValueDeserializer (dotnetType: Type) (schema: ListSchema) =
+    let createDeserializer (dotnetType: Type) (schema: ListSchema) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementDeserializer =
-            ValueDeserializer.ofType elementDotnetType schema.Element
+            Deserializer.ofType elementDotnetType schema.Element
         let createEmpty = Expression.New(dotnetType)
         let createFromElementValues = id
-        ValueDeserializer.list
+        Deserializer.list
             dotnetType elementDeserializer createEmpty createFromElementValues
-        |> ValueDeserializer.referenceTypeWrapper
+        |> Deserializer.referenceTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isGenericListType dotnetType
-            then Option.Some (createValueSerializer dotnetType)
+            then Option.Some (createSerializer dotnetType)
             else Option.None
 
         member this.TryCreateDeserializer(dotnetType, schema) =
@@ -639,15 +639,15 @@ type internal GenericListConverter() =
             else
                 match schema with
                 | ValueSchema.List listSchema ->
-                    Option.Some (createValueDeserializer dotnetType listSchema)
+                    Option.Some (createDeserializer dotnetType listSchema)
                 | _ -> Option.None
 
 type internal FSharpListConverter() =
     let isFSharpListType = DotnetType.isGenericType<list<_>>
 
-    let createValueSerializer (dotnetType: Type) =
+    let createSerializer (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
-        let elementSerializer = ValueSerializer.ofType elementDotnetType
+        let elementSerializer = Serializer.ofType elementDotnetType
         let getLength (list: Expression) =
             Expression.Property(list, "Length")
             :> Expression
@@ -661,13 +661,13 @@ type internal FSharpListConverter() =
         // list field class can't easily be created since some of the relevant
         // properties are internal. For now, wrap as a non-nullable reference
         // type.
-        ValueSerializer.list dotnetType elementSerializer getLength getElementValue
-        |> ValueSerializer.nonNullableReferenceTypeWrapper
+        Serializer.list dotnetType elementSerializer getLength getElementValue
+        |> Serializer.nonNullableReferenceTypeWrapper
 
-    let createValueDeserializer (dotnetType: Type) (schema: ListSchema) =
+    let createDeserializer (dotnetType: Type) (schema: ListSchema) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementDeserializer =
-            ValueDeserializer.ofType elementDotnetType schema.Element
+            Deserializer.ofType elementDotnetType schema.Element
         let createEmpty =
             Expression.Property(null, dotnetType.GetProperty("Empty"))
         let createFromElementValues =
@@ -683,14 +683,14 @@ type internal FSharpListConverter() =
         // list field class can't easily be created since some of the relevant
         // properties are internal. For now, wrap as a non-nullable reference
         // type.
-        ValueDeserializer.list
+        Deserializer.list
             dotnetType elementDeserializer createEmpty createFromElementValues
-        |> ValueDeserializer.nonNullableReferenceTypeWrapper
+        |> Deserializer.nonNullableReferenceTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isFSharpListType dotnetType
-            then Option.Some (createValueSerializer dotnetType)
+            then Option.Some (createSerializer dotnetType)
             else Option.None
 
         member this.TryCreateDeserializer(dotnetType, schema) =
@@ -699,13 +699,13 @@ type internal FSharpListConverter() =
             else
                 match schema with
                 | ValueSchema.List listSchema ->
-                    Option.Some (createValueDeserializer dotnetType listSchema)
+                    Option.Some (createDeserializer dotnetType listSchema)
                 | _ -> Option.None
 
 type internal FSharpRecordConverter() =
     let isFSharpRecordType = FSharpType.IsRecord
 
-    let createValueSerializer (dotnetType: Type) =
+    let createSerializer (dotnetType: Type) =
         let fields =
             FSharpType.GetRecordFields(dotnetType)
             |> Array.map FieldSerializer.ofProperty
@@ -714,10 +714,10 @@ type internal FSharpRecordConverter() =
         // struct field class can't easily be created since some of the relevant
         // properties are internal. For now, wrap as a non-nullable reference
         // type.
-        ValueSerializer.record dotnetType fields
-        |> ValueSerializer.nonNullableReferenceTypeWrapper
+        Serializer.record dotnetType fields
+        |> Serializer.nonNullableReferenceTypeWrapper
 
-    let tryCreateValueDeserializer (dotnetType: Type) (recordSchema: RecordSchema) =
+    let tryCreateDeserializer (dotnetType: Type) (recordSchema: RecordSchema) =
         let fields = FSharpType.GetRecordFields(dotnetType)
         let fieldDeserializers =
             fields
@@ -739,14 +739,14 @@ type internal FSharpRecordConverter() =
             // struct field class can't easily be created since some of the relevant
             // properties are internal. For now, wrap as a non-nullable reference
             // type.
-            ValueDeserializer.record dotnetType fieldDeserializers createFromFieldValues
-            |> ValueDeserializer.nonNullableReferenceTypeWrapper
+            Deserializer.record dotnetType fieldDeserializers createFromFieldValues
+            |> Deserializer.nonNullableReferenceTypeWrapper
             |> Option.Some
 
     interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isFSharpRecordType dotnetType
-            then Option.Some (createValueSerializer dotnetType)
+            then Option.Some (createSerializer dotnetType)
             else Option.None
 
         member this.TryCreateDeserializer(dotnetType, schema) =
@@ -755,7 +755,7 @@ type internal FSharpRecordConverter() =
             else
                 match schema with
                 | ValueSchema.Record recordSchema ->
-                    tryCreateValueDeserializer dotnetType recordSchema
+                    tryCreateDeserializer dotnetType recordSchema
                 | _ -> Option.None
 
 type internal UnionConverter() =
@@ -769,26 +769,26 @@ type internal UnionConverter() =
         // not optional.
         let dataDotnetType = typeof<string>
         let getDataValue = unionInfo.GetCaseName
-        ValueSerializer.atomic dotnetType dataDotnetType getDataValue
+        Serializer.atomic dotnetType dataDotnetType getDataValue
 
     let createUnionCaseSerializer (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
         // Union case data is represented as an optional record containing the
         // field values for that case. The record needs to be optional since
         // only one case from the union can be set and the others will be NULL.
         let dotnetType = unionInfo.DotnetType
-        let valueSerializer =
+        let serializer =
             let dotnetType = unionInfo.DotnetType
             let fields =
                 unionCase.Fields
                 |> Array.map (FieldSerializer.ofUnionCaseField unionCase)
-            ValueSerializer.record dotnetType fields
+            Serializer.record dotnetType fields
         // The data for this case is NULL if the union tag does not match the
         // tag for this case.
         let isNull (union: Expression) =
             Expression.NotEqual(unionInfo.GetTag union, unionCase.Tag)
             :> Expression
         let getValue = id
-        ValueSerializer.optional dotnetType valueSerializer isNull getValue
+        Serializer.optional dotnetType serializer isNull getValue
 
     let createComplexUnionSerializer (unionInfo: UnionInfo) =
         // Unions that have one or more cases with one or more fields can not be
@@ -805,16 +805,16 @@ type internal UnionConverter() =
         let typeField =
             // TODO: The name of this field could be configurable via an attribute.
             let name = "Type"
-            let valueSerializer =
-                // TODO: We should really delegate this to ValueSerializer.ofType,
+            let serializer =
+                // TODO: We should really delegate this to Serializer.ofType,
                 // but this would require having a string converter that
                 // can treat strings as required.
                 let dotnetType = typeof<string>
                 let dataDotnetType = dotnetType
                 let getDataValue = id
-                ValueSerializer.atomic dotnetType dataDotnetType getDataValue
+                Serializer.atomic dotnetType dataDotnetType getDataValue
             let getValue = unionInfo.GetCaseName
-            FieldSerializer.create name valueSerializer getValue
+            FieldSerializer.create name serializer getValue
         // Each union case with one or more fields is assigned an additional
         // field within the record to hold its associated data. The name of this
         // field matches the case name and the value is a record that contains
@@ -832,15 +832,15 @@ type internal UnionConverter() =
                     failwith <|
                         $"case name '{typeField.Name}' is not supported"
                         + $" for union type '{dotnetType.FullName}'"
-                let valueSerializer = createUnionCaseSerializer unionInfo unionCase
+                let serializer = createUnionCaseSerializer unionInfo unionCase
                 let getValue = id
-                FieldSerializer.create name valueSerializer getValue)
+                FieldSerializer.create name serializer getValue)
         let fields = Array.append [| typeField |] caseFields
         // TODO: F# unions are not nullable by default, however we are mapping
         // to a struct and Parquet.Net does not support struct fields that
         // aren't nullable, so wrap as a non-nullable reference type.
-        ValueSerializer.record dotnetType fields
-        |> ValueSerializer.nonNullableReferenceTypeWrapper
+        Serializer.record dotnetType fields
+        |> Serializer.nonNullableReferenceTypeWrapper
 
     let createUnionSerializer dotnetType =
         // Unions are represented in one of two ways depending on whether any of
@@ -873,7 +873,7 @@ type internal UnionConverter() =
                     yield Expression.Label(returnLabel, Expression.Default(dotnetType))
                 })
             :> Expression
-        ValueDeserializer.atomic dotnetType dataDotnetType createFromDataValue
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
 
     let tryCreateUnionCaseDeserializer
         (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) (schema: RecordSchema) =
@@ -881,7 +881,7 @@ type internal UnionConverter() =
         // field values for that case. The record needs to be optional since
         // only one case from the union can be set and the others will be NULL.
         let dotnetType = unionInfo.DotnetType
-        let valueDeserializer =
+        let deserializer =
             let dotnetType = unionInfo.DotnetType
             let fieldDeserializers =
                 unionCase.Fields
@@ -893,17 +893,17 @@ type internal UnionConverter() =
             let createFromFieldValues = unionCase.CreateFromFieldValues
             if fieldDeserializers.Length < unionCase.Fields.Length
             then Option.None
-            else Option.Some (ValueDeserializer.record dotnetType fieldDeserializers createFromFieldValues)
-        match valueDeserializer with
+            else Option.Some (Deserializer.record dotnetType fieldDeserializers createFromFieldValues)
+        match deserializer with
         | Option.None -> Option.None
-        | Option.Some valueDeserializer ->
+        | Option.Some deserializer ->
             // We can't use {Expression.Null} here because union types are not
             // nullable, however they do still have {null} as their default value
             // because they are reference types.
             let createNull = Expression.Default(dotnetType) :> Expression
             let createFromValue = id
-            ValueDeserializer.optional
-                dotnetType valueDeserializer createNull createFromValue
+            Deserializer.optional
+                dotnetType deserializer createNull createFromValue
             |> Option.Some
 
     let tryCreateComplexUnionDeserializer (unionInfo: UnionInfo) (schema: RecordSchema) =
@@ -924,17 +924,17 @@ type internal UnionConverter() =
             schema.Fields
             |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = name)
             |> Option.map (fun fieldSchema ->
-                // TODO: We should really delegate this to ValueDeserializer.ofType
+                // TODO: We should really delegate this to Deserializer.ofType
                 // and pass in the field value schema to confirm that it's actually
                 // a string, but this would require having a string converter that
                 // can treat strings as required.
-                let valueDeserializer =
+                let deserializer =
                     let dotnetType = typeof<string>
                     let dataDotnetType = dotnetType
                     let createFromDataValue = id
-                    ValueDeserializer.atomic
+                    Deserializer.atomic
                         dotnetType dataDotnetType createFromDataValue
-                FieldDeserializer.create name valueDeserializer)
+                FieldDeserializer.create name deserializer)
         // Each union case with one or more fields is assigned an additional
         // field within the record to hold its associated data. The name of this
         // field matches the case name and the value is a record that contains
@@ -997,8 +997,8 @@ type internal UnionConverter() =
             // TODO: F# unions are not nullable by default, however we are mapping
             // to a struct and Parquet.Net does not support struct fields that
             // aren't nullable, so wrap as a non-nullable reference type.
-            ValueDeserializer.record dotnetType fields createFromFieldValues
-            |> ValueDeserializer.nonNullableReferenceTypeWrapper
+            Deserializer.record dotnetType fields createFromFieldValues
+            |> Deserializer.nonNullableReferenceTypeWrapper
             |> Option.Some
 
     interface IValueConverter with
@@ -1027,62 +1027,62 @@ type internal UnionConverter() =
 type internal NullableConverter() =
     let isNullableType = DotnetType.isGenericType<Nullable<_>>
 
-    let createRequiredValueSerializer dotnetType (valueSerializer: ValueSerializer) =
+    let createRequiredSerializer dotnetType (serializer: Serializer) =
         let isNull (nullable: Expression) =
             Expression.Not(Expression.Property(nullable, "HasValue"))
             :> Expression
         let getValue (nullable: Expression) =
             Expression.Property(nullable, "Value")
             :> Expression
-        ValueSerializer.optional dotnetType valueSerializer isNull getValue
+        Serializer.optional dotnetType serializer isNull getValue
 
-    let createOptionalValueSerializer (dotnetType: Type) (valueSerializer: ValueSerializer) =
+    let createOptionalSerializer (dotnetType: Type) (serializer: Serializer) =
         let fields =
             let valueField =
                 // TODO: The name of this field could be configurable via an attribute.
                 let name = "Value"
                 let getValue = id
-                FieldSerializer.create name valueSerializer getValue
+                FieldSerializer.create name serializer getValue
             [| valueField |]
-        ValueSerializer.record valueSerializer.DotnetType fields
-        |> createRequiredValueSerializer dotnetType
+        Serializer.record serializer.DotnetType fields
+        |> createRequiredSerializer dotnetType
 
-    let createValueSerializer (dotnetType: Type) =
+    let createSerializer (dotnetType: Type) =
         let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
-        let valueSerializer = ValueSerializer.ofType valueDotnetType
-        if valueSerializer.IsOptional
+        let serializer = Serializer.ofType valueDotnetType
+        if serializer.IsOptional
         // TODO: This shouldn't really be possible as nullable values have to be
         // value types and therefore can't be null, but while we need to treat
         // all record types as optional we need to handle this case.
-        then createOptionalValueSerializer dotnetType valueSerializer
-        else createRequiredValueSerializer dotnetType valueSerializer
+        then createOptionalSerializer dotnetType serializer
+        else createRequiredSerializer dotnetType serializer
 
-    let createRequiredValueDeserializer dotnetType (valueDeserializer: ValueDeserializer) =
+    let createRequiredDeserializer dotnetType (deserializer: Deserializer) =
         let createNull = Expression.Null(dotnetType)
         let createFromValue =
-            let constructor = dotnetType.GetConstructor([| valueDeserializer.DotnetType |])
+            let constructor = dotnetType.GetConstructor([| deserializer.DotnetType |])
             fun (value: Expression) ->
                 Expression.New(constructor, value)
                 :> Expression
-        ValueDeserializer.optional
-            dotnetType valueDeserializer createNull createFromValue
+        Deserializer.optional
+            dotnetType deserializer createNull createFromValue
 
-    let createOptionalValueDeserializer (dotnetType: Type) (valueDeserializer: ValueDeserializer) =
+    let createOptionalDeserializer (dotnetType: Type) (deserializer: Deserializer) =
         let fields =
             let valueField =
                 // TODO: The name of this field could be configurable via an attribute.
                 let name = "Value"
-                FieldDeserializer.create name valueDeserializer
+                FieldDeserializer.create name deserializer
             [| valueField |]
         let createFromFieldValues (fieldValues: Expression[]) =
             fieldValues[0]
-        ValueDeserializer.record valueDeserializer.DotnetType fields createFromFieldValues
-        |> createRequiredValueDeserializer dotnetType
+        Deserializer.record deserializer.DotnetType fields createFromFieldValues
+        |> createRequiredDeserializer dotnetType
 
     interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isNullableType dotnetType
-            then Option.Some (createValueSerializer dotnetType)
+            then Option.Some (createSerializer dotnetType)
             else Option.None
 
         member this.TryCreateDeserializer(dotnetType, schema) =
@@ -1098,51 +1098,51 @@ type internal NullableConverter() =
                         else false, schema
                     | _ -> false, schema
                 let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
-                let valueDeserializer =
-                    ValueDeserializer.ofType valueDotnetType valueSchema
+                let deserializer =
+                    Deserializer.ofType valueDotnetType valueSchema
                 if isValueOptional
                 // TODO: This shouldn't really be possible as nullable values have to be
                 // value types and therefore can't be null, but while we need to treat
                 // all record types as optional we need to handle this case.
-                then Option.Some (createOptionalValueDeserializer dotnetType valueDeserializer)
-                else Option.Some (createRequiredValueDeserializer dotnetType valueDeserializer)
+                then Option.Some (createOptionalDeserializer dotnetType deserializer)
+                else Option.Some (createRequiredDeserializer dotnetType deserializer)
 
 type internal OptionConverter() =
     let isOptionType = DotnetType.isGenericType<option<_>>
 
-    let createRequiredValueSerializer dotnetType (valueSerializer: ValueSerializer) =
+    let createRequiredSerializer dotnetType (serializer: Serializer) =
         let isNull =
             let optionModuleType =
                 Assembly.Load("FSharp.Core").GetTypes()
                 |> Array.filter (fun type' -> type'.Name = "OptionModule")
                 |> Array.exactlyOne
             fun (option: Expression) ->
-                Expression.Call(optionModuleType, "IsNone", [| valueSerializer.DotnetType |], option)
+                Expression.Call(optionModuleType, "IsNone", [| serializer.DotnetType |], option)
                 :> Expression
         let getValue (option: Expression) =
             Expression.Property(option, "Value")
             :> Expression
-        ValueSerializer.optional dotnetType valueSerializer isNull getValue
+        Serializer.optional dotnetType serializer isNull getValue
 
-    let createOptionalValueSerializer (dotnetType: Type) (valueSerializer: ValueSerializer) =
+    let createOptionalSerializer (dotnetType: Type) (serializer: Serializer) =
         let fields =
             let valueField =
                 // TODO: The name of this field could be configurable via an attribute.
                 let name = "Value"
                 let getValue = id
-                FieldSerializer.create name valueSerializer getValue
+                FieldSerializer.create name serializer getValue
             [| valueField |]
-        ValueSerializer.record valueSerializer.DotnetType fields
-        |> createRequiredValueSerializer dotnetType
+        Serializer.record serializer.DotnetType fields
+        |> createRequiredSerializer dotnetType
 
-    let createValueSerializer (dotnetType: Type) =
+    let createSerializer (dotnetType: Type) =
         let valueDotnetType = dotnetType.GetGenericArguments()[0]
-        let valueSerializer = ValueSerializer.ofType valueDotnetType
-        if valueSerializer.IsOptional
-        then createOptionalValueSerializer dotnetType valueSerializer
-        else createRequiredValueSerializer dotnetType valueSerializer
+        let serializer = Serializer.ofType valueDotnetType
+        if serializer.IsOptional
+        then createOptionalSerializer dotnetType serializer
+        else createRequiredSerializer dotnetType serializer
 
-    let createRequiredValueDeserializer dotnetType (valueDeserializer: ValueDeserializer) =
+    let createRequiredDeserializer dotnetType (deserializer: Deserializer) =
         let unionCases = FSharpType.GetUnionCases(dotnetType)
         let createNull =
             let noneCase = unionCases |> Array.find _.Name.Equals("None")
@@ -1155,25 +1155,25 @@ type internal OptionConverter() =
             fun (value: Expression) ->
                 Expression.Call(constructorMethod, value)
                 :> Expression
-        ValueDeserializer.optional
-            dotnetType valueDeserializer createNull createFromValue
+        Deserializer.optional
+            dotnetType deserializer createNull createFromValue
 
-    let createOptionalValueDeserializer (dotnetType: Type) (valueDeserializer: ValueDeserializer) =
+    let createOptionalDeserializer (dotnetType: Type) (deserializer: Deserializer) =
         let fields =
             let valueField =
                 // TODO: The name of this field could be configurable via an attribute.
                 let name = "Value"
-                FieldDeserializer.create name valueDeserializer
+                FieldDeserializer.create name deserializer
             [| valueField |]
         let createFromFieldValues (fieldValues: Expression[]) =
             fieldValues[0]
-        ValueDeserializer.record valueDeserializer.DotnetType fields createFromFieldValues
-        |> createRequiredValueDeserializer dotnetType
+        Deserializer.record deserializer.DotnetType fields createFromFieldValues
+        |> createRequiredDeserializer dotnetType
 
     interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isOptionType dotnetType
-            then Option.Some (createValueSerializer dotnetType)
+            then Option.Some (createSerializer dotnetType)
             else Option.None
 
         member this.TryCreateDeserializer(dotnetType, schema) =
@@ -1189,25 +1189,25 @@ type internal OptionConverter() =
                         else false, schema
                     | _ -> false, schema
                 let valueDotnetType = dotnetType.GetGenericArguments()[0]
-                let valueDeserializer =
-                    ValueDeserializer.ofType valueDotnetType valueSchema
+                let deserializer =
+                    Deserializer.ofType valueDotnetType valueSchema
                 if isValueOptional
-                then Option.Some (createOptionalValueDeserializer dotnetType valueDeserializer)
-                else Option.Some (createRequiredValueDeserializer dotnetType valueDeserializer)
+                then Option.Some (createOptionalDeserializer dotnetType deserializer)
+                else Option.Some (createRequiredDeserializer dotnetType deserializer)
 
 type internal ClassConverter() =
     let isClassWithDefaultConstructor (dotnetType: Type) =
         dotnetType.IsClass
         && not (isNull (dotnetType.GetConstructor([||])))
 
-    let createValueSerializer (dotnetType: Type) =
+    let createSerializer (dotnetType: Type) =
         let fields =
             dotnetType.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
             |> Array.map FieldSerializer.ofProperty
-        ValueSerializer.record dotnetType fields
-        |> ValueSerializer.referenceTypeWrapper
+        Serializer.record dotnetType fields
+        |> Serializer.referenceTypeWrapper
 
-    let tryCreateValueDeserializer (dotnetType: Type) (recordSchema: RecordSchema) =
+    let tryCreateDeserializer (dotnetType: Type) (recordSchema: RecordSchema) =
         let fields = dotnetType.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
         let fieldDeserializers =
             fields
@@ -1236,14 +1236,14 @@ type internal ClassConverter() =
                             yield record
                         })
                     :> Expression
-            ValueDeserializer.record dotnetType fieldDeserializers createFromFieldValues
-            |> ValueDeserializer.referenceTypeWrapper
+            Deserializer.record dotnetType fieldDeserializers createFromFieldValues
+            |> Deserializer.referenceTypeWrapper
             |> Option.Some
 
     interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isClassWithDefaultConstructor dotnetType
-            then Option.Some (createValueSerializer dotnetType)
+            then Option.Some (createSerializer dotnetType)
             else Option.None
 
         member this.TryCreateDeserializer(dotnetType, schema) =
@@ -1252,5 +1252,5 @@ type internal ClassConverter() =
             else
                 match schema with
                 | ValueSchema.Record recordSchema ->
-                    tryCreateValueDeserializer dotnetType recordSchema
+                    tryCreateDeserializer dotnetType recordSchema
                 | _ -> Option.None

@@ -30,7 +30,7 @@ open System.Reflection
 // be part of the serializer configuration?
 
 // TODO: Eventually should be able to rename to remove 'Factory'
-type internal IValueConverterFactory =
+type internal IValueConverter =
     abstract member TryCreateSerializer
         : dotnetType:Type -> ValueSerializer option
     abstract member TryCreateDeserializer
@@ -264,7 +264,7 @@ module internal ValueSerializer =
         | Option.Some valueSerializer -> valueSerializer
         | Option.None ->
             let valueSerializer =
-                ValueConverterFactory.All
+                ValueConverter.All
                 |> Array.tryPick _.TryCreateSerializer(dotnetType)
                 |> Option.defaultWith (fun () ->
                     failwith $"unsupported type '{dotnetType.FullName}'")
@@ -359,7 +359,7 @@ module internal ValueDeserializer =
         | Option.Some valueDeserializer -> valueDeserializer
         | Option.None ->
             let valueDeserializer =
-                ValueConverterFactory.All
+                ValueConverter.All
                 |> Array.tryPick _.TryCreateDeserializer(dotnetType, schema)
                 |> Option.defaultWith (fun () ->
                     failwith $"unsupported type '{dotnetType.FullName}'")
@@ -422,54 +422,53 @@ module internal RecordDeserializer =
             recordDeserializer.Fields
             |> Array.map FieldDeserializer.getSchema }
 
-module internal ValueConverterFactory =
-    let All : IValueConverterFactory[] = [|
-        PrimitiveConverterFactory<bool>()
-        PrimitiveConverterFactory<int8>()
-        PrimitiveConverterFactory<int16>()
-        PrimitiveConverterFactory<int>()
-        PrimitiveConverterFactory<int64>()
-        PrimitiveConverterFactory<uint8>()
-        PrimitiveConverterFactory<uint16>()
-        PrimitiveConverterFactory<uint32>()
-        PrimitiveConverterFactory<uint64>()
-        PrimitiveConverterFactory<float32>()
-        PrimitiveConverterFactory<float>()
-        PrimitiveConverterFactory<decimal>()
-        PrimitiveConverterFactory<DateTime>()
-        PrimitiveConverterFactory<Guid>()
-        DateTimeOffsetConverterFactory()
-        StringConverterFactory()
+module internal ValueConverter =
+    let All : IValueConverter[] = [|
+        PrimitiveConverter<bool>()
+        PrimitiveConverter<int8>()
+        PrimitiveConverter<int16>()
+        PrimitiveConverter<int>()
+        PrimitiveConverter<int64>()
+        PrimitiveConverter<uint8>()
+        PrimitiveConverter<uint16>()
+        PrimitiveConverter<uint32>()
+        PrimitiveConverter<uint64>()
+        PrimitiveConverter<float32>()
+        PrimitiveConverter<float>()
+        PrimitiveConverter<decimal>()
+        PrimitiveConverter<DateTime>()
+        PrimitiveConverter<Guid>()
+        DateTimeOffsetConverter()
+        StringConverter()
         // This must come before the generic array type since byte arrays are
         // supported as a primitive type in Parquet and are therefore handled as
         // atomic values rather than lists.
-        ByteArrayConverterFactory()
-        Array1dConverterFactory()
-        GenericListConverterFactory()
-        FSharpListConverterFactory()
-        FSharpRecordConverterFactory()
-        NullableConverterFactory()
+        ByteArrayConverter()
+        Array1dConverter()
+        GenericListConverter()
+        FSharpListConverter()
+        FSharpRecordConverter()
+        NullableConverter()
         // This must come before the generic union type since option types are
         // handled in a special way.
-        OptionConverterFactory()
-        UnionConverterFactory()
-        ClassConverterFactory()
+        OptionConverter()
+        UnionConverter()
+        ClassConverter()
     |]
 
-type internal PrimitiveConverterFactory<'Value>() =
+type internal PrimitiveConverter<'Value>() =
+    let dotnetType = typeof<'Value>
+    let dataDotnetType = dotnetType
+
     let valueSerializer =
-        let dotnetType = typeof<'Value>
-        let dataDotnetType = dotnetType
         let getDataValue = id
         ValueSerializer.atomic dotnetType dataDotnetType getDataValue
 
     let valueDeserializer =
-        let dotnetType = typeof<'Value>
-        let dataDotnetType = dotnetType
         let createFromDataValue = id
         ValueDeserializer.atomic dotnetType dataDotnetType createFromDataValue
 
-    interface IValueConverterFactory with
+    interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if dotnetType = valueSerializer.DotnetType
             then Option.Some valueSerializer
@@ -480,18 +479,17 @@ type internal PrimitiveConverterFactory<'Value>() =
             then Option.Some valueDeserializer
             else Option.None
 
-type internal DateTimeOffsetConverterFactory() =
+type internal DateTimeOffsetConverter() =
+    let dotnetType = typeof<DateTimeOffset>
+    let dataDotnetType = typeof<DateTime>
+
     let valueSerializer =
-        let dotnetType = typeof<DateTimeOffset>
-        let dataDotnetType = typeof<DateTime>
         let getDataValue (value: Expression) =
             Expression.Property(value, "UtcDateTime")
             :> Expression
         ValueSerializer.atomic dotnetType dataDotnetType getDataValue
 
     let valueDeserializer =
-        let dotnetType = typeof<DateTimeOffset>
-        let dataDotnetType = typeof<DateTime>
         let createFromDataValue (dataValue: Expression) =
             Expression.New(
                 typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
@@ -499,7 +497,7 @@ type internal DateTimeOffsetConverterFactory() =
             :> Expression
         ValueDeserializer.atomic dotnetType dataDotnetType createFromDataValue
 
-    interface IValueConverterFactory with
+    interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if dotnetType = valueSerializer.DotnetType
             then Option.Some valueSerializer
@@ -510,22 +508,21 @@ type internal DateTimeOffsetConverterFactory() =
             then Option.Some valueDeserializer
             else Option.None
 
-type internal StringConverterFactory() =
+type internal StringConverter() =
+    let dotnetType = typeof<string>
+    let dataDotnetType = dotnetType
+
     let valueSerializer =
-        let dotnetType = typeof<string>
-        let dataDotnetType = dotnetType
         let getDataValue = id
         ValueSerializer.atomic dotnetType dataDotnetType getDataValue
         |> ValueSerializer.referenceTypeWrapper
 
     let valueDeserializer =
-        let dotnetType = typeof<string>
-        let dataDotnetType = dotnetType
         let createFromDataValue = id
         ValueDeserializer.atomic dotnetType dataDotnetType createFromDataValue
         |> ValueDeserializer.referenceTypeWrapper
 
-    interface IValueConverterFactory with
+    interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if dotnetType = valueSerializer.DotnetType
             then Option.Some valueSerializer
@@ -536,22 +533,21 @@ type internal StringConverterFactory() =
             then Option.Some valueDeserializer
             else Option.None
 
-type internal ByteArrayConverterFactory() =
+type internal ByteArrayConverter() =
+    let dotnetType = typeof<byte[]>
+    let dataDotnetType = dotnetType
+
     let valueSerializer =
-        let dotnetType = typeof<byte[]>
-        let dataDotnetType = dotnetType
         let getDataValue = id
         ValueSerializer.atomic dotnetType dataDotnetType getDataValue
         |> ValueSerializer.referenceTypeWrapper
 
     let valueDeserializer =
-        let dotnetType = typeof<byte[]>
-        let dataDotnetType = dotnetType
         let createFromDataValue = id
         ValueDeserializer.atomic dotnetType dataDotnetType createFromDataValue
         |> ValueDeserializer.referenceTypeWrapper
 
-    interface IValueConverterFactory with
+    interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if dotnetType = valueSerializer.DotnetType
             then Option.Some valueSerializer
@@ -562,7 +558,7 @@ type internal ByteArrayConverterFactory() =
             then Option.Some valueDeserializer
             else Option.None
 
-type internal Array1dConverterFactory() =
+type internal Array1dConverter() =
     let isArray1dType (dotnetType: Type) =
         dotnetType.IsArray
         && dotnetType.GetArrayRank() = 1
@@ -591,7 +587,7 @@ type internal Array1dConverterFactory() =
             dotnetType elementDeserializer createEmpty createFromElementValues
         |> ValueDeserializer.referenceTypeWrapper
 
-    interface IValueConverterFactory with
+    interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isArray1dType dotnetType
             then Option.Some (createValueSerializer dotnetType)
@@ -606,7 +602,7 @@ type internal Array1dConverterFactory() =
                     Option.Some (createValueDeserializer dotnetType listSchema)
                 | _ -> Option.None
 
-type internal GenericListConverterFactory() =
+type internal GenericListConverter() =
     let isGenericListType = DotnetType.isGenericType<ResizeArray<_>>
 
     let createValueSerializer (dotnetType: Type) =
@@ -631,7 +627,7 @@ type internal GenericListConverterFactory() =
             dotnetType elementDeserializer createEmpty createFromElementValues
         |> ValueDeserializer.referenceTypeWrapper
 
-    interface IValueConverterFactory with
+    interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isGenericListType dotnetType
             then Option.Some (createValueSerializer dotnetType)
@@ -646,7 +642,7 @@ type internal GenericListConverterFactory() =
                     Option.Some (createValueDeserializer dotnetType listSchema)
                 | _ -> Option.None
 
-type internal FSharpListConverterFactory() =
+type internal FSharpListConverter() =
     let isFSharpListType = DotnetType.isGenericType<list<_>>
 
     let createValueSerializer (dotnetType: Type) =
@@ -691,7 +687,7 @@ type internal FSharpListConverterFactory() =
             dotnetType elementDeserializer createEmpty createFromElementValues
         |> ValueDeserializer.nonNullableReferenceTypeWrapper
 
-    interface IValueConverterFactory with
+    interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isFSharpListType dotnetType
             then Option.Some (createValueSerializer dotnetType)
@@ -706,7 +702,7 @@ type internal FSharpListConverterFactory() =
                     Option.Some (createValueDeserializer dotnetType listSchema)
                 | _ -> Option.None
 
-type internal FSharpRecordConverterFactory() =
+type internal FSharpRecordConverter() =
     let isFSharpRecordType = FSharpType.IsRecord
 
     let createValueSerializer (dotnetType: Type) =
@@ -747,7 +743,7 @@ type internal FSharpRecordConverterFactory() =
             |> ValueDeserializer.nonNullableReferenceTypeWrapper
             |> Option.Some
 
-    interface IValueConverterFactory with
+    interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isFSharpRecordType dotnetType
             then Option.Some (createValueSerializer dotnetType)
@@ -762,7 +758,7 @@ type internal FSharpRecordConverterFactory() =
                     tryCreateValueDeserializer dotnetType recordSchema
                 | _ -> Option.None
 
-type internal UnionConverterFactory() =
+type internal UnionConverter() =
     let isUnionType = FSharpType.IsUnion
 
     let createSimpleUnionSerializer (unionInfo: UnionInfo) =
@@ -810,7 +806,9 @@ type internal UnionConverterFactory() =
             // TODO: The name of this field could be configurable via an attribute.
             let name = "Type"
             let valueSerializer =
-                // TODO: Can we justg use ValueSerializer.ofType here?
+                // TODO: We should really delegate this to ValueSerializer.ofType,
+                // but this would require having a string converter that
+                // can treat strings as required.
                 let dotnetType = typeof<string>
                 let dataDotnetType = dotnetType
                 let getDataValue = id
@@ -1003,7 +1001,7 @@ type internal UnionConverterFactory() =
             |> ValueDeserializer.nonNullableReferenceTypeWrapper
             |> Option.Some
 
-    interface IValueConverterFactory with
+    interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isUnionType dotnetType
             then Option.Some (createUnionSerializer dotnetType)
@@ -1026,7 +1024,7 @@ type internal UnionConverterFactory() =
                     | _ -> Option.None
 
 
-type internal NullableConverterFactory() =
+type internal NullableConverter() =
     let isNullableType = DotnetType.isGenericType<Nullable<_>>
 
     let createRequiredValueSerializer dotnetType (valueSerializer: ValueSerializer) =
@@ -1081,7 +1079,7 @@ type internal NullableConverterFactory() =
         ValueDeserializer.record valueDeserializer.DotnetType fields createFromFieldValues
         |> createRequiredValueDeserializer dotnetType
 
-    interface IValueConverterFactory with
+    interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isNullableType dotnetType
             then Option.Some (createValueSerializer dotnetType)
@@ -1109,7 +1107,7 @@ type internal NullableConverterFactory() =
                 then Option.Some (createOptionalValueDeserializer dotnetType valueDeserializer)
                 else Option.Some (createRequiredValueDeserializer dotnetType valueDeserializer)
 
-type internal OptionConverterFactory() =
+type internal OptionConverter() =
     let isOptionType = DotnetType.isGenericType<option<_>>
 
     let createRequiredValueSerializer dotnetType (valueSerializer: ValueSerializer) =
@@ -1172,7 +1170,7 @@ type internal OptionConverterFactory() =
         ValueDeserializer.record valueDeserializer.DotnetType fields createFromFieldValues
         |> createRequiredValueDeserializer dotnetType
 
-    interface IValueConverterFactory with
+    interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isOptionType dotnetType
             then Option.Some (createValueSerializer dotnetType)
@@ -1197,7 +1195,7 @@ type internal OptionConverterFactory() =
                 then Option.Some (createOptionalValueDeserializer dotnetType valueDeserializer)
                 else Option.Some (createRequiredValueDeserializer dotnetType valueDeserializer)
 
-type internal ClassConverterFactory() =
+type internal ClassConverter() =
     let isClassWithDefaultConstructor (dotnetType: Type) =
         dotnetType.IsClass
         && not (isNull (dotnetType.GetConstructor([||])))
@@ -1242,7 +1240,7 @@ type internal ClassConverterFactory() =
             |> ValueDeserializer.referenceTypeWrapper
             |> Option.Some
 
-    interface IValueConverterFactory with
+    interface IValueConverter with
         member this.TryCreateSerializer(dotnetType) =
             if isClassWithDefaultConstructor dotnetType
             then Option.Some (createValueSerializer dotnetType)

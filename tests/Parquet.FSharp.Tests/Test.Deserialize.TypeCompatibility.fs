@@ -20,11 +20,11 @@ let testTypeCompatibility<'Input, 'Output> convert inputRecords =
         let outputField1 = outputRecord.Field1
         Assert.equal inputField1 outputField1
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``int16 deserialized from int8`` inputRecords =
     testTypeCompatibility<int8, int16> int16 inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``int16 deserialized from uint8`` inputRecords =
     testTypeCompatibility<uint8, int16> int16 inputRecords
 

@@ -7,7 +7,6 @@ open System
 
 // TODO: If this file gets large, could split into PartialSchema and ExtendedSchema.
 
-// TODO: Record with fields in different order
 // TODO: Record with additional optional field?
 
 module ``fsharp record with subset of fields`` =
@@ -30,6 +29,32 @@ module ``fsharp record with subset of fields`` =
         Assert.arrayLengthEqual inputRecords outputRecords
         for inputRecord, outputRecord in Array.zip inputRecords outputRecords do
             Assert.equal inputRecord.Field1 outputRecord.Field1
+            Assert.equal inputRecord.Field4 outputRecord.Field4
+
+module ``fsharp record with fields in different order`` =
+    module Input =
+        type Record1 = {
+            Field1: int
+            Field2: float
+            Field3: string
+            Field4: bool[] }
+
+    module Output =
+        type Record1 = {
+            Field2: float
+            Field4: bool[]
+            Field3: string
+            Field1: int }
+
+    [<Property>]
+    let ``test`` (inputRecords: Input.Record1[]) =
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let outputRecords = ParquetSerializer.Deserialize<Output.Record1>(bytes)
+        Assert.arrayLengthEqual inputRecords outputRecords
+        for inputRecord, outputRecord in Array.zip inputRecords outputRecords do
+            Assert.equal inputRecord.Field1 outputRecord.Field1
+            Assert.equal inputRecord.Field2 outputRecord.Field2
+            Assert.equal inputRecord.Field3 outputRecord.Field3
             Assert.equal inputRecord.Field4 outputRecord.Field4
 
 module ``simple union with additional cases`` =
@@ -99,6 +124,85 @@ module ``complex union with additional simple cases`` =
                 Output.Union1.Case3 outputField1 ->
                 Assert.equal inputField1 outputField1
             | _, Output.Union1.Case4 -> Assert.failWith "case does not exist in the input"
+            | _ -> Assert.failWith "case names do not match"
+
+module ``complex union with cases in different order`` =
+    module Input =
+        type Record1 = {
+            Field1: Union1 }
+
+        and Union1 =
+            | Case1
+            | Case2 of field1:int * field2:bool
+            | Case3 of field1:string
+            | Case4 of field1:decimal * field2:Guid
+
+    module Output =
+        type Record1 = {
+            Field1: Union1 }
+
+        and Union1 =
+            | Case4 of field1:decimal * field2:Guid
+            | Case2 of field1:int * field2:bool
+            | Case1
+            | Case3 of field1:string
+
+    [<Property>]
+    let ``test`` (inputRecords: Input.Record1[]) =
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let outputRecords = ParquetSerializer.Deserialize<Output.Record1>(bytes)
+        Assert.arrayLengthEqual inputRecords outputRecords
+        for inputRecord, outputRecord in Array.zip inputRecords outputRecords do
+            match inputRecord.Field1, outputRecord.Field1 with
+            | Input.Union1.Case1, Output.Union1.Case1 -> ()
+            | Input.Union1.Case2 (inputField1, inputField2),
+                Output.Union1.Case2 (outputField1, outputField2) ->
+                Assert.equal inputField1 outputField1
+                Assert.equal inputField2 outputField2
+            | Input.Union1.Case3 inputField1,
+                Output.Union1.Case3 outputField1 ->
+                Assert.equal inputField1 outputField1
+            | Input.Union1.Case4 (inputField1, inputField2),
+                Output.Union1.Case4 (outputField1, outputField2) ->
+                Assert.equal inputField1 outputField1
+                Assert.equal inputField2 outputField2
+            | _ -> Assert.failWith "case names do not match"
+
+module ``complex union with case fields in different order`` =
+    module Input =
+        type Record1 = {
+            Field1: Union1 }
+
+        and Union1 =
+            | Case1 of field1:int * field2:bool * field3:float32 * field4:byte[]
+            | Case2 of field1:decimal * field2:Guid * field3:string
+
+    module Output =
+        type Record1 = {
+            Field1: Union1 }
+
+        and Union1 =
+            | Case1 of field3:float32 * field1:int * field4:byte[] * field2:bool
+            | Case2 of field1:decimal * field3:string * field2:Guid
+
+    [<Property>]
+    let ``test`` (inputRecords: Input.Record1[]) =
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let outputRecords = ParquetSerializer.Deserialize<Output.Record1>(bytes)
+        Assert.arrayLengthEqual inputRecords outputRecords
+        for inputRecord, outputRecord in Array.zip inputRecords outputRecords do
+            match inputRecord.Field1, outputRecord.Field1 with
+            | Input.Union1.Case1 (inputField1, inputField2, inputField3, inputField4),
+                Output.Union1.Case1 (outputField3, outputField1, outputField4, outputField2) ->
+                Assert.equal inputField1 outputField1
+                Assert.equal inputField2 outputField2
+                Assert.equal inputField3 outputField3
+                Assert.equal inputField4 outputField4
+            | Input.Union1.Case2 (inputField1, inputField2, inputField3),
+                Output.Union1.Case2 (outputField1, outputField3, outputField2) ->
+                Assert.equal inputField1 outputField1
+                Assert.equal inputField2 outputField2
+                Assert.equal inputField3 outputField3
             | _ -> Assert.failWith "case names do not match"
 
 module ``complex union with additional complex cases`` =

@@ -3,7 +3,6 @@
 
 open FSharp.Reflection
 open System
-open System.Collections
 open System.Collections.Generic
 open System.Linq.Expressions
 open System.Reflection
@@ -62,8 +61,6 @@ type internal AtomicSerializer = {
 type internal ListSerializer = {
     DotnetType: Type
     ElementSerializer: Serializer
-    GetLength: Expression -> Expression
-    GetElementValue: Expression * Expression -> Expression
     GetEnumerator: Expression -> Expression }
 
 type internal FieldSerializer = {
@@ -204,12 +201,10 @@ module internal Serializer =
             DotnetType = dotnetType
             Fields = fields }
 
-    let list dotnetType elementSerializer getLength getElementValue getEnumerator =
+    let list dotnetType elementSerializer getEnumerator =
         Serializer.List {
             DotnetType = dotnetType
             ElementSerializer = elementSerializer
-            GetLength = getLength
-            GetElementValue = getElementValue
             GetEnumerator = getEnumerator }
 
     let optional dotnetType serializer isNull getValue =
@@ -913,19 +908,13 @@ type internal Array1dConverter() =
     let createSerializer (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetElementType()
         let elementSerializer = Serializer.ofType elementDotnetType
-        let getLength (array: Expression) =
-            Expression.Property(array, "Length")
-            :> Expression
-        let getElementValue (array: Expression, index: Expression) =
-            Expression.ArrayIndex(array, [ index ])
-            :> Expression
         let getEnumerator =
             let enumerableType =
                 typedefof<IEnumerable<_>>.MakeGenericType(elementDotnetType)
             fun (array: Expression) ->
                 let enumerable = Expression.Convert(array, enumerableType)
                 Expression.Call(enumerable, "GetEnumerator", [])
-        Serializer.list dotnetType elementSerializer getLength getElementValue getEnumerator
+        Serializer.list dotnetType elementSerializer getEnumerator
         |> Serializer.referenceTypeWrapper
 
     let createDeserializer (dotnetType: Type) (schema: ListSchema) =
@@ -961,19 +950,13 @@ type internal GenericListConverter() =
     let createSerializer (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementSerializer = Serializer.ofType elementDotnetType
-        let getLength (list: Expression) =
-            Expression.Property(list, "Count")
-            :> Expression
-        let getElementValue (list: Expression, index: Expression) =
-            Expression.MakeIndex(list, dotnetType.GetProperty("Item"), [ index ])
-            :> Expression
         let getEnumerator =
             let enumerableType =
                 typedefof<IEnumerable<_>>.MakeGenericType(elementDotnetType)
             fun (list: Expression) ->
                 let enumerable = Expression.Convert(list, enumerableType)
                 Expression.Call(enumerable, "GetEnumerator", [])
-        Serializer.list dotnetType elementSerializer getLength getElementValue getEnumerator
+        Serializer.list dotnetType elementSerializer getEnumerator
         |> Serializer.referenceTypeWrapper
 
     let createDeserializer (dotnetType: Type) (schema: ListSchema) =
@@ -1007,14 +990,6 @@ type internal FSharpListConverter() =
     let createSerializer (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementSerializer = Serializer.ofType elementDotnetType
-        let getLength (list: Expression) =
-            Expression.Property(list, "Length")
-            :> Expression
-        let getElementValue =
-            let itemProperty = dotnetType.GetProperty("Item")
-            fun (list: Expression, index: Expression) ->
-                Expression.MakeIndex(list, itemProperty, [ index ])
-                :> Expression
         let getEnumerator =
             let enumerableType =
                 typedefof<IEnumerable<_>>.MakeGenericType(elementDotnetType)
@@ -1026,7 +1001,7 @@ type internal FSharpListConverter() =
         // list field class can't easily be created since some of the relevant
         // properties are internal. For now, wrap as a non-nullable reference
         // type.
-        Serializer.list dotnetType elementSerializer getLength getElementValue getEnumerator
+        Serializer.list dotnetType elementSerializer getEnumerator
         |> Serializer.nonNullableReferenceTypeWrapper
 
     let createDeserializer (dotnetType: Type) (schema: ListSchema) =

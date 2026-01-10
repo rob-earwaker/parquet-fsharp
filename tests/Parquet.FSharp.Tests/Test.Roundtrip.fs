@@ -3,7 +3,6 @@ module rec Parquet.FSharp.Tests.Roundtrip
 open FsCheck.Xunit
 open Parquet.FSharp
 open System
-open System.IO
 
 type SimpleUnion =
     | CaseA

@@ -1436,13 +1436,9 @@ type internal NullableConverter() =
                         if recordSchema.Fields.Length = 1
                             && recordSchema.Fields[0].Name = "Value"
                         then true, recordSchema.Fields[0].Value
-                        else false, schema
-                    | _ -> false, schema
+                        else false, schema.MakeRequired()
+                    | _ -> false, schema.MakeRequired()
                 let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
-                let valueSchema =
-                    if not isValueOptional
-                    then valueSchema.MakeRequired()
-                    else valueSchema
                 let deserializer =
                     Deserializer.ofType valueDotnetType valueSchema
                 if isValueOptional
@@ -1532,13 +1528,9 @@ type internal OptionConverter() =
                         if recordSchema.Fields.Length = 1
                             && recordSchema.Fields[0].Name = "Value"
                         then true, recordSchema.Fields[0].Value
-                        else false, schema
-                    | _ -> false, schema
+                        else false, schema.MakeRequired()
+                    | _ -> false, schema.MakeRequired()
                 let valueDotnetType = dotnetType.GetGenericArguments()[0]
-                let valueSchema =
-                    if not isValueOptional
-                    then valueSchema.MakeRequired()
-                    else valueSchema
                 let deserializer =
                     Deserializer.ofType valueDotnetType valueSchema
                 if isValueOptional

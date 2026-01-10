@@ -394,7 +394,7 @@ module internal ValueConverter =
         PrimitiveConverter<int8>()
         PrimitiveConverter<int16>()
         Int32Converter()
-        PrimitiveConverter<int64>()
+        Int64Converter()
         PrimitiveConverter<uint8>()
         PrimitiveConverter<uint16>()
         PrimitiveConverter<uint32>()
@@ -444,6 +444,43 @@ type internal PrimitiveConverter<'Value>() =
             if dotnetType = serializer.DotnetType
             then Option.Some deserializer
             else Option.None
+
+type internal Int64Converter() =
+    let dotnetType = typeof<int64>
+
+    let serializer =
+        let dataDotnetType = dotnetType
+        let getDataValue = id
+        Serializer.atomic dotnetType dataDotnetType getDataValue
+
+    let createDeserializer dataDotnetType =
+        let createFromDataValue dataValue =
+            Expression.Convert(dataValue, dotnetType)
+            :> Expression
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    interface IValueConverter with
+        member this.TryCreateSerializer(dotnetType) =
+            if dotnetType = serializer.DotnetType
+            then Option.Some serializer
+            else Option.None
+
+        member this.TryCreateDeserializer(dotnetType, schema) =
+            if dotnetType <> typeof<int64>
+            then Option.None
+            else
+                match schema with
+                | ValueSchema.Atomic atomicSchema
+                    when not atomicSchema.IsOptional
+                        && (atomicSchema.DotnetType = typeof<int64>
+                            || atomicSchema.DotnetType = typeof<int32>
+                            || atomicSchema.DotnetType = typeof<int16>
+                            || atomicSchema.DotnetType = typeof<int8>
+                            || atomicSchema.DotnetType = typeof<uint32>
+                            || atomicSchema.DotnetType = typeof<uint16>
+                            || atomicSchema.DotnetType = typeof<uint8>) ->
+                    Option.Some (createDeserializer atomicSchema.DotnetType)
+                | _ -> Option.None
 
 type internal Int32Converter() =
     let dotnetType = typeof<int32>

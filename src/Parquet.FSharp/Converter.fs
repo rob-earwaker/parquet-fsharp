@@ -3,6 +3,7 @@
 
 open FSharp.Reflection
 open System
+open System.Collections.Generic
 open System.Linq.Expressions
 open System.Reflection
 
@@ -61,7 +62,8 @@ type internal ListSerializer = {
     DotnetType: Type
     ElementSerializer: Serializer
     GetLength: Expression -> Expression
-    GetElementValue: Expression * Expression -> Expression }
+    GetElementValue: Expression * Expression -> Expression
+    GetEnumerator: Expression -> Expression }
 
 type internal FieldSerializer = {
     Name: string
@@ -192,28 +194,29 @@ module private DotnetType =
 module internal Serializer =
     let atomic dotnetType dataDotnetType getDataValue =
         Serializer.Atomic {
-            AtomicSerializer.DotnetType = dotnetType
-            AtomicSerializer.DataDotnetType = dataDotnetType
-            AtomicSerializer.GetDataValue = getDataValue }
+            DotnetType = dotnetType
+            DataDotnetType = dataDotnetType
+            GetDataValue = getDataValue }
 
     let record dotnetType fields =
         Serializer.Record {
-            RecordSerializer.DotnetType = dotnetType
-            RecordSerializer.Fields = fields }
+            DotnetType = dotnetType
+            Fields = fields }
 
-    let list dotnetType elementSerializer getLength getElementValue =
+    let list dotnetType elementSerializer getLength getElementValue getEnumerator =
         Serializer.List {
-            ListSerializer.DotnetType = dotnetType
-            ListSerializer.ElementSerializer = elementSerializer
-            ListSerializer.GetLength = getLength
-            ListSerializer.GetElementValue = getElementValue }
+            DotnetType = dotnetType
+            ElementSerializer = elementSerializer
+            GetLength = getLength
+            GetElementValue = getElementValue
+            GetEnumerator = getEnumerator }
 
     let optional dotnetType serializer isNull getValue =
         Serializer.Optional {
-            OptionalSerializer.DotnetType = dotnetType
-            OptionalSerializer.Serializer = serializer
-            OptionalSerializer.IsNull = isNull
-            OptionalSerializer.GetValue = getValue }
+            DotnetType = dotnetType
+            Serializer = serializer
+            IsNull = isNull
+            GetValue = getValue }
 
     let referenceTypeWrapper (serializer: Serializer) =
         let dotnetType = serializer.DotnetType
@@ -261,29 +264,29 @@ module internal Serializer =
 module internal Deserializer =
     let atomic dotnetType dataDotnetType createFromDataValue =
         Deserializer.Atomic {
-            AtomicDeserializer.DotnetType = dotnetType
-            AtomicDeserializer.DataDotnetType = dataDotnetType
-            AtomicDeserializer.CreateFromDataValue = createFromDataValue }
+            DotnetType = dotnetType
+            DataDotnetType = dataDotnetType
+            CreateFromDataValue = createFromDataValue }
 
     let record dotnetType fields createFromFieldValues =
         Deserializer.Record {
-            RecordDeserializer.DotnetType = dotnetType
-            RecordDeserializer.Fields = fields
-            RecordDeserializer.CreateFromFieldValues = createFromFieldValues }
+            DotnetType = dotnetType
+            Fields = fields
+            CreateFromFieldValues = createFromFieldValues }
 
     let list dotnetType elementDeserializer createEmpty createFromElementValues =
         Deserializer.List {
-            ListDeserializer.DotnetType = dotnetType
-            ListDeserializer.ElementDeserializer = elementDeserializer
-            ListDeserializer.CreateEmpty = createEmpty
-            ListDeserializer.CreateFromElementValues = createFromElementValues }
+            DotnetType = dotnetType
+            ElementDeserializer = elementDeserializer
+            CreateEmpty = createEmpty
+            CreateFromElementValues = createFromElementValues }
 
     let optional dotnetType deserializer createNull createFromValue =
         Deserializer.Optional {
-            OptionalDeserializer.DotnetType = dotnetType
-            OptionalDeserializer.Deserializer = deserializer
-            OptionalDeserializer.CreateNull = createNull
-            OptionalDeserializer.CreateFromValue = createFromValue }
+            DotnetType = dotnetType
+            Deserializer = deserializer
+            CreateNull = createNull
+            CreateFromValue = createFromValue }
 
     let referenceTypeWrapper (deserializer: Deserializer) =
         let dotnetType = deserializer.DotnetType
@@ -915,7 +918,13 @@ type internal Array1dConverter() =
         let getElementValue (array: Expression, index: Expression) =
             Expression.ArrayIndex(array, [ index ])
             :> Expression
-        Serializer.list dotnetType elementSerializer getLength getElementValue
+        let getEnumerator =
+            let enumerableType =
+                typedefof<IEnumerable<_>>.MakeGenericType(elementDotnetType)
+            fun (array: Expression) ->
+                let enumerable = Expression.Convert(array, enumerableType)
+                Expression.Call(enumerable, "GetEnumerator", [])
+        Serializer.list dotnetType elementSerializer getLength getElementValue getEnumerator
         |> Serializer.referenceTypeWrapper
 
     let createDeserializer (dotnetType: Type) (schema: ListSchema) =
@@ -957,7 +966,9 @@ type internal GenericListConverter() =
         let getElementValue (list: Expression, index: Expression) =
             Expression.MakeIndex(list, dotnetType.GetProperty("Item"), [ index ])
             :> Expression
-        Serializer.list dotnetType elementSerializer getLength getElementValue
+        let getEnumerator (list: Expression) =
+            Expression.Call(list, "GetEnumerator", [])
+        Serializer.list dotnetType elementSerializer getLength getElementValue getEnumerator
         |> Serializer.referenceTypeWrapper
 
     let createDeserializer (dotnetType: Type) (schema: ListSchema) =
@@ -999,12 +1010,14 @@ type internal FSharpListConverter() =
             fun (list: Expression, index: Expression) ->
                 Expression.MakeIndex(list, itemProperty, [ index ])
                 :> Expression
+        let getEnumerator (list: Expression) =
+            Expression.Call(list, "GetEnumerator", [])
         // TODO: F# lists are not nullable by default, however Parquet.Net
         // does not support list fields that aren't nullable and a nullable
         // list field class can't easily be created since some of the relevant
         // properties are internal. For now, wrap as a non-nullable reference
         // type.
-        Serializer.list dotnetType elementSerializer getLength getElementValue
+        Serializer.list dotnetType elementSerializer getLength getElementValue getEnumerator
         |> Serializer.nonNullableReferenceTypeWrapper
 
     let createDeserializer (dotnetType: Type) (schema: ListSchema) =

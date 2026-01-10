@@ -592,7 +592,7 @@ type internal Assembler<'Record>(schema: Schema) =
     let assemble = assembleExpr.Compile()
 
     member this.Schema = schema
-    
+
     member this.Assemble(columns) =
         assemble.Invoke(columns)
 

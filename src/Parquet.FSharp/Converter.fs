@@ -462,7 +462,7 @@ type internal PrimitiveConverterFactory<'Value>() =
         let dataDotnetType = dotnetType
         let getDataValue = id
         ValueSerializer.atomic dotnetType dataDotnetType getDataValue
-            
+
     let valueDeserializer =
         let dotnetType = typeof<'Value>
         let dataDotnetType = dotnetType
@@ -488,7 +488,7 @@ type internal DateTimeOffsetConverterFactory() =
             Expression.Property(value, "UtcDateTime")
             :> Expression
         ValueSerializer.atomic dotnetType dataDotnetType getDataValue
-            
+
     let valueDeserializer =
         let dotnetType = typeof<DateTimeOffset>
         let dataDotnetType = typeof<DateTime>
@@ -517,7 +517,7 @@ type internal StringConverterFactory() =
         let getDataValue = id
         ValueSerializer.atomic dotnetType dataDotnetType getDataValue
         |> ValueSerializer.referenceTypeWrapper
-        
+
     let valueDeserializer =
         let dotnetType = typeof<string>
         let dataDotnetType = dotnetType
@@ -543,7 +543,7 @@ type internal ByteArrayConverterFactory() =
         let getDataValue = id
         ValueSerializer.atomic dotnetType dataDotnetType getDataValue
         |> ValueSerializer.referenceTypeWrapper
-        
+
     let valueDeserializer =
         let dotnetType = typeof<byte[]>
         let dataDotnetType = dotnetType

@@ -3,6 +3,7 @@
 
 open FSharp.Reflection
 open System
+open System.Collections
 open System.Collections.Generic
 open System.Linq.Expressions
 open System.Reflection
@@ -966,8 +967,12 @@ type internal GenericListConverter() =
         let getElementValue (list: Expression, index: Expression) =
             Expression.MakeIndex(list, dotnetType.GetProperty("Item"), [ index ])
             :> Expression
-        let getEnumerator (list: Expression) =
-            Expression.Call(list, "GetEnumerator", [])
+        let getEnumerator =
+            let enumerableType =
+                typedefof<IEnumerable<_>>.MakeGenericType(elementDotnetType)
+            fun (list: Expression) ->
+                let enumerable = Expression.Convert(list, enumerableType)
+                Expression.Call(enumerable, "GetEnumerator", [])
         Serializer.list dotnetType elementSerializer getLength getElementValue getEnumerator
         |> Serializer.referenceTypeWrapper
 
@@ -1010,8 +1015,12 @@ type internal FSharpListConverter() =
             fun (list: Expression, index: Expression) ->
                 Expression.MakeIndex(list, itemProperty, [ index ])
                 :> Expression
-        let getEnumerator (list: Expression) =
-            Expression.Call(list, "GetEnumerator", [])
+        let getEnumerator =
+            let enumerableType =
+                typedefof<IEnumerable<_>>.MakeGenericType(elementDotnetType)
+            fun (list: Expression) ->
+                let enumerable = Expression.Convert(list, enumerableType)
+                Expression.Call(enumerable, "GetEnumerator", [])
         // TODO: F# lists are not nullable by default, however Parquet.Net
         // does not support list fields that aren't nullable and a nullable
         // list field class can't easily be created since some of the relevant

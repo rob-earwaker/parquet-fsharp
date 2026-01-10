@@ -128,21 +128,24 @@ type private ListShredder(listSerializer: ListSerializer, elementMaxRepLevel, el
         elementShredder.AddNull(repLevel, defLevel)
 
     override this.ShredValue(parentRepLevel, parentDefLevel, list) =
-        let elementCount = Expression.Variable(typeof<int>, "elementCount")
+        let enumeratorType =
+            typedefof<IEnumerator<_>>.MakeGenericType(
+                listSerializer.ElementSerializer.DotnetType)
+        let enumerator = Expression.Variable(enumeratorType, "enumerator")
+        let enumeratorMoveNextMethod = typeof<IEnumerator>.GetMethod("MoveNext")
         let firstElementRepLevel = Expression.Variable(typeof<int>, "firstElementRepLevel")
         let otherElementRepLevel = Expression.Variable(typeof<int>, "otherElementRepLevel")
         let elementDefLevel = Expression.Variable(typeof<int>, "elementDefLevel")
-        let elementIndex = Expression.Variable(typeof<int>, "elementIndex")
         let loopBreakLabel = Expression.Label("loopBreak")
-        // TODO: Should probably do this using IEnumerator instead to allow
-        // support for sequences and IEnumerables
         Expression.Block(
-            [ elementCount ],
-            // Get the element count.
-            Expression.Assign(elementCount, listSerializer.GetLength(list)),
+            [ enumerator ],
+            // Get an enumerator for the list.
+            Expression.Assign(enumerator, listSerializer.GetEnumerator(list)),
             Expression.IfThenElse(
-                // Check if the list is empty.
-                Expression.Equal(elementCount, Expression.Constant(0)),
+                // Move to the next (first) value of the enumerator. If this
+                // returns false then the list is empty, otherwise the first
+                // element will be stored as the enumerator's current value.
+                Expression.Not(Expression.Call(enumerator, enumeratorMoveNextMethod)),
                 // The list is empty. Add a NULL element using the list levels.
                 // This indicates that the list is NOTNULL but there are no
                 // elements.
@@ -155,33 +158,35 @@ type private ListShredder(listSerializer: ListSerializer, elementMaxRepLevel, el
                 // definition level since we're now inside a REPEATED field that
                 // is NOTNULL.
                 Expression.Block(
-                    [ firstElementRepLevel; otherElementRepLevel; elementDefLevel; elementIndex ],
+                    [ firstElementRepLevel; otherElementRepLevel; elementDefLevel ],
+                    // let firstElementRepLevel = parentRepLevel
+                    // let otherElementRepLevel = elementMaxRepLevel
+                    // let elementDefLevel = parentDefLevel + 1
                     Expression.Assign(firstElementRepLevel, parentRepLevel),
                     Expression.Assign(otherElementRepLevel, Expression.Constant(elementMaxRepLevel)),
                     Expression.Assign(elementDefLevel, Expression.Increment(parentDefLevel)),
+                    // Shred the first element before continuing to enumerate
+                    // subsequent elements.
+                    // ---
+                    // shredElement(...)
                     Expression.Invoke(
                         shredElement,
                         firstElementRepLevel,
                         elementDefLevel,
-                        listSerializer.GetElementValue(list, Expression.Constant(0))),
-                    Expression.Assign(elementIndex, Expression.Constant(1)),
+                        Expression.Property(enumerator, "Current")),
                     Expression.Loop(
                         // while True do
                         Expression.IfThenElse(
-                            // if elementIndex = elementCount
-                            Expression.Equal(elementIndex, elementCount),
+                            // if not enumerator.MoveNext()
+                            Expression.Not(Expression.Call(enumerator, enumeratorMoveNextMethod)),
                             // then break
                             Expression.Break(loopBreakLabel),
-                            // else
-                            //     shredValue(...)
-                            //     elementIndex <- elementIndex + 1
-                            Expression.Block(
-                                Expression.Invoke(
-                                    shredElement,
-                                    otherElementRepLevel,
-                                    elementDefLevel,
-                                    listSerializer.GetElementValue(list, elementIndex)),
-                                Expression.AddAssign(elementIndex, Expression.Constant(1)))),
+                            // else shredElement(...)
+                            Expression.Invoke(
+                                shredElement,
+                                otherElementRepLevel,
+                                elementDefLevel,
+                                Expression.Property(enumerator, "Current"))),
                         loopBreakLabel))))
 
 type private RecordShredder(recordSerializer: RecordSerializer, fieldShredders: ValueShredder[]) =

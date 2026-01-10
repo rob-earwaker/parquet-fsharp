@@ -92,78 +92,78 @@ let ``uint64 deserialized from uint16`` inputRecords =
 let ``uint64 deserialized from uint32`` inputRecords =
     testTypeCompatibility<uint32, uint64> uint64 inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``float32 deserialized from int8`` inputRecords =
     testTypeCompatibility<int8, float32> float32 inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``float32 deserialized from int16`` inputRecords =
     testTypeCompatibility<int16, float32> float32 inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``float32 deserialized from uint8`` inputRecords =
     testTypeCompatibility<uint8, float32> float32 inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``float32 deserialized from uint16`` inputRecords =
     testTypeCompatibility<uint16, float32> float32 inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``float64 deserialized from int8`` inputRecords =
     testTypeCompatibility<int8, float> float inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``float64 deserialized from int16`` inputRecords =
     testTypeCompatibility<int16, float> float inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``float64 deserialized from int32`` inputRecords =
     testTypeCompatibility<int32, float> float inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``float64 deserialized from uint8`` inputRecords =
     testTypeCompatibility<uint8, float> float inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``float64 deserialized from uint16`` inputRecords =
     testTypeCompatibility<uint16, float> float inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``float64 deserialized from uint32`` inputRecords =
     testTypeCompatibility<uint32, float> float inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``float64 deserialized from float32`` inputRecords =
     testTypeCompatibility<float32, float> float inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``decimal deserialized from int8`` inputRecords =
     testTypeCompatibility<int8, decimal> decimal inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``decimal deserialized from int16`` inputRecords =
     testTypeCompatibility<int16, decimal> decimal inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``decimal deserialized from int32`` inputRecords =
     testTypeCompatibility<int32, decimal> decimal inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``decimal deserialized from int64`` inputRecords =
     testTypeCompatibility<int64, decimal> decimal inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``decimal deserialized from uint8`` inputRecords =
     testTypeCompatibility<uint8, decimal> decimal inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``decimal deserialized from uint16`` inputRecords =
     testTypeCompatibility<uint16, decimal> decimal inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``decimal deserialized from uint32`` inputRecords =
     testTypeCompatibility<uint32, decimal> decimal inputRecords
 
-[<Property(Skip = "this is not yet supported")>]
+[<Property>]
 let ``decimal deserialized from uint64`` inputRecords =
     testTypeCompatibility<uint64, decimal> decimal inputRecords

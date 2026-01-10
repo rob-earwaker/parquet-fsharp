@@ -205,43 +205,6 @@ module ``complex union with case fields in different order`` =
                 Assert.equal inputField3 outputField3
             | _ -> Assert.failWith "case names do not match"
 
-module ``complex union with additional complex cases`` =
-    module Input =
-        type Record1 = {
-            Field1: Union1 }
-
-        and Union1 =
-            | Case2 of field1:int * field2:bool
-            | Case3 of field1:string
-
-    module Output =
-        type Record1 = {
-            Field1: Union1 }
-
-        and Union1 =
-            | Case1 of field1:DateTimeOffset * field2:float
-            | Case2 of field1:int * field2:bool
-            | Case3 of field1:string
-            | Case4 of field1:decimal[]
-
-    [<Property(Skip = "this is not yet supported")>]
-    let ``test`` (inputRecords: Input.Record1[]) =
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output.Record1>(bytes)
-        Assert.arrayLengthEqual inputRecords outputRecords
-        for inputRecord, outputRecord in Array.zip inputRecords outputRecords do
-            match inputRecord.Field1, outputRecord.Field1 with
-            | _, Output.Union1.Case1 _ -> Assert.failWith "case does not exist in the input"
-            | Input.Union1.Case2 (inputField1, inputField2),
-                Output.Union1.Case2 (outputField1, outputField2) ->
-                Assert.equal inputField1 outputField1
-                Assert.equal inputField2 outputField2
-            | Input.Union1.Case3 inputField1,
-                Output.Union1.Case3 outputField1 ->
-                Assert.equal inputField1 outputField1
-            | _, Output.Union1.Case4 _ -> Assert.failWith "case does not exist in the input"
-            | _ -> Assert.failWith "case names do not match"
-
 module ``complex union cases without fields`` =
     module Input =
         type Record1 = {

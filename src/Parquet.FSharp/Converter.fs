@@ -26,6 +26,8 @@ open System.Reflection
 //     - TimeSpan, Interval
 //     - Enums?
 
+// TODO: Can we cache anything, e.g. reflected info?
+
 // TODO: Attribute to select specific serializer type to use? Alternatively could
 // be part of the serializer configuration?
 
@@ -187,19 +189,6 @@ module private DotnetType =
         && dotnetType.GetGenericTypeDefinition() = typedefof<'GenericType>
 
 module internal Serializer =
-    // TODO: This probably isn't valid any more!
-    let private Cache = Dictionary<Type, Serializer>()
-
-    let private tryGetCached dotnetType =
-        lock Cache (fun () ->
-            match Cache.TryGetValue(dotnetType) with
-            | false, _ -> Option.None
-            | true, serializer -> Option.Some serializer)
-
-    let private addToCache dotnetType serializer =
-        lock Cache (fun () ->
-            Cache[dotnetType] <- serializer)
-
     let atomic dotnetType dataDotnetType getDataValue =
         Serializer.Atomic {
             AtomicSerializer.DotnetType = dotnetType
@@ -260,34 +249,15 @@ module internal Serializer =
         Serializer.getSchema' false serializer
 
     let ofType (dotnetType: Type) : Serializer =
-        match tryGetCached dotnetType with
-        | Option.Some serializer -> serializer
-        | Option.None ->
-            let serializer =
-                ValueConverter.All
-                |> Array.tryPick _.TryCreateSerializer(dotnetType)
-                |> Option.defaultWith (fun () ->
-                    failwith $"unsupported type '{dotnetType.FullName}'")
-            addToCache dotnetType serializer
-            serializer
+        ValueConverter.All
+        |> Array.tryPick _.TryCreateSerializer(dotnetType)
+        |> Option.defaultWith (fun () ->
+            failwith $"unsupported type '{dotnetType.FullName}'")
 
     let of'<'Value> =
         ofType typeof<'Value>
 
 module internal Deserializer =
-    // TODO: This probably isn't valid any more!
-    let private Cache = Dictionary<Type, Deserializer>()
-
-    let private tryGetCached dotnetType =
-        lock Cache (fun () ->
-            match Cache.TryGetValue(dotnetType) with
-            | false, _ -> Option.None
-            | true, deserializer -> Option.Some deserializer)
-
-    let private addToCache dotnetType deserializer =
-        lock Cache (fun () ->
-            Cache[dotnetType] <- deserializer)
-
     let atomic dotnetType dataDotnetType createFromDataValue =
         Deserializer.Atomic {
             AtomicDeserializer.DotnetType = dotnetType
@@ -355,16 +325,10 @@ module internal Deserializer =
         Deserializer.getSchema' false deserializer
 
     let ofType (dotnetType: Type) schema : Deserializer =
-        match tryGetCached dotnetType with
-        | Option.Some deserializer -> deserializer
-        | Option.None ->
-            let deserializer =
-                ValueConverter.All
-                |> Array.tryPick _.TryCreateDeserializer(dotnetType, schema)
-                |> Option.defaultWith (fun () ->
-                    failwith $"unsupported type '{dotnetType.FullName}'")
-            addToCache dotnetType deserializer
-            deserializer
+        ValueConverter.All
+        |> Array.tryPick _.TryCreateDeserializer(dotnetType, schema)
+        |> Option.defaultWith (fun () ->
+            failwith $"unsupported type '{dotnetType.FullName}'")
 
     let of'<'Value> schema =
         ofType typeof<'Value> schema

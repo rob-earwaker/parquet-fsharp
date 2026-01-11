@@ -313,7 +313,7 @@ module private rec ValueShredder =
 
 type private Shredder<'Record>() =
     let recordSerializer =
-        match Serializer.of'<'Record> with
+        match Serializer.resolve typeof<'Record> with
         | Serializer.Record recordSerializer -> recordSerializer
         // TODO: F# records are currently treated as optional for compatability
         // with Parquet.Net, but the root record should never be optional.

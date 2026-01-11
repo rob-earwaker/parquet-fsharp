@@ -34,9 +34,8 @@ open System.Reflection
 type internal IValueConverter =
     abstract member TryCreateSerializer
         : sourceType:Type -> Serializer option
-    // TODO: Rename to targetType and sourceSchema?
     abstract member TryCreateDeserializer
-        : dotnetType:Type * schema:ValueSchema -> Deserializer option
+        : targetType:Type * sourceSchema:ValueSchema -> Deserializer option
 
 type internal Serializer =
     | Atomic of AtomicSerializer
@@ -319,14 +318,11 @@ module internal Deserializer =
     let getSchema deserializer =
         Deserializer.getSchema' false deserializer
 
-    let ofType (dotnetType: Type) schema : Deserializer =
+    let resolve targetType sourceSchema : Deserializer =
         ValueConverter.All
-        |> Array.tryPick _.TryCreateDeserializer(dotnetType, schema)
+        |> Array.tryPick _.TryCreateDeserializer(targetType, sourceSchema)
         |> Option.defaultWith (fun () ->
-            failwith $"unsupported type '{dotnetType.FullName}'")
-
-    let of'<'Value> schema =
-        ofType typeof<'Value> schema
+            failwith $"unsupported type '{targetType.FullName}'")
 
 module private FieldSerializer =
     let create name valueSerializer getValue =
@@ -362,7 +358,7 @@ module private FieldDeserializer =
 
     let ofProperty (field: PropertyInfo) schema : FieldDeserializer =
         let name = field.Name
-        let deserializer = Deserializer.ofType field.PropertyType schema
+        let deserializer = Deserializer.resolve field.PropertyType schema
         create name deserializer
 
     let getSchema (fieldDeserializer: FieldDeserializer) =
@@ -433,8 +429,8 @@ type internal PrimitiveConverter<'Value>() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType = serializer.DotnetType
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType = dotnetType
             then Option.Some deserializer
             else Option.None
 
@@ -458,14 +454,14 @@ type internal Int8Converter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType <> typeof<int8>
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType <> dotnetType
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
                     when not atomicSchema.IsOptional
-                        && atomicSchema.DotnetType = typeof<int8> ->
+                        && atomicSchema.DotnetType = dotnetType ->
                     Option.Some (createDeserializer atomicSchema.DotnetType)
                 | _ -> Option.None
 
@@ -489,14 +485,14 @@ type internal Int16Converter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType <> typeof<int16>
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType <> dotnetType
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
                     when not atomicSchema.IsOptional
-                        && (atomicSchema.DotnetType = typeof<int16>
+                        && (atomicSchema.DotnetType = dotnetType
                             || atomicSchema.DotnetType = typeof<int8>
                             || atomicSchema.DotnetType = typeof<uint8>) ->
                     Option.Some (createDeserializer atomicSchema.DotnetType)
@@ -522,14 +518,14 @@ type internal Int32Converter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType <> typeof<int32>
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType <> dotnetType
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
                     when not atomicSchema.IsOptional
-                        && (atomicSchema.DotnetType = typeof<int32>
+                        && (atomicSchema.DotnetType = dotnetType
                             || atomicSchema.DotnetType = typeof<int16>
                             || atomicSchema.DotnetType = typeof<int8>
                             || atomicSchema.DotnetType = typeof<uint16>
@@ -557,14 +553,14 @@ type internal Int64Converter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType <> typeof<int64>
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType <> dotnetType
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
                     when not atomicSchema.IsOptional
-                        && (atomicSchema.DotnetType = typeof<int64>
+                        && (atomicSchema.DotnetType = dotnetType
                             || atomicSchema.DotnetType = typeof<int32>
                             || atomicSchema.DotnetType = typeof<int16>
                             || atomicSchema.DotnetType = typeof<int8>
@@ -594,14 +590,14 @@ type internal UInt8Converter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType <> typeof<uint8>
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType <> dotnetType
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
                     when not atomicSchema.IsOptional
-                        && atomicSchema.DotnetType = typeof<uint8> ->
+                        && atomicSchema.DotnetType = dotnetType ->
                     Option.Some (createDeserializer atomicSchema.DotnetType)
                 | _ -> Option.None
 
@@ -625,14 +621,14 @@ type internal UInt16Converter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType <> typeof<uint16>
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType <> dotnetType
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
                     when not atomicSchema.IsOptional
-                        && (atomicSchema.DotnetType = typeof<uint16>
+                        && (atomicSchema.DotnetType = dotnetType
                             || atomicSchema.DotnetType = typeof<uint8>) ->
                     Option.Some (createDeserializer atomicSchema.DotnetType)
                 | _ -> Option.None
@@ -657,14 +653,14 @@ type internal UInt32Converter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType <> typeof<uint32>
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType <> dotnetType
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
                     when not atomicSchema.IsOptional
-                        && (atomicSchema.DotnetType = typeof<uint32>
+                        && (atomicSchema.DotnetType = dotnetType
                             || atomicSchema.DotnetType = typeof<uint16>
                             || atomicSchema.DotnetType = typeof<uint8>) ->
                     Option.Some (createDeserializer atomicSchema.DotnetType)
@@ -690,14 +686,14 @@ type internal UInt64Converter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType <> typeof<uint64>
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType <> dotnetType
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
                     when not atomicSchema.IsOptional
-                        && (atomicSchema.DotnetType = typeof<uint64>
+                        && (atomicSchema.DotnetType = dotnetType
                             || atomicSchema.DotnetType = typeof<uint32>
                             || atomicSchema.DotnetType = typeof<uint16>
                             || atomicSchema.DotnetType = typeof<uint8>) ->
@@ -724,14 +720,14 @@ type internal Float32Converter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType <> typeof<float32>
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType <> dotnetType
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
                     when not atomicSchema.IsOptional
-                        && (atomicSchema.DotnetType = typeof<float32>
+                        && (atomicSchema.DotnetType = dotnetType
                             || atomicSchema.DotnetType = typeof<int16>
                             || atomicSchema.DotnetType = typeof<int8>
                             || atomicSchema.DotnetType = typeof<uint16>
@@ -759,14 +755,14 @@ type internal Float64Converter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType <> typeof<float>
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType <> dotnetType
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
                     when not atomicSchema.IsOptional
-                        && (atomicSchema.DotnetType = typeof<float>
+                        && (atomicSchema.DotnetType = dotnetType
                             || atomicSchema.DotnetType = typeof<float32>
                             || atomicSchema.DotnetType = typeof<int32>
                             || atomicSchema.DotnetType = typeof<int16>
@@ -797,14 +793,14 @@ type internal DecimalConverter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType <> typeof<decimal>
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType <> dotnetType
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
                     when not atomicSchema.IsOptional
-                        && (atomicSchema.DotnetType = typeof<decimal>
+                        && (atomicSchema.DotnetType = dotnetType
                             || atomicSchema.DotnetType = typeof<int64>
                             || atomicSchema.DotnetType = typeof<int32>
                             || atomicSchema.DotnetType = typeof<int16>
@@ -840,8 +836,8 @@ type internal DateTimeOffsetConverter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType = serializer.DotnetType
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType = dotnetType
             then Option.Some deserializer
             else Option.None
 
@@ -865,8 +861,8 @@ type internal StringConverter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType = serializer.DotnetType
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType = dotnetType
             then Option.Some deserializer
             else Option.None
 
@@ -890,8 +886,8 @@ type internal ByteArrayConverter() =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if dotnetType = serializer.DotnetType
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if targetType = dotnetType
             then Option.Some deserializer
             else Option.None
 
@@ -915,7 +911,7 @@ type internal Array1dConverter() =
     let createDeserializer (dotnetType: Type) (schema: ListSchema) =
         let elementDotnetType = dotnetType.GetElementType()
         let elementDeserializer =
-            Deserializer.ofType elementDotnetType schema.Element
+            Deserializer.resolve elementDotnetType schema.Element
         let createEmpty =
             Expression.NewArrayBounds(elementDotnetType, Expression.Constant(0))
         let createFromElementValues (elementValues: Expression) =
@@ -930,13 +926,13 @@ type internal Array1dConverter() =
             then Option.Some (createSerializer sourceType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if not (isArray1dType dotnetType)
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if not (isArray1dType targetType)
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.List listSchema ->
-                    Option.Some (createDeserializer dotnetType listSchema)
+                    Option.Some (createDeserializer targetType listSchema)
                 | _ -> Option.None
 
 type internal GenericListConverter() =
@@ -957,7 +953,7 @@ type internal GenericListConverter() =
     let createDeserializer (dotnetType: Type) (schema: ListSchema) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementDeserializer =
-            Deserializer.ofType elementDotnetType schema.Element
+            Deserializer.resolve elementDotnetType schema.Element
         let createEmpty = Expression.New(dotnetType)
         let createFromElementValues = id
         Deserializer.list
@@ -970,13 +966,13 @@ type internal GenericListConverter() =
             then Option.Some (createSerializer sourceType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if not (isGenericListType dotnetType)
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if not (isGenericListType targetType)
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.List listSchema ->
-                    Option.Some (createDeserializer dotnetType listSchema)
+                    Option.Some (createDeserializer targetType listSchema)
                 | _ -> Option.None
 
 type internal FSharpListConverter() =
@@ -1002,7 +998,7 @@ type internal FSharpListConverter() =
     let createDeserializer (dotnetType: Type) (schema: ListSchema) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementDeserializer =
-            Deserializer.ofType elementDotnetType schema.Element
+            Deserializer.resolve elementDotnetType schema.Element
         let createEmpty =
             Expression.Property(null, dotnetType.GetProperty("Empty"))
         let createFromElementValues =
@@ -1028,13 +1024,13 @@ type internal FSharpListConverter() =
             then Option.Some (createSerializer sourceType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if not (isFSharpListType dotnetType)
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if not (isFSharpListType targetType)
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.List listSchema ->
-                    Option.Some (createDeserializer dotnetType listSchema)
+                    Option.Some (createDeserializer targetType listSchema)
                 | _ -> Option.None
 
 type internal FSharpRecordConverter() =
@@ -1084,13 +1080,13 @@ type internal FSharpRecordConverter() =
             then Option.Some (createSerializer sourceType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if not (isFSharpRecordType dotnetType)
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if not (isFSharpRecordType targetType)
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.Record recordSchema ->
-                    tryCreateDeserializer dotnetType recordSchema
+                    tryCreateDeserializer targetType recordSchema
                 | _ -> Option.None
 
 type internal UnionConverter() =
@@ -1342,18 +1338,18 @@ type internal UnionConverter() =
             then Option.Some (createUnionSerializer sourceType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if not (isUnionType dotnetType)
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if not (isUnionType targetType)
             then Option.None
             else
                 // Unions are represented in one of two ways depending on
                 // whether any of the cases have associated data fields.
-                let unionInfo = UnionInfo.ofUnion dotnetType
+                let unionInfo = UnionInfo.ofUnion targetType
                 if unionInfo.UnionCases
                     |> Array.forall (fun unionCase -> unionCase.Fields.Length = 0)
                 then Option.Some (createSimpleUnionDeserializer unionInfo)
                 else
-                    match schema with
+                    match sourceSchema with
                     | ValueSchema.Record recordSchema ->
                         tryCreateComplexUnionDeserializer unionInfo recordSchema
                     | _ -> Option.None
@@ -1420,28 +1416,28 @@ type internal NullableConverter() =
             then Option.Some (createSerializer sourceType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if not (isNullableType dotnetType)
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if not (isNullableType targetType)
             then Option.None
             else
                 let isValueOptional, valueSchema =
-                    match schema with
+                    match sourceSchema with
                     | ValueSchema.Record recordSchema ->
                         // TODO: This seems a bit hacky!
                         if recordSchema.Fields.Length = 1
                             && recordSchema.Fields[0].Name = "Value"
                         then true, recordSchema.Fields[0].Value
-                        else false, schema.MakeRequired()
-                    | _ -> false, schema.MakeRequired()
-                let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
+                        else false, sourceSchema.MakeRequired()
+                    | _ -> false, sourceSchema.MakeRequired()
+                let valueDotnetType = Nullable.GetUnderlyingType(targetType)
                 let valueDeserializer =
-                    Deserializer.ofType valueDotnetType valueSchema
+                    Deserializer.resolve valueDotnetType valueSchema
                 if isValueOptional
                 // TODO: This shouldn't really be possible as nullable values have to be
                 // value types and therefore can't be null, but while we need to treat
                 // all record types as optional we need to handle this case.
-                then Option.Some (createOptionalValueDeserializer dotnetType valueDeserializer)
-                else Option.Some (createRequiredValueDeserializer dotnetType valueDeserializer)
+                then Option.Some (createOptionalValueDeserializer targetType valueDeserializer)
+                else Option.Some (createRequiredValueDeserializer targetType valueDeserializer)
 
 type internal OptionConverter() =
     let isOptionType = DotnetType.isGenericType<option<_>>
@@ -1513,25 +1509,25 @@ type internal OptionConverter() =
             then Option.Some (createSerializer sourceType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if not (isOptionType dotnetType)
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if not (isOptionType targetType)
             then Option.None
             else
                 let isValueOptional, valueSchema =
-                    match schema with
+                    match sourceSchema with
                     | ValueSchema.Record recordSchema ->
                         // TODO: This seems a bit hacky!
                         if recordSchema.Fields.Length = 1
                             && recordSchema.Fields[0].Name = "Value"
                         then true, recordSchema.Fields[0].Value
-                        else false, schema.MakeRequired()
-                    | _ -> false, schema.MakeRequired()
-                let valueDotnetType = dotnetType.GetGenericArguments()[0]
+                        else false, sourceSchema.MakeRequired()
+                    | _ -> false, sourceSchema.MakeRequired()
+                let valueDotnetType = targetType.GetGenericArguments()[0]
                 let valueDeserializer =
-                    Deserializer.ofType valueDotnetType valueSchema
+                    Deserializer.resolve valueDotnetType valueSchema
                 if isValueOptional
-                then Option.Some (createOptionalValueDeserializer dotnetType valueDeserializer)
-                else Option.Some (createRequiredValueDeserializer dotnetType valueDeserializer)
+                then Option.Some (createOptionalValueDeserializer targetType valueDeserializer)
+                else Option.Some (createRequiredValueDeserializer targetType valueDeserializer)
 
 type internal ClassConverter() =
     let isClassWithDefaultConstructor (dotnetType: Type) =
@@ -1584,11 +1580,11 @@ type internal ClassConverter() =
             then Option.Some (createSerializer sourceType)
             else Option.None
 
-        member this.TryCreateDeserializer(dotnetType, schema) =
-            if not (isClassWithDefaultConstructor dotnetType)
+        member this.TryCreateDeserializer(targetType, sourceSchema) =
+            if not (isClassWithDefaultConstructor targetType)
             then Option.None
             else
-                match schema with
+                match sourceSchema with
                 | ValueSchema.Record recordSchema ->
-                    tryCreateDeserializer dotnetType recordSchema
+                    tryCreateDeserializer targetType recordSchema
                 | _ -> Option.None

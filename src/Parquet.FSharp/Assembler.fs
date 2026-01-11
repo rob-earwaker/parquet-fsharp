@@ -522,7 +522,7 @@ type internal Assembler<'Record>(schema: Schema) =
             ValueSchema.Record {
                 IsOptional = false
                 Fields = schema.Fields }
-        match Deserializer.of'<'Record> schema with
+        match Deserializer.resolve typeof<'Record> schema with
         | Deserializer.Record recordDeserializer -> recordDeserializer
         // TODO: F# records are currently treated as optional for compatability
         // with Parquet.Net, but the root record should never be optional.

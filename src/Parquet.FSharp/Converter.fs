@@ -1354,7 +1354,6 @@ type internal UnionConverter() =
                         tryCreateComplexUnionDeserializer unionInfo recordSchema
                     | _ -> Option.None
 
-
 type internal NullableConverter() =
     let isNullableType = DotnetType.isGenericType<Nullable<_>>
 
@@ -1534,23 +1533,26 @@ type internal ClassConverter() =
         dotnetType.IsClass
         && not (isNull (dotnetType.GetConstructor([||])))
 
+    let getProperties (dotnetType: Type) =
+        dotnetType.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
+
     let createSerializer (dotnetType: Type) =
-        let fields =
-            dotnetType.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
+        let fieldSerializers =
+            getProperties dotnetType
             |> Array.map FieldSerializer.ofProperty
-        Serializer.record dotnetType fields
+        Serializer.record dotnetType fieldSerializers
         |> Serializer.referenceTypeWrapper
 
     let tryCreateDeserializer (dotnetType: Type) (recordSchema: RecordSchema) =
-        let fields = dotnetType.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
+        let properties = getProperties dotnetType
         let fieldDeserializers =
-            fields
+            properties
             |> Array.choose (fun field ->
                 recordSchema.Fields
                 |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = field.Name)
                 |> Option.map (fun fieldSchema ->
                     FieldDeserializer.ofProperty fieldSchema.Value field))
-        if fieldDeserializers.Length < fields.Length
+        if fieldDeserializers.Length < properties.Length
         then Option.None
         else
             let createFromFieldValues =
@@ -1561,7 +1563,7 @@ type internal ClassConverter() =
                         [ record ],
                         seq<Expression> {
                             yield Expression.Assign(record, Expression.New(defaultConstructor))
-                            yield! Array.zip fields fieldValues
+                            yield! Array.zip properties fieldValues
                                 |> Array.map (fun (field, fieldValue) ->
                                     Expression.Assign(
                                         Expression.Property(record, field.Name),

@@ -430,7 +430,7 @@ type private OptionalAssembler(optionalDeserializer: OptionalDeserializer, maxDe
     override this.TryAssembleNextValue =
         let repLevel = Expression.Variable(typeof<int>, "repLevel")
         let defLevel = Expression.Variable(typeof<int>, "defLevel")
-        let value = Expression.Variable(optionalDeserializer.Deserializer.DotnetType, "value")
+        let value = Expression.Variable(optionalDeserializer.ValueDeserializer.DotnetType, "value")
         let optionalValue = Expression.Variable(optionalDeserializer.DotnetType, "optionalValue")
         let returnValue = Expression.Label(typeof<bool>, "valueAvailable")
         // fun () ->
@@ -494,14 +494,14 @@ module private rec ValueAssembler =
         let fieldAssemblers =
             recordDeserializer.Fields
             |> Array.map (fun fieldDeserializer ->
-                ValueAssembler.forValue fieldDeserializer.Deserializer maxRepLevel maxDefLevel)
+                ValueAssembler.forValue fieldDeserializer.ValueDeserializer maxRepLevel maxDefLevel)
         RecordAssembler(recordDeserializer, maxDefLevel, fieldAssemblers)
         :> ValueAssembler
 
     let forOptional (optionalDeserializer: OptionalDeserializer) parentMaxRepLevel parentMaxDefLevel =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel + 1
-        let valueAssembler = ValueAssembler.forValue optionalDeserializer.Deserializer maxRepLevel maxDefLevel
+        let valueAssembler = ValueAssembler.forValue optionalDeserializer.ValueDeserializer maxRepLevel maxDefLevel
         OptionalAssembler(optionalDeserializer, maxDefLevel, valueAssembler)
         :> ValueAssembler
 
@@ -528,7 +528,7 @@ type internal Assembler<'Record>(schema: Schema) =
         // with Parquet.Net, but the root record should never be optional.
         // Unwrap the record info to remove this optionality.
         | Deserializer.Optional optionalDeserializer ->
-            match optionalDeserializer.Deserializer with
+            match optionalDeserializer.ValueDeserializer with
             | Deserializer.Record recordDeserializer -> recordDeserializer
             | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
         | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"

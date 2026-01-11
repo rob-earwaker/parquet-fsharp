@@ -198,7 +198,7 @@ type private RecordShredder(recordSerializer: RecordSerializer, fieldShredders: 
             let recordRepLevel = Expression.Parameter(typeof<int>, "recordRepLevel")
             let recordDefLevel = Expression.Parameter(typeof<int>, "recordDefLevel")
             let record = Expression.Parameter(recordSerializer.DotnetType, "record")
-            let fieldValue = Expression.Variable(fieldSerializer.Serializer.DotnetType, "fieldValue")
+            let fieldValue = Expression.Variable(fieldSerializer.ValueSerializer.DotnetType, "fieldValue")
             Expression.Lambda(
                 Expression.Block(
                     [ fieldValue ],
@@ -242,7 +242,7 @@ type private OptionalShredder(optionalSerializer: OptionalSerializer, maxDefLeve
         valueShredder.AddNull(repLevel, defLevel)
 
     override this.ShredValue(parentRepLevel, parentDefLevel, optionalValue) =
-        let value = Expression.Variable(optionalSerializer.Serializer.DotnetType, "value")
+        let value = Expression.Variable(optionalSerializer.ValueSerializer.DotnetType, "value")
         Expression.IfThenElse(
             // The value is OPTIONAL, so check for NULL.
             optionalSerializer.IsNull(optionalValue),
@@ -284,7 +284,7 @@ module private rec ValueShredder =
         let fieldShredders =
             Seq.zip recordSerializer.Fields fields
             |> Seq.map (fun (fieldSerializer, field) ->
-                ValueShredder.forValue fieldSerializer.Serializer maxRepLevel maxDefLevel field)
+                ValueShredder.forValue fieldSerializer.ValueSerializer maxRepLevel maxDefLevel field)
             |> Array.ofSeq
         RecordShredder(recordSerializer, fieldShredders)
         :> ValueShredder
@@ -293,7 +293,7 @@ module private rec ValueShredder =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel + 1
         let valueShredder =
-            ValueShredder.forValue optionalSerializer.Serializer maxRepLevel maxDefLevel field
+            ValueShredder.forValue optionalSerializer.ValueSerializer maxRepLevel maxDefLevel field
         OptionalShredder(optionalSerializer, maxDefLevel, valueShredder)
         :> ValueShredder
 
@@ -319,7 +319,7 @@ type private Shredder<'Record>() =
         // with Parquet.Net, but the root record should never be optional.
         // Unwrap the record info to remove this optionality.
         | Serializer.Optional optionalSerializer ->
-            match optionalSerializer.Serializer with
+            match optionalSerializer.ValueSerializer with
             | Serializer.Record recordSerializer -> recordSerializer
             | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
         | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"

@@ -516,13 +516,13 @@ module private rec ValueAssembler =
         | Deserializer.Optional optionalDeserializer ->
             ValueAssembler.forOptional optionalDeserializer parentMaxRepLevel parentMaxDefLevel
 
-type internal Assembler<'Record>(schema: Schema) =
+type internal Assembler<'Record>(sourceSchema: Schema) =
     let recordDeserializer =
-        let schema =
+        let sourceSchema =
             ValueSchema.Record {
                 IsOptional = false
-                Fields = schema.Fields }
-        match Deserializer.resolve typeof<'Record> schema with
+                Fields = sourceSchema.Fields }
+        match Deserializer.resolve sourceSchema typeof<'Record> with
         | Deserializer.Record recordDeserializer -> recordDeserializer
         // TODO: F# records are currently treated as optional for compatability
         // with Parquet.Net, but the root record should never be optional.
@@ -602,22 +602,22 @@ module private Assembler =
     // will depend on the settings, e.g. which deserializers are registered.
     let private Cache = Dictionary<Type * Schema, obj>()
 
-    let private tryGetCached<'Record> schema =
+    let private tryGetCached<'Record> sourceSchema =
         lock Cache (fun () ->
-            match Cache.TryGetValue((typeof<'Record>, schema)) with
+            match Cache.TryGetValue((typeof<'Record>, sourceSchema)) with
             | false, _ -> Option.None
             | true, assembler ->
                 Option.Some (assembler :?> Assembler<'Record>))
 
-    let private addToCache<'Record> schema (assembler: Assembler<'Record>) =
+    let private addToCache<'Record> sourceSchema (assembler: Assembler<'Record>) =
         lock Cache (fun () ->
-            Cache[(typeof<'Record>, schema)] <- assembler)
+            Cache[(typeof<'Record>, sourceSchema)] <- assembler)
 
-    let createFor<'Record> schema =
-        match tryGetCached<'Record> schema with
+    let createFor<'Record> sourceSchema =
+        match tryGetCached<'Record> sourceSchema with
         | Option.Some assembler -> assembler
         | Option.None ->
             // TODO: Check schema compatability.
-            let assembler = Assembler<'Record>(schema)
-            addToCache schema assembler
+            let assembler = Assembler<'Record>(sourceSchema)
+            addToCache sourceSchema assembler
             assembler

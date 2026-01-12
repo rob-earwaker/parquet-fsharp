@@ -29,8 +29,12 @@ module ``null string deserialized as string`` =
     let ``test`` () =
         let inputRecords = [ { Input.Field1 = null }]
         let bytes = ParquetSerializer.Serialize(inputRecords)
-        raises<SerializationException>
+        raisesWith<SerializationException>
             <@ ParquetSerializer.Deserialize<Output>(bytes) @>
+            (fun exn ->
+                <@ exn.Message =
+                    $"null value encountered for type '{typeof<string>.FullName}'"
+                    + " which is not treated as nullable by default" @>)
 
 module ``null string deserialized as string option`` =
     type Input = { Field1: string }

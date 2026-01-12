@@ -295,7 +295,8 @@ module internal Deserializer =
         let createNull =
             Expression.Block(
                 Expression.FailWith<SerializationException>(
-                    $"type '{dotnetType.FullName}' is not nullable"),
+                    $"null value encountered for type '{dotnetType.FullName}'"
+                    + " which is not treated as nullable by default"),
                 Expression.Default(dotnetType))
             :> Expression
         let createFromValue = id

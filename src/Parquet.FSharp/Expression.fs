@@ -31,9 +31,12 @@ type Expression with
         Expression.Call(instance, methodName, [||], Array.ofSeq arguments)
         :> Expression
 
-    static member FailWith(message: string) =
+    static member FailWith<'Exception when 'Exception :> Exception>(message: string) =
         Expression.Throw(
             Expression.New(
-                typeof<exn>.GetConstructor([| typeof<string> |]),
+                typeof<'Exception>.GetConstructor([| typeof<string> |]),
                 Expression.Constant(message)))
         :> Expression
+
+    static member FailWith(message) =
+        Expression.FailWith<Exception>(message)

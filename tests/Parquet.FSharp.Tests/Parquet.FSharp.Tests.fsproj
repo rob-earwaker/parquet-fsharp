@@ -10,6 +10,7 @@
     <Compile Include="Arbitrary.fs" />
     <Compile Include="Assert.fs" />
     <Compile Include="Test.Roundtrip.fs" />
+    <Compile Include="Test.String.fs" />
     <Compile Include="Test.Serialize.Overloads.fs" />
     <Compile Include="Test.Deserialize.Overloads.fs" />
     <Compile Include="Test.Deserialize.DifferentSchema.fs" />
@@ -19,6 +20,7 @@
   <ItemGroup>
     <PackageReference Include="FsCheck.Xunit" Version="3.3.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageReference Include="Unquote" Version="7.0.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
       <PrivateAssets>all</PrivateAssets>

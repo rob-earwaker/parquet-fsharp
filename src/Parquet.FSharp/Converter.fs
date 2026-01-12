@@ -7,6 +7,9 @@ open System.Collections.Generic
 open System.Linq.Expressions
 open System.Reflection
 
+type SerializationException(message) =
+    inherit Exception(message)
+
 // TODO: Types supported by Parquet.Net:
 
 //   Implemented:
@@ -291,7 +294,8 @@ module internal Deserializer =
         let dotnetType = deserializer.DotnetType
         let createNull =
             Expression.Block(
-                Expression.FailWith($"type '{dotnetType.FullName}' is not nullable"),
+                Expression.FailWith<SerializationException>(
+                    $"type '{dotnetType.FullName}' is not nullable"),
                 Expression.Default(dotnetType))
             :> Expression
         let createFromValue = id
@@ -853,7 +857,7 @@ type internal StringConverter() =
     let deserializer =
         let createFromDataValue = id
         Deserializer.atomic dotnetType dataDotnetType createFromDataValue
-        |> Deserializer.referenceTypeWrapper
+        |> Deserializer.nonNullableReferenceTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1475,6 +1479,7 @@ type internal OptionConverter() =
         else createRequiredValueSerializer dotnetType valueSerializer
 
     let createRequiredValueDeserializer dotnetType (valueDeserializer: Deserializer) =
+        // TODO: Can we just use UnionInfo for this?
         let unionCases = FSharpType.GetUnionCases(dotnetType)
         let createNull =
             let noneCase = unionCases |> Array.find _.Name.Equals("None")

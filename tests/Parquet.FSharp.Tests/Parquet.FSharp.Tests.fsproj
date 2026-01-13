@@ -11,6 +11,7 @@
     <Compile Include="Assert.fs" />
     <Compile Include="Test.Roundtrip.fs" />
     <Compile Include="Test.String.fs" />
+    <Compile Include="Test.ByteArray.fs" />
     <Compile Include="Test.Serialize.Overloads.fs" />
     <Compile Include="Test.Deserialize.Overloads.fs" />
     <Compile Include="Test.Deserialize.DifferentSchema.fs" />

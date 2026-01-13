@@ -383,6 +383,7 @@ module internal RecordDeserializer =
             |> Array.map FieldDeserializer.getSchema }
 
 module internal ValueConverter =
+    // TODO: Rename all of these to Default*Converter?
     let All : IValueConverter[] = [|
         PrimitiveConverter<bool>()
         Int8Converter()
@@ -855,9 +856,18 @@ type internal StringConverter() =
         Serializer.atomic dotnetType dataDotnetType getDataValue
         |> Serializer.referenceTypeWrapper
 
-    let deserializer =
+    // Deserializer for required values, i.e. those that will never have null
+    // values according to the source schema.
+    let requiredDeserializer =
         let createFromDataValue = id
         Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    // Deserializer for optional values, i.e. those that could have null values
+    // according to the source schema. Since we usually don't want null values
+    // in F#, we just wrap as a non-nullable type. This means an exception will
+    // be thrown if a null value is encountered in the data.
+    let optionalDeserializer =
+        requiredDeserializer
         |> Deserializer.nonNullableReferenceTypeWrapper
 
     interface IValueConverter with
@@ -867,9 +877,19 @@ type internal StringConverter() =
             else Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType) =
-            if targetType = dotnetType
-            then Option.Some deserializer
-            else Option.None
+            if targetType <> dotnetType
+            then Option.None
+            else
+                match sourceSchema with
+                // Only support atomic values with the correct type.
+                | ValueSchema.Atomic atomicSchema
+                    when atomicSchema.DotnetType = dotnetType ->
+                    // Choose the right deserializer based on whether the values
+                    // are optional.
+                    if atomicSchema.IsOptional
+                    then Option.Some optionalDeserializer
+                    else Option.Some requiredDeserializer
+                | _ -> Option.None
 
 type internal ByteArrayConverter() =
     let dotnetType = typeof<byte[]>
@@ -880,10 +900,19 @@ type internal ByteArrayConverter() =
         Serializer.atomic dotnetType dataDotnetType getDataValue
         |> Serializer.referenceTypeWrapper
 
-    let deserializer =
+    // Deserializer for required values, i.e. those that will never have null
+    // values according to the source schema.
+    let requiredDeserializer =
         let createFromDataValue = id
         Deserializer.atomic dotnetType dataDotnetType createFromDataValue
-        |> Deserializer.referenceTypeWrapper
+
+    // Deserializer for optional values, i.e. those that could have null values
+    // according to the source schema. Since we usually don't want null values
+    // in F#, we just wrap as a non-nullable type. This means an exception will
+    // be thrown if a null value is encountered in the data.
+    let optionalDeserializer =
+        requiredDeserializer
+        |> Deserializer.nonNullableReferenceTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -892,9 +921,19 @@ type internal ByteArrayConverter() =
             else Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType) =
-            if targetType = dotnetType
-            then Option.Some deserializer
-            else Option.None
+            if targetType <> dotnetType
+            then Option.None
+            else
+                match sourceSchema with
+                // Only support atomic values with the correct type.
+                | ValueSchema.Atomic atomicSchema
+                    when atomicSchema.DotnetType = dotnetType ->
+                    // Choose the right deserializer based on whether the values
+                    // are optional.
+                    if atomicSchema.IsOptional
+                    then Option.Some optionalDeserializer
+                    else Option.Some requiredDeserializer
+                | _ -> Option.None
 
 type internal Array1dConverter() =
     let isArray1dType (dotnetType: Type) =

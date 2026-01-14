@@ -214,19 +214,19 @@ module internal Serializer =
             IsNull = isNull
             GetValue = getValue }
 
-    let referenceTypeWrapper (serializer: Serializer) =
-        let dotnetType = serializer.DotnetType
+    let referenceTypeWrapper (valueSerializer: Serializer) =
+        let dotnetType = valueSerializer.DotnetType
         let isNull = Expression.IsNull
         let getValue = id
-        Serializer.optional dotnetType serializer isNull getValue
+        Serializer.optional dotnetType valueSerializer isNull getValue
 
     // TODO: This shouldn't really be necessary, but while Parquet.Net
     // treats all struct and list fields as optional it's necessary.
-    let nonNullableReferenceTypeWrapper (serializer: Serializer) =
-        let dotnetType = serializer.DotnetType
+    let nonNullableReferenceTypeWrapper (valueSerializer: Serializer) =
+        let dotnetType = valueSerializer.DotnetType
         let isNull = fun value -> Expression.False
         let getValue = id
-        Serializer.optional dotnetType serializer isNull getValue
+        Serializer.optional dotnetType valueSerializer isNull getValue
 
     let private getSchema' isOptional serializer =
         match serializer with
@@ -281,17 +281,31 @@ module internal Deserializer =
             CreateNull = createNull
             CreateFromValue = createFromValue }
 
-    let referenceTypeWrapper (deserializer: Deserializer) =
-        let dotnetType = deserializer.DotnetType
+    let referenceTypeWrapper (valueDeserializer: Deserializer) =
+        let dotnetType = valueDeserializer.DotnetType
         let createNull = Expression.Null(dotnetType)
         let createFromValue = id
         Deserializer.optional
-            dotnetType deserializer createNull createFromValue
+            dotnetType valueDeserializer createNull createFromValue
+
+    // TODO: Is there a better name for this?
+    let nonNullableValueTypeWrapper (valueDeserializer: Deserializer) =
+        let dotnetType = valueDeserializer.DotnetType
+        let createNull =
+            Expression.Block(
+                Expression.FailWith<SerializationException>(
+                    "null value encountered for non-nullable"
+                    + $" type '{dotnetType.FullName}'"),
+                Expression.Default(dotnetType))
+            :> Expression
+        let createFromValue = id
+        Deserializer.optional
+            dotnetType valueDeserializer createNull createFromValue
 
     // TODO: This shouldn't really be necessary, but while Parquet.Net
     // treats all struct and list fields as optional it's necessary.
-    let nonNullableReferenceTypeWrapper (deserializer: Deserializer) =
-        let dotnetType = deserializer.DotnetType
+    let nonNullableReferenceTypeWrapper (valueDeserializer: Deserializer) =
+        let dotnetType = valueDeserializer.DotnetType
         let createNull =
             Expression.Block(
                 Expression.FailWith<SerializationException>(
@@ -301,7 +315,7 @@ module internal Deserializer =
             :> Expression
         let createFromValue = id
         Deserializer.optional
-            dotnetType deserializer createNull createFromValue
+            dotnetType valueDeserializer createNull createFromValue
 
     let private getSchema' isOptional deserializer =
         match deserializer with
@@ -328,8 +342,8 @@ module internal Deserializer =
         |> Array.tryPick _.TryCreateDeserializer(sourceSchema, targetType)
         |> Option.defaultWith (fun () ->
             failwith <|
-                $"target type '{targetType.FullName}' is not"
-                + $" supported for schema '{sourceSchema}'")
+                "could not find converter to deserialize from schema"
+                + $" '{sourceSchema}' to type '{targetType.FullName}'")
 
 module private FieldSerializer =
     let create name valueSerializer getValue =
@@ -444,17 +458,19 @@ type internal PrimitiveConverter<'Value>() =
 
 type internal Int8Converter() =
     let dotnetType = typeof<int8>
+    let dataDotnetType = dotnetType
 
     let serializer =
-        let dataDotnetType = dotnetType
         let getDataValue = id
         Serializer.atomic dotnetType dataDotnetType getDataValue
 
-    let createDeserializer dataDotnetType =
-        let createFromDataValue dataValue =
-            Expression.Convert(dataValue, dotnetType)
-            :> Expression
+    let requiredDeserializer =
+        let createFromDataValue = id
         Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    let optionalDeserializer =
+        requiredDeserializer
+        |> Deserializer.nonNullableValueTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -468,9 +484,10 @@ type internal Int8Converter() =
             else
                 match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
-                    when not atomicSchema.IsOptional
-                        && atomicSchema.DotnetType = dotnetType ->
-                    Option.Some (createDeserializer atomicSchema.DotnetType)
+                    when atomicSchema.DotnetType = dotnetType ->
+                    if atomicSchema.IsOptional
+                    then Option.Some optionalDeserializer
+                    else Option.Some requiredDeserializer
                 | _ -> Option.None
 
 type internal Int16Converter() =

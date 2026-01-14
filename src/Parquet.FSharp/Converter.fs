@@ -289,6 +289,7 @@ module internal Deserializer =
             dotnetType valueDeserializer createNull createFromValue
 
     // TODO: Is there a better name for this?
+    // TODO: Should this require an attribute since it's somewhat unsafe?
     let nonNullableValueTypeWrapper (valueDeserializer: Deserializer) =
         let dotnetType = valueDeserializer.DotnetType
         let createNull =

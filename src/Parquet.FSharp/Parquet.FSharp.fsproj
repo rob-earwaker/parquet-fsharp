@@ -25,6 +25,7 @@
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <Compile Include="Expression.fs" />
     <Compile Include="Schema.fs" />
+    <Compile Include="ThriftSchema.fs" />
     <Compile Include="Converter.fs" />
     <Compile Include="Shredder.fs" />
     <Compile Include="Assembler.fs" />

@@ -327,7 +327,9 @@ module internal Deserializer =
         ValueConverter.All
         |> Array.tryPick _.TryCreateDeserializer(sourceSchema, targetType)
         |> Option.defaultWith (fun () ->
-            failwith $"unsupported type '{targetType.FullName}'")
+            failwith <|
+                $"target type '{targetType.FullName}' is not"
+                + $" supported for schema '{sourceSchema}'")
 
 module private FieldSerializer =
     let create name valueSerializer getValue =
@@ -409,10 +411,10 @@ module internal ValueConverter =
         GenericListConverter()
         FSharpListConverter()
         FSharpRecordConverter()
-        NullableConverter()
         // This must come before the generic union type since option types are
         // handled in a special way.
         OptionConverter()
+        NullableConverter()
         UnionConverter()
         ClassConverter()
     |]
@@ -1398,90 +1400,6 @@ type internal UnionConverter() =
                         tryCreateComplexUnionDeserializer unionInfo recordSchema
                     | _ -> Option.None
 
-type internal NullableConverter() =
-    let isNullableType = DotnetType.isGenericType<Nullable<_>>
-
-    let createRequiredValueSerializer dotnetType (valueSerializer: Serializer) =
-        let isNull (nullable: Expression) =
-            Expression.Not(Expression.Property(nullable, "HasValue"))
-            :> Expression
-        let getValue (nullable: Expression) =
-            Expression.Property(nullable, "Value")
-            :> Expression
-        Serializer.optional dotnetType valueSerializer isNull getValue
-
-    let createOptionalValueSerializer (dotnetType: Type) (valueSerializer: Serializer) =
-        let fields =
-            let valueField =
-                // TODO: The name of this field could be configurable via an attribute.
-                let name = "Value"
-                let getValue = id
-                FieldSerializer.create name valueSerializer getValue
-            [| valueField |]
-        Serializer.record valueSerializer.DotnetType fields
-        |> createRequiredValueSerializer dotnetType
-
-    let createSerializer (dotnetType: Type) =
-        let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
-        let valueSerializer = Serializer.resolve valueDotnetType
-        if valueSerializer.IsOptional
-        // TODO: This shouldn't really be possible as nullable values have to be
-        // value types and therefore can't be null, but while we need to treat
-        // all record types as optional we need to handle this case.
-        then createOptionalValueSerializer dotnetType valueSerializer
-        else createRequiredValueSerializer dotnetType valueSerializer
-
-    let createRequiredValueDeserializer dotnetType (valueDeserializer: Deserializer) =
-        let createNull = Expression.Null(dotnetType)
-        let createFromValue =
-            let constructor = dotnetType.GetConstructor([| valueDeserializer.DotnetType |])
-            fun (value: Expression) ->
-                Expression.New(constructor, value)
-                :> Expression
-        Deserializer.optional
-            dotnetType valueDeserializer createNull createFromValue
-
-    let createOptionalValueDeserializer (dotnetType: Type) (valueDeserializer: Deserializer) =
-        let fields =
-            let valueField =
-                // TODO: The name of this field could be configurable via an attribute.
-                let name = "Value"
-                FieldDeserializer.create name valueDeserializer
-            [| valueField |]
-        let createFromFieldValues (fieldValues: Expression[]) =
-            fieldValues[0]
-        Deserializer.record valueDeserializer.DotnetType fields createFromFieldValues
-        |> createRequiredValueDeserializer dotnetType
-
-    interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
-            if isNullableType sourceType
-            then Option.Some (createSerializer sourceType)
-            else Option.None
-
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
-            if not (isNullableType targetType)
-            then Option.None
-            else
-                let isValueOptional, valueSchema =
-                    match sourceSchema with
-                    | ValueSchema.Record recordSchema ->
-                        // TODO: This seems a bit hacky!
-                        if recordSchema.Fields.Length = 1
-                            && recordSchema.Fields[0].Name = "Value"
-                        then true, recordSchema.Fields[0].Value
-                        else false, sourceSchema.MakeRequired()
-                    | _ -> false, sourceSchema.MakeRequired()
-                let valueDotnetType = Nullable.GetUnderlyingType(targetType)
-                let valueDeserializer =
-                    Deserializer.resolve valueSchema valueDotnetType
-                if isValueOptional
-                // TODO: This shouldn't really be possible as nullable values have to be
-                // value types and therefore can't be null, but while we need to treat
-                // all record types as optional we need to handle this case.
-                then Option.Some (createOptionalValueDeserializer targetType valueDeserializer)
-                else Option.Some (createRequiredValueDeserializer targetType valueDeserializer)
-
 type internal OptionConverter() =
     let isOptionType = DotnetType.isGenericType<option<_>>
 
@@ -1570,6 +1488,90 @@ type internal OptionConverter() =
                 let valueDeserializer =
                     Deserializer.resolve valueSchema valueDotnetType
                 if isValueOptional
+                then Option.Some (createOptionalValueDeserializer targetType valueDeserializer)
+                else Option.Some (createRequiredValueDeserializer targetType valueDeserializer)
+
+type internal NullableConverter() =
+    let isNullableType = DotnetType.isGenericType<Nullable<_>>
+
+    let createRequiredValueSerializer dotnetType (valueSerializer: Serializer) =
+        let isNull (nullable: Expression) =
+            Expression.Not(Expression.Property(nullable, "HasValue"))
+            :> Expression
+        let getValue (nullable: Expression) =
+            Expression.Property(nullable, "Value")
+            :> Expression
+        Serializer.optional dotnetType valueSerializer isNull getValue
+
+    let createOptionalValueSerializer (dotnetType: Type) (valueSerializer: Serializer) =
+        let fields =
+            let valueField =
+                // TODO: The name of this field could be configurable via an attribute.
+                let name = "Value"
+                let getValue = id
+                FieldSerializer.create name valueSerializer getValue
+            [| valueField |]
+        Serializer.record valueSerializer.DotnetType fields
+        |> createRequiredValueSerializer dotnetType
+
+    let createSerializer (dotnetType: Type) =
+        let valueDotnetType = Nullable.GetUnderlyingType(dotnetType)
+        let valueSerializer = Serializer.resolve valueDotnetType
+        if valueSerializer.IsOptional
+        // TODO: This shouldn't really be possible as nullable values have to be
+        // value types and therefore can't be null, but while we need to treat
+        // all record types as optional we need to handle this case.
+        then createOptionalValueSerializer dotnetType valueSerializer
+        else createRequiredValueSerializer dotnetType valueSerializer
+
+    let createRequiredValueDeserializer dotnetType (valueDeserializer: Deserializer) =
+        let createNull = Expression.Null(dotnetType)
+        let createFromValue =
+            let constructor = dotnetType.GetConstructor([| valueDeserializer.DotnetType |])
+            fun (value: Expression) ->
+                Expression.New(constructor, value)
+                :> Expression
+        Deserializer.optional
+            dotnetType valueDeserializer createNull createFromValue
+
+    let createOptionalValueDeserializer (dotnetType: Type) (valueDeserializer: Deserializer) =
+        let fields =
+            let valueField =
+                // TODO: The name of this field could be configurable via an attribute.
+                let name = "Value"
+                FieldDeserializer.create name valueDeserializer
+            [| valueField |]
+        let createFromFieldValues (fieldValues: Expression[]) =
+            fieldValues[0]
+        Deserializer.record valueDeserializer.DotnetType fields createFromFieldValues
+        |> createRequiredValueDeserializer dotnetType
+
+    interface IValueConverter with
+        member this.TryCreateSerializer(sourceType) =
+            if isNullableType sourceType
+            then Option.Some (createSerializer sourceType)
+            else Option.None
+
+        member this.TryCreateDeserializer(sourceSchema, targetType) =
+            if not (isNullableType targetType)
+            then Option.None
+            else
+                let isValueOptional, valueSchema =
+                    match sourceSchema with
+                    | ValueSchema.Record recordSchema ->
+                        // TODO: This seems a bit hacky!
+                        if recordSchema.Fields.Length = 1
+                            && recordSchema.Fields[0].Name = "Value"
+                        then true, recordSchema.Fields[0].Value
+                        else false, sourceSchema.MakeRequired()
+                    | _ -> false, sourceSchema.MakeRequired()
+                let valueDotnetType = Nullable.GetUnderlyingType(targetType)
+                let valueDeserializer =
+                    Deserializer.resolve valueSchema valueDotnetType
+                if isValueOptional
+                // TODO: This shouldn't really be possible as nullable values have to be
+                // value types and therefore can't be null, but while we need to treat
+                // all record types as optional we need to handle this case.
                 then Option.Some (createOptionalValueDeserializer targetType valueDeserializer)
                 else Option.Some (createRequiredValueDeserializer targetType valueDeserializer)
 

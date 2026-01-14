@@ -26,22 +26,45 @@ type internal ValueSchema =
         | ValueSchema.Record record ->
             ValueSchema.Record { record with IsOptional = false }
 
+    override this.ToString() =
+        match this with
+        | ValueSchema.Atomic atomic -> atomic.ToString()
+        | ValueSchema.List list -> list.ToString()
+        | ValueSchema.Record record -> record.ToString()
+
 type internal AtomicSchema = {
     IsOptional: bool
     // TODO: All of the atomic deserializers should check against this type.
     DotnetType: Type }
+    with
+    override this.ToString() =
+        let optionality = if this.IsOptional then "optional" else "required"
+        // TODO: Could enumerate all primitive types here to make it nicer.
+        $"{optionality} {this.DotnetType.Name}"
 
 type internal ListSchema = {
     IsOptional: bool
     Element: ValueSchema }
+    with
+    override this.ToString() =
+        let optionality = if this.IsOptional then "optional" else "required"
+        $"{optionality} [ {this.Element} ]"
 
 type internal FieldSchema = {
     Name: string
     Value: ValueSchema }
+    with
+    override this.ToString() =
+        $"{this.Name}: {this.Value}"
 
 type internal RecordSchema = {
     IsOptional: bool
     Fields: FieldSchema[] }
+    with
+    override this.ToString() =
+        let optionality = if this.IsOptional then "optional" else "required"
+        let fields = this.Fields |> Array.map string |> String.concat ", "
+        $"{optionality} {{ {fields} }}"
 
 module internal ValueSchema =
     let ofParquetNet (field: Field) =

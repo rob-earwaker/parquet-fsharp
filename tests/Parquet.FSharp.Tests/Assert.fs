@@ -1,6 +1,8 @@
 module rec Parquet.FSharp.Tests.Assert
 
 open FSharp.Reflection
+open Parquet.Meta
+open Swensen.Unquote
 open System
 open System.Collections
 open System.Collections.Generic
@@ -170,3 +172,83 @@ let arrayLengthEqual (expected: 'Item1[]) (actual: 'Item2[]) =
 
 let failWith message =
     Assert.Fail(message)
+
+let schema (schema: Schema) fieldAssertions =
+    test <@ schema.Fields.Length = Seq.length fieldAssertions @>
+    for field, assertField in Seq.zip schema.Fields fieldAssertions do
+        assertField field
+
+let field assertions (field: Field) =
+    for assertField in assertions do
+        assertField field
+
+module Field =
+    let nameEquals name (field: Field) =
+        test <@ field.Schema.Name = name @>
+
+    let private repetitionIs repetition (field: Field) =
+        test <@ field.Schema.RepetitionType = Nullable(repetition) @>
+
+    let isRequired = repetitionIs FieldRepetitionType.REQUIRED
+    let isOptional = repetitionIs FieldRepetitionType.OPTIONAL
+    let isRepeated = repetitionIs FieldRepetitionType.REPEATED
+
+    module Type =
+        let private is type' (field: Field) =
+            test <@ field.Schema.Type = Nullable(type') @>
+
+        let hasNoValue (field: Field) =
+            test <@ field.Schema.Type = Nullable() @>
+
+        let isBool = is Type.BOOLEAN
+        let isInt32 = is Type.INT32
+        let isInt64 = is Type.INT64
+        let isInt96 = is Type.INT96
+        let isFloat32 = is Type.FLOAT
+        let isFloat64 = is Type.DOUBLE
+        let isByteArray = is Type.BYTE_ARRAY
+
+        let isFixedLengthByteArray length field =
+            is Type.FIXED_LEN_BYTE_ARRAY field
+            test <@ field.Schema.TypeLength = Nullable(length) @>
+
+    module LogicalType =
+        let hasNoValue (field: Field) =
+            test <@ isNull field.Schema.LogicalType @>
+
+        let isInt (bitWidth: int) isSigned (field: Field) =
+            test <@ not (isNull field.Schema.LogicalType) @>
+            test <@ not (isNull field.Schema.LogicalType.INTEGER) @>
+            test <@ field.Schema.LogicalType.INTEGER.BitWidth = sbyte bitWidth @>
+            test <@ field.Schema.LogicalType.INTEGER.IsSigned = isSigned @>
+
+        let isDecimal scale precision (field: Field) =
+            test <@ not (isNull field.Schema.LogicalType) @>
+            test <@ not (isNull field.Schema.LogicalType.DECIMAL) @>
+            test <@ field.Schema.LogicalType.DECIMAL.Scale = scale @>
+            test <@ field.Schema.LogicalType.DECIMAL.Precision = precision @>
+            test <@ field.Schema.Scale = Nullable(scale) @>
+            test <@ field.Schema.Precision = Nullable(precision) @>
+
+    module ConvertedType =
+        let private is convertedType (field: Field) =
+            test <@ field.Schema.ConvertedType = Nullable(convertedType) @>
+
+        let isInt8 = is ConvertedType.INT_8
+        let isInt16 = is ConvertedType.INT_16
+        let isInt32 = is ConvertedType.INT_32
+        let isInt64 = is ConvertedType.INT_64
+        let isUInt8 = is ConvertedType.UINT_8
+        let isUInt16 = is ConvertedType.UINT_16
+        let isUInt32 = is ConvertedType.UINT_32
+        let isUInt64 = is ConvertedType.UINT_64
+
+        let isDecimal = is ConvertedType.DECIMAL
+
+    let hasNoChildren (field: Field) =
+        test <@ field.Children = [||] @>
+
+    let children childAssertions (field: Field) =
+        test <@ field.Children.Length = Seq.length childAssertions @>
+        for childField, assertChild in Seq.zip field.Children childAssertions do
+            assertChild childField

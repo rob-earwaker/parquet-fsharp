@@ -7,23 +7,6 @@ open System.IO
 // TODO: Support for various serializer options in Parquet.Net.
 
 type ParquetSerializer =
-    static member private ReadSchema(stream: Stream) =
-        Async.RunSynchronously <| async {
-            let! cancellationToken = Async.CancellationToken
-            use! fileReader =
-                ParquetReader.CreateAsync(
-                    stream,
-                    cancellationToken = cancellationToken)
-                |> Async.AwaitTask
-            return Thrift.buildSchema fileReader.Metadata
-        }
-
-    // TODO: Should this be exposed? Not sure how useful it is in practice other
-    // than for tests. Could always make it internal and use InternalsVisibleTo
-    static member ReadSchema(bytes: byte[]) =
-        use stream = new MemoryStream(bytes)
-        ParquetSerializer.ReadSchema(stream)
-
     /// Asynchronously serialize a sequence of records to a stream.
     static member AsyncSerialize<'Record>(records: 'Record seq, stream: Stream) =
         async {

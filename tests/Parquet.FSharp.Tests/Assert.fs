@@ -216,6 +216,10 @@ module Field =
         let hasNoValue (field: Field) =
             test <@ isNull field.Schema.LogicalType @>
 
+        let isString (field: Field) =
+            test <@ not (isNull field.Schema.LogicalType) @>
+            test <@ not (isNull field.Schema.LogicalType.STRING) @>
+
         let isInt (bitWidth: int) isSigned (field: Field) =
             test <@ not (isNull field.Schema.LogicalType) @>
             test <@ not (isNull field.Schema.LogicalType.INTEGER) @>
@@ -234,6 +238,10 @@ module Field =
         let private is convertedType (field: Field) =
             test <@ field.Schema.ConvertedType = Nullable(convertedType) @>
 
+        let hasNoValue (field: Field) =
+            test <@ field.Schema.ConvertedType = Nullable() @>
+
+        let isUtf8 = is ConvertedType.UTF8
         let isInt8 = is ConvertedType.INT_8
         let isInt16 = is ConvertedType.INT_16
         let isInt32 = is ConvertedType.INT_32
@@ -242,7 +250,6 @@ module Field =
         let isUInt16 = is ConvertedType.UINT_16
         let isUInt32 = is ConvertedType.UINT_32
         let isUInt64 = is ConvertedType.UINT_64
-
         let isDecimal = is ConvertedType.DECIMAL
 
     let hasNoChildren (field: Field) =

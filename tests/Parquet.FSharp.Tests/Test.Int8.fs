@@ -24,7 +24,7 @@ module ``serialize int8`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isRequired
                 Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInt 8 true
+                Assert.Field.LogicalType.isInteger 8 true
                 Assert.Field.ConvertedType.isInt8
                 Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
@@ -44,7 +44,7 @@ module ``serialize int8 option`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isOptional
                 Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInt 8 true
+                Assert.Field.LogicalType.isInteger 8 true
                 Assert.Field.ConvertedType.isInt8
                 Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = Option.None } |] @>
@@ -63,7 +63,7 @@ module ``serialize int8 option`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isOptional
                 Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInt 8 true
+                Assert.Field.LogicalType.isInteger 8 true
                 Assert.Field.ConvertedType.isInt8
                 Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
@@ -83,7 +83,7 @@ module ``serialize nullable int8`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isOptional
                 Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInt 8 true
+                Assert.Field.LogicalType.isInteger 8 true
                 Assert.Field.ConvertedType.isInt8
                 Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = Option.None } |] @>
@@ -102,7 +102,7 @@ module ``serialize nullable int8`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isOptional
                 Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInt 8 true
+                Assert.Field.LogicalType.isInteger 8 true
                 Assert.Field.ConvertedType.isInt8
                 Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>

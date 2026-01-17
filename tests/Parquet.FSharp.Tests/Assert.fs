@@ -220,7 +220,7 @@ module Field =
             test <@ not (isNull field.Schema.LogicalType) @>
             test <@ not (isNull field.Schema.LogicalType.STRING) @>
 
-        let isInt (bitWidth: int) isSigned (field: Field) =
+        let isInteger (bitWidth: int) isSigned (field: Field) =
             test <@ not (isNull field.Schema.LogicalType) @>
             test <@ not (isNull field.Schema.LogicalType.INTEGER) @>
             test <@ field.Schema.LogicalType.INTEGER.BitWidth = sbyte bitWidth @>

@@ -632,17 +632,19 @@ type internal Int64Converter() =
 
 type internal UInt8Converter() =
     let dotnetType = typeof<uint8>
-
+    let dataDotnetType = dotnetType
+    
     let serializer =
-        let dataDotnetType = dotnetType
         let getDataValue = id
         Serializer.atomic dotnetType dataDotnetType getDataValue
 
-    let createDeserializer dataDotnetType =
-        let createFromDataValue dataValue =
-            Expression.Convert(dataValue, dotnetType)
-            :> Expression
+    let requiredDeserializer =
+        let createFromDataValue = id
         Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    let optionalDeserializer =
+        requiredDeserializer
+        |> Deserializer.optionalValueTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -656,9 +658,10 @@ type internal UInt8Converter() =
             else
                 match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
-                    when not atomicSchema.IsOptional
-                        && atomicSchema.DotnetType = dotnetType ->
-                    Option.Some (createDeserializer atomicSchema.DotnetType)
+                    when atomicSchema.DotnetType = dotnetType ->
+                    if atomicSchema.IsOptional
+                    then Option.Some optionalDeserializer
+                    else Option.Some requiredDeserializer
                 | _ -> Option.None
 
 type internal UInt16Converter() =

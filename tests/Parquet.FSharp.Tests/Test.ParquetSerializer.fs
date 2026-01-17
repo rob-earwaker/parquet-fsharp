@@ -1,4 +1,4 @@
-module Parquet.FSharp.Tests.Serialize.Overloads
+module Parquet.FSharp.Tests.ParquetSerializer
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests

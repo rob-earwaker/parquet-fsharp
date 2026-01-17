@@ -19,7 +19,7 @@
     <Compile Include="Test.ByteArray.fs" />
     <Compile Include="Test.Option.fs" />
     <Compile Include="Test.Nullable.fs" />
-    <Compile Include="Test.Serialize.Overloads.fs" />
+    <Compile Include="Test.ParquetSerializer.fs" />
     <Compile Include="Test.Deserialize.DifferentSchema.fs" />
     <Compile Include="Test.Deserialize.TypeCompatibility.fs" />
   </ItemGroup>

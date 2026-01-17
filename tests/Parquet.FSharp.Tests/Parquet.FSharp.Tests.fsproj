@@ -16,6 +16,7 @@
     <Compile Include="Test.Int32.fs" />
     <Compile Include="Test.Int64.fs" />
     <Compile Include="Test.UInt8.fs" />
+    <Compile Include="Test.UInt16.fs" />
     <Compile Include="Test.String.fs" />
     <Compile Include="Test.ByteArray.fs" />
     <Compile Include="Test.Option.fs" />

@@ -672,11 +672,16 @@ type internal UInt16Converter() =
         let getDataValue = id
         Serializer.atomic dotnetType dataDotnetType getDataValue
 
-    let createDeserializer dataDotnetType =
-        let createFromDataValue dataValue =
-            Expression.Convert(dataValue, dotnetType)
-            :> Expression
+    let createRequiredDeserializer dataDotnetType =
+        let createFromDataValue (dataValue: Expression) =
+            if dataDotnetType = dotnetType
+            then dataValue
+            else Expression.Convert(dataValue, dotnetType)
         Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    let createOptionalDeserializer dataDotnetType =
+        createRequiredDeserializer dataDotnetType
+        |> Deserializer.optionalValueTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -690,10 +695,11 @@ type internal UInt16Converter() =
             else
                 match sourceSchema with
                 | ValueSchema.Atomic atomicSchema
-                    when not atomicSchema.IsOptional
-                        && (atomicSchema.DotnetType = dotnetType
-                            || atomicSchema.DotnetType = typeof<uint8>) ->
-                    Option.Some (createDeserializer atomicSchema.DotnetType)
+                    when atomicSchema.DotnetType = dotnetType
+                        || atomicSchema.DotnetType = typeof<uint8> ->
+                    if atomicSchema.IsOptional
+                    then Option.Some (createOptionalDeserializer atomicSchema.DotnetType)
+                    else Option.Some (createRequiredDeserializer atomicSchema.DotnetType)
                 | _ -> Option.None
 
 type internal UInt32Converter() =

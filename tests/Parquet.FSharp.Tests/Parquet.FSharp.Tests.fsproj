@@ -12,6 +12,7 @@
     <Compile Include="Assert.fs" />
     <Compile Include="Test.Roundtrip.fs" />
     <Compile Include="Test.Int8.fs" />
+    <Compile Include="Test.Int16.fs" />
     <Compile Include="Test.String.fs" />
     <Compile Include="Test.ByteArray.fs" />
     <Compile Include="Test.Serialize.Overloads.fs" />

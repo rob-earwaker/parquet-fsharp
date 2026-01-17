@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.Int8
+namespace Parquet.FSharp.Tests.Int16
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests
@@ -6,16 +6,16 @@ open Swensen.Unquote
 open System
 open Xunit
 
-module ``serialize int8`` =
-    type Input = { Field1: int8 }
-    type Output = { Field1: int8 }
+module ``serialize int16`` =
+    type Input = { Field1: int16 }
+    type Output = { Field1: int16 }
 
     [<Theory>]
-    [<InlineData(0y)>]
-    [<InlineData(1y)>]
-    [<InlineData(-1y)>]
-    [<InlineData(SByte.MinValue)>]
-    [<InlineData(SByte.MaxValue)>]
+    [<InlineData(0s)>]
+    [<InlineData(1s)>]
+    [<InlineData(-1s)>]
+    [<InlineData(Int16.MinValue)>]
+    [<InlineData(Int16.MaxValue)>]
     let ``value`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -26,14 +26,14 @@ module ``serialize int8`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isRequired
                 Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInteger 8 true
-                Assert.Field.ConvertedType.isInt8
+                Assert.Field.LogicalType.isInteger 16 true
+                Assert.Field.ConvertedType.isInt16
                 Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``serialize int8 option`` =
-    type Input = { Field1: int8 option }
-    type Output = { Field1: int8 option }
+module ``serialize int16 option`` =
+    type Input = { Field1: int16 option }
+    type Output = { Field1: int16 option }
 
     [<Fact>]
     let ``none value`` () =
@@ -46,17 +46,17 @@ module ``serialize int8 option`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isOptional
                 Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInteger 8 true
-                Assert.Field.ConvertedType.isInt8
+                Assert.Field.LogicalType.isInteger 16 true
+                Assert.Field.ConvertedType.isInt16
                 Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = Option.None } |] @>
 
     [<Theory>]
-    [<InlineData(0y)>]
-    [<InlineData(1y)>]
-    [<InlineData(-1y)>]
-    [<InlineData(SByte.MinValue)>]
-    [<InlineData(SByte.MaxValue)>]
+    [<InlineData(0s)>]
+    [<InlineData(1s)>]
+    [<InlineData(-1s)>]
+    [<InlineData(Int16.MinValue)>]
+    [<InlineData(Int16.MaxValue)>]
     let ``some value`` value =
         let inputRecords = [| { Input.Field1 = Option.Some value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -67,14 +67,14 @@ module ``serialize int8 option`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isOptional
                 Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInteger 8 true
-                Assert.Field.ConvertedType.isInt8
+                Assert.Field.LogicalType.isInteger 16 true
+                Assert.Field.ConvertedType.isInt16
                 Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
-module ``serialize nullable int8`` =
-    type Input = { Field1: Nullable<int8> }
-    type Output = { Field1: int8 option }
+module ``serialize nullable int16`` =
+    type Input = { Field1: Nullable<int16> }
+    type Output = { Field1: int16 option }
 
     [<Fact>]
     let ``null value`` () =
@@ -87,17 +87,17 @@ module ``serialize nullable int8`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isOptional
                 Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInteger 8 true
-                Assert.Field.ConvertedType.isInt8
+                Assert.Field.LogicalType.isInteger 16 true
+                Assert.Field.ConvertedType.isInt16
                 Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = Option.None } |] @>
 
     [<Theory>]
-    [<InlineData(0y)>]
-    [<InlineData(1y)>]
-    [<InlineData(-1y)>]
-    [<InlineData(SByte.MinValue)>]
-    [<InlineData(SByte.MaxValue)>]
+    [<InlineData(0s)>]
+    [<InlineData(1s)>]
+    [<InlineData(-1s)>]
+    [<InlineData(Int16.MinValue)>]
+    [<InlineData(Int16.MaxValue)>]
     let ``non-null value`` value =
         let inputRecords = [| { Input.Field1 = Nullable(value) } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -108,30 +108,30 @@ module ``serialize nullable int8`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isOptional
                 Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInteger 8 true
-                Assert.Field.ConvertedType.isInt8
+                Assert.Field.LogicalType.isInteger 16 true
+                Assert.Field.ConvertedType.isInt16
                 Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
-module ``deserialize int8 from required int8`` =
-    type Input = { Field1: int8 }
-    type Output = { Field1: int8 }
+module ``deserialize int16 from required int16`` =
+    type Input = { Field1: int16 }
+    type Output = { Field1: int16 }
 
     [<Theory>]
-    [<InlineData(0y)>]
-    [<InlineData(1y)>]
-    [<InlineData(-1y)>]
-    [<InlineData(SByte.MinValue)>]
-    [<InlineData(SByte.MaxValue)>]
+    [<InlineData(0s)>]
+    [<InlineData(1s)>]
+    [<InlineData(-1s)>]
+    [<InlineData(Int16.MinValue)>]
+    [<InlineData(Int16.MaxValue)>]
     let ``value`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize int8 from optional int8`` =
-    type Input = { Field1: int8 option }
-    type Output = { Field1: int8 }
+module ``deserialize int16 from optional int16`` =
+    type Input = { Field1: int16 option }
+    type Output = { Field1: int16 }
 
     [<Fact>]
     let ``null value`` () =
@@ -142,39 +142,39 @@ module ``deserialize int8 from optional int8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int8>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int16>.FullName}'" @>)
 
     [<Theory>]
-    [<InlineData(0y)>]
-    [<InlineData(1y)>]
-    [<InlineData(-1y)>]
-    [<InlineData(SByte.MinValue)>]
-    [<InlineData(SByte.MaxValue)>]
+    [<InlineData(0s)>]
+    [<InlineData(1s)>]
+    [<InlineData(-1s)>]
+    [<InlineData(Int16.MinValue)>]
+    [<InlineData(Int16.MaxValue)>]
     let ``non-null value`` value =
         let inputRecords = [| { Input.Field1 = Option.Some value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize int8 option from required int8`` =
-    type Input = { Field1: int8 }
-    type Output = { Field1: int8 option }
+module ``deserialize int16 option from required int16`` =
+    type Input = { Field1: int16 }
+    type Output = { Field1: int16 option }
 
     [<Theory>]
-    [<InlineData(0y)>]
-    [<InlineData(1y)>]
-    [<InlineData(-1y)>]
-    [<InlineData(SByte.MinValue)>]
-    [<InlineData(SByte.MaxValue)>]
+    [<InlineData(0s)>]
+    [<InlineData(1s)>]
+    [<InlineData(-1s)>]
+    [<InlineData(Int16.MinValue)>]
+    [<InlineData(Int16.MaxValue)>]
     let ``value`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
-module ``deserialize int8 option from optional int8`` =
-    type Input = { Field1: int8 option }
-    type Output = { Field1: int8 option }
+module ``deserialize int16 option from optional int16`` =
+    type Input = { Field1: int16 option }
+    type Output = { Field1: int16 option }
 
     [<Fact>]
     let ``null value`` () =
@@ -184,20 +184,20 @@ module ``deserialize int8 option from optional int8`` =
         test <@ outputRecords = [| { Output.Field1 = Option.None } |] @>
 
     [<Theory>]
-    [<InlineData(0y)>]
-    [<InlineData(1y)>]
-    [<InlineData(-1y)>]
-    [<InlineData(SByte.MinValue)>]
-    [<InlineData(SByte.MaxValue)>]
+    [<InlineData(0s)>]
+    [<InlineData(1s)>]
+    [<InlineData(-1s)>]
+    [<InlineData(Int16.MinValue)>]
+    [<InlineData(Int16.MaxValue)>]
     let ``non-null value`` value =
         let inputRecords = [| { Input.Field1 = Option.Some value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
-module ``deserialize nullable int8 from optional int8`` =
-    type Input = { Field1: int8 option }
-    type Output = { Field1: Nullable<int8> }
+module ``deserialize nullable int16 from optional int16`` =
+    type Input = { Field1: int16 option }
+    type Output = { Field1: Nullable<int16> }
 
     [<Fact>]
     let ``null value`` () =
@@ -207,11 +207,11 @@ module ``deserialize nullable int8 from optional int8`` =
         test <@ outputRecords = [| { Output.Field1 = Nullable() } |] @>
 
     [<Theory>]
-    [<InlineData(0y)>]
-    [<InlineData(1y)>]
-    [<InlineData(-1y)>]
-    [<InlineData(SByte.MinValue)>]
-    [<InlineData(SByte.MaxValue)>]
+    [<InlineData(0s)>]
+    [<InlineData(1s)>]
+    [<InlineData(-1s)>]
+    [<InlineData(Int16.MinValue)>]
+    [<InlineData(Int16.MaxValue)>]
     let ``non-null value`` value =
         let inputRecords = [| { Input.Field1 = Option.Some value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)

@@ -41,57 +41,6 @@ module ``serialize byte array`` =
                 Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``serialize byte array option`` =
-    type Input = { Field1: byte[] option }
-    type Output = { Field1: byte[] option }
-
-    [<Fact>]
-    let ``none value`` () =
-        let inputRecords = [| { Input.Field1 = Option.None } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let schema = ParquetFile.readSchema bytes
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isOptional
-                Assert.Field.Type.isByteArray
-                Assert.Field.LogicalType.hasNoValue
-                Assert.Field.ConvertedType.hasNoValue
-                Assert.Field.hasNoChildren ] ]
-        test <@ outputRecords = [| { Output.Field1 = Option.None } |] @>
-
-    [<Fact>]
-    let ``some null value`` () =
-        let inputRecords = [| { Input.Field1 = Option.Some null } |]
-        raisesWith<SerializationException>
-            <@ ParquetSerializer.Serialize(inputRecords) @>
-            (fun exn ->
-                <@ exn.Message =
-                    "null value encountered during serialization for type"
-                    + $" '{typeof<byte[]>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
-
-    [<Theory>]
-    [<InlineData("")>] // Empty
-    [<InlineData("AA==")>] // Single zero value
-    [<InlineData("y01V4KpIHE2QCs9SMvxDbg==")>] // Random GUID
-    let ``some non-null value`` base64 =
-        let value = Convert.FromBase64String(base64)
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let schema = ParquetFile.readSchema bytes
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isOptional
-                Assert.Field.Type.isByteArray
-                Assert.Field.LogicalType.hasNoValue
-                Assert.Field.ConvertedType.hasNoValue
-                Assert.Field.hasNoChildren ] ]
-        test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
-
 module ``deserialize byte array from required byte array`` =
     type Input = { Field1: byte[] }
     type Output = { Field1: byte[] }
@@ -133,40 +82,3 @@ module ``deserialize byte array from optional byte array`` =
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
-
-module ``deserialize byte array option from required byte array`` =
-    type Input = { Field1: byte[] }
-    type Output = { Field1: byte[] option }
-
-    [<Theory>]
-    [<InlineData("")>] // Empty
-    [<InlineData("AA==")>] // Single zero value
-    [<InlineData("y01V4KpIHE2QCs9SMvxDbg==")>] // Random GUID
-    let ``non-null value`` base64 =
-        let value = Convert.FromBase64String(base64)
-        let inputRecords = [| { Input.Field1 = value } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
-
-module ``deserialize byte array option from optional byte array`` =
-    type Input = { Field1: byte[] option }
-    type Output = { Field1: byte[] option }
-
-    [<Fact>]
-    let ``null value`` () =
-        let inputRecords = [| { Input.Field1 = Option.None } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = Option.None } |] @>
-
-    [<Theory>]
-    [<InlineData("")>] // Empty
-    [<InlineData("AA==")>] // Single zero value
-    [<InlineData("y01V4KpIHE2QCs9SMvxDbg==")>] // Random GUID
-    let ``non-null value`` base64 =
-        let value = Convert.FromBase64String(base64)
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>

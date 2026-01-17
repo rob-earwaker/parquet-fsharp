@@ -628,12 +628,12 @@ let ``array field with nullable guid elements`` records =
         Field1: array<Nullable<Guid>> |}>
         records
 
-[<Property>]
-let ``array field with nullable fsharp record elements`` records =
-    testRoundtrip<{|
-        Field1: array<Nullable<struct {|
-            Field2: int |}>> |}>
-        records
+//[<Property>]
+//let ``array field with nullable fsharp record elements`` records =
+//    testRoundtrip<{|
+//        Field1: array<Nullable<struct {|
+//            Field2: int |}>> |}>
+//        records
 
 [<Property>]
 let ``array field with option bool elements`` records =
@@ -1027,12 +1027,12 @@ let ``generic list field with nullable guid elements`` records =
         Field1: ResizeArray<Nullable<Guid>> |}>
         records
 
-[<Property>]
-let ``generic list field with nullable fsharp record elements`` records =
-    testRoundtrip<{|
-        Field1: ResizeArray<Nullable<struct {|
-            Field2: int |}>> |}>
-        records
+//[<Property>]
+//let ``generic list field with nullable fsharp record elements`` records =
+//    testRoundtrip<{|
+//        Field1: ResizeArray<Nullable<struct {|
+//            Field2: int |}>> |}>
+//        records
 
 [<Property>]
 let ``generic list field with option bool elements`` records =
@@ -1426,12 +1426,12 @@ let ``fsharp list field with nullable guid elements`` records =
         Field1: list<Nullable<Guid>> |}>
         records
 
-[<Property>]
-let ``fsharp list field with nullable fsharp record elements`` records =
-    testRoundtrip<{|
-        Field1: list<Nullable<struct {|
-            Field2: int |}>> |}>
-        records
+//[<Property>]
+//let ``fsharp list field with nullable fsharp record elements`` records =
+//    testRoundtrip<{|
+//        Field1: list<Nullable<struct {|
+//            Field2: int |}>> |}>
+//        records
 
 [<Property>]
 let ``fsharp list field with option bool elements`` records =
@@ -1864,13 +1864,13 @@ let ``fsharp record field with nullable guid field`` records =
             Field2: Nullable<Guid> |} |}>
         records
 
-[<Property>]
-let ``fsharp record field with nullable fsharp record field`` records =
-    testRoundtrip<{|
-        Field1: {|
-            Field2: Nullable<struct {|
-                Field3: int |}> |} |}>
-        records
+//[<Property>]
+//let ``fsharp record field with nullable fsharp record field`` records =
+//    testRoundtrip<{|
+//        Field1: {|
+//            Field2: Nullable<struct {|
+//                Field3: int |}> |} |}>
+//        records
 
 [<Property>]
 let ``fsharp record field with option bool field`` records =
@@ -2301,11 +2301,11 @@ let ``complex union field with nullable guid case`` records =
         Field1: ComplexUnionWithNullableGuidCase |}>
         records
 
-[<Property>]
-let ``complex union field with nullable fsharp record case`` records =
-    testRoundtrip<{|
-        Field1: ComplexUnionWithNullableFSharpRecordCase |}>
-        records
+//[<Property>]
+//let ``complex union field with nullable fsharp record case`` records =
+//    testRoundtrip<{|
+//        Field1: ComplexUnionWithNullableFSharpRecordCase |}>
+//        records
 
 [<Property>]
 let ``complex union field with option bool case`` records =
@@ -2703,11 +2703,11 @@ let ``class field with nullable guid field`` records =
         Field1: ClassWithNullableGuidField |}>
         records
 
-[<Property>]
-let ``class field with nullable fsharp record field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableFSharpRecordField |}>
-        records
+//[<Property>]
+//let ``class field with nullable fsharp record field`` records =
+//    testRoundtrip<{|
+//        Field1: ClassWithNullableFSharpRecordField |}>
+//        records
 
 [<Property>]
 let ``class field with option bool field`` records =
@@ -2955,259 +2955,259 @@ let ``nullable guid field`` records =
         Field1: Nullable<Guid> |}>
         records
 
-[<Property>]
-let ``nullable fsharp record field with bool field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: bool |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with bool field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: bool |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with int8 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: int8 |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with int8 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: int8 |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with int16 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: int16 |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with int16 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: int16 |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with int32 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: int |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with int32 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: int |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with int64 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: int64 |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with int64 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: int64 |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with uint8 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: uint8 |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with uint8 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: uint8 |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with uint16 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: uint16 |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with uint16 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: uint16 |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with uint32 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: uint |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with uint32 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: uint |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with uint64 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: uint64 |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with uint64 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: uint64 |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with float32 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: float32 |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with float32 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: float32 |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with float64 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: float |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with float64 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: float |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with decimal field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: decimal |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with decimal field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: decimal |}> |}>
+//        records
 
-[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``nullable fsharp record field with date time field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: DateTime |}> |}>
-        records
+//[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+//let ``nullable fsharp record field with date time field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: DateTime |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with date time offset field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: DateTimeOffset |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with date time offset field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: DateTimeOffset |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with string field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: string |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with string field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: string |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with byte array field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: byte[] |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with byte array field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: byte[] |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with guid field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Guid |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with guid field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Guid |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with array field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: array<int> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with array field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: array<int> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with generic list field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: ResizeArray<int> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with generic list field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: ResizeArray<int> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with fsharp record field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: struct {|
-                Field3: int |} |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with fsharp record field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: struct {|
+//                Field3: int |} |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable bool field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<bool> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable bool field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<bool> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable int8 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<int8> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable int8 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<int8> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable int16 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<int16> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable int16 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<int16> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable int32 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<int> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable int32 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<int> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable int64 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<int64> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable int64 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<int64> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable uint8 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<uint8> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable uint8 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<uint8> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable uint16 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<uint16> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable uint16 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<uint16> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable uint32 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<uint> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable uint32 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<uint> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable uint64 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<uint64> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable uint64 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<uint64> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable float32 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<float32> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable float32 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<float32> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable float64 field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<float> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable float64 field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<float> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable decimal field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<decimal> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable decimal field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<decimal> |}> |}>
+//        records
 
-[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``nullable fsharp record field with nullable date time field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<DateTime> |}> |}>
-        records
+//[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
+//let ``nullable fsharp record field with nullable date time field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<DateTime> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable date time offset field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<DateTimeOffset> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable date time offset field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<DateTimeOffset> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable guid field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<Guid> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable guid field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<Guid> |}> |}>
+//        records
 
-[<Property>]
-let ``nullable fsharp record field with nullable fsharp record field`` records =
-    testRoundtrip<{|
-        Field1: Nullable<struct {|
-            Field2: Nullable<struct {|
-                Field3: int |}> |}> |}>
-        records
+//[<Property>]
+//let ``nullable fsharp record field with nullable fsharp record field`` records =
+//    testRoundtrip<{|
+//        Field1: Nullable<struct {|
+//            Field2: Nullable<struct {|
+//                Field3: int |}> |}> |}>
+//        records
 
 [<Property>]
 let ``option bool field`` records =

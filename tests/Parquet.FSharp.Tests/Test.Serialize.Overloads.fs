@@ -13,19 +13,19 @@ let Records = [|
     { Record.Field1 = 2 }
     { Record.Field1 = 3 } |]
 
-let ExpectedBytes = ParquetSerializer.Serialize(Records)
+let Bytes = ParquetSerializer.Serialize(Records)
 
 [<Fact>]
 let ``serialize to byte array`` () =
     let serializedBytes = ParquetSerializer.Serialize(Records)
-    Assert.equal ExpectedBytes serializedBytes
+    Assert.equal Bytes serializedBytes
 
 [<Fact>]
 let ``serialize to memory stream`` () =
     use stream = new MemoryStream()
     ParquetSerializer.Serialize(Records, stream)
     let serializedBytes = stream.ToArray()
-    Assert.equal ExpectedBytes serializedBytes
+    Assert.equal Bytes serializedBytes
 
 [<Fact>]
 let ``serialize to file write stream`` () =
@@ -34,14 +34,14 @@ let ``serialize to file write stream`` () =
     ParquetSerializer.Serialize(Records, stream)
     stream.Close()
     let serializedBytes = File.ReadAllBytes(filePath)
-    Assert.equal ExpectedBytes serializedBytes
+    Assert.equal Bytes serializedBytes
 
 [<Fact>]
 let ``async serialize to byte array`` () =
     let serializedBytes =
         ParquetSerializer.AsyncSerialize(Records)
         |> Async.RunSynchronously
-    Assert.equal ExpectedBytes serializedBytes
+    Assert.equal Bytes serializedBytes
 
 [<Fact>]
 let ``async serialize to memory stream`` () =
@@ -49,7 +49,7 @@ let ``async serialize to memory stream`` () =
     ParquetSerializer.AsyncSerialize(Records, stream)
     |> Async.RunSynchronously
     let serializedBytes = stream.ToArray()
-    Assert.equal ExpectedBytes serializedBytes
+    Assert.equal Bytes serializedBytes
 
 [<Fact>]
 let ``async serialize to file write stream`` () =
@@ -59,4 +59,4 @@ let ``async serialize to file write stream`` () =
     |> Async.RunSynchronously
     stream.Close()
     let serializedBytes = File.ReadAllBytes(filePath)
-    Assert.equal ExpectedBytes serializedBytes
+    Assert.equal Bytes serializedBytes

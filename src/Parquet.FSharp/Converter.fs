@@ -430,8 +430,8 @@ module internal ValueConverter =
         Float64Converter()
         DecimalConverter()
         PrimitiveConverter<DateTime>()
-        PrimitiveConverter<Guid>()
         DateTimeOffsetConverter()
+        PrimitiveConverter<Guid>()
         StringConverter()
         // This must come before the generic array type since byte arrays are
         // supported as a primitive type in Parquet and are therefore handled as

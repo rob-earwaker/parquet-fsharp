@@ -5,6 +5,21 @@
 
 An F# serailization library for the [Apache Parquet](https://parquet.apache.org/) file format, built on top of the fantastic [Parquet.Net](https://github.com/aloneguid/parquet-dotnet) library. **Parquet.FSharp** adds first-class support for F# types such as records, options, lists and discriminated unions, whilst maintaining the performance of **Parquet.Net**.
 
+- [Quickstart](#quickstart)
+- [Supported Types](#supported-types)
+  - [Booleans](#booleans)
+  - [Numeric Types](#numeric-types)
+  - [Date Times](#date-times)
+  - [GUIDs](#guids)
+  - [Strings](#strings)
+  - [Byte Arrays](#byte-arrays)
+  - [Collections, Sequences \& Enumerables](#collections-sequences--enumerables)
+  - [Records, Structs \& Classes](#records-structs--classes)
+  - [Optional Types](#optional-types)
+  - [Discriminated Unions](#discriminated-unions)
+
+## Quickstart
+
 ```fsharp
 open Parquet.FSharp
 open System.IO
@@ -35,3 +50,87 @@ ParquetSerializer.Serialize(nodes, file)
 use file = File.OpenRead("./nodes.parquet")
 let nodes = ParquetSerializer.Deserialize<Node>(file)
 ```
+
+## Supported Types
+
+### Booleans
+
+Applies to: `bool`
+
+Booleans are serialized as required values by default. They can be deserialized from either required or optional boolean values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
+
+### Numeric Types
+
+Applies to: `int8`, `int16`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, `uint64`, `float32`, `float[64]`, `decimal`
+
+Numeric types are serialized as required values by default. They can be deserialized from either required or optional values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
+
+For deserialization, the target .NET numeric type does not have to match the source Parquet numeric type. Numeric type compatibility is determined based on whether the source type is implicitly convertible to the target type, e.g. a field of type `int32` can be deserialized from a field of type `int16`. The following compatibility table lists the possible combinations - largely derived from [.NET Implicit Numerical Conversions](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/numeric-conversions#implicit-numeric-conversions):
+
+| Target Type | Supported Source Types |
+|-|-|
+| `int8` | `int8` |
+| `int16` | `int16`, `int8`, `uint8` |
+| `int32` | `int32`, `int16`, `int8`, `uint16`, `uint8` |
+| `int64` | `int64`, `int32`, `int16`, `int8`, `uint32`, `uint16`, `uint8` |
+| `uint8` | `uint8` |
+| `uint16` | `uint16`, `uint8` |
+| `uint32` | `uint32`, `uint16`, `uint8` |
+| `uint64` | `uint64`, `uint32`, `uint16`, `uint8` |
+| `float32` | `float32`, `int16`, `int8`, `uint16`, `uint8` |
+| `float[64]` | `float[64]`, `float32`, `int32`, `int16`, `int8`, `uint32`, `uint16`, `uint8` |
+| `decimal` | `decimal`, `int64`, `int32`, `int16`, `int8`, `uint64`, `uint32`, `uint16`, `uint8` |
+
+### Date Times
+
+Applies to: `DateTime`, `DateTimeOffset`
+
+TODO: Add docs
+
+### GUIDs
+
+Applies to: `Guid`
+
+TODO: Add docs
+
+### Strings
+
+Applies to: `string`
+
+Strings are serialized as required values by default despite being reference types and having null as a valid value. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating strings as required provides a guarantee that any serialized or deserialized values are not null. If a null value is encountered during serialization or deserialization, a `SerializationException` will be raised.
+
+Like other types, strings can be deserialized from optional values as well as required values, but the same null guarantee is provided, so any null values will still result in an exception.
+
+### Byte Arrays
+
+Applies to: `byte[]`
+
+Byte arrays are not treated the same as other array types since Parquet has native support for them. This means that instead of being treated as repeated values they are treated as atomic values.
+
+Byte arrays are serialized as required values by default despite being reference types and having null as a valid value. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating byte arrays as required provides a guarantee that any serialized or deserialized values are not null. If a null value is encountered during serialization or deserialization, a `SerializationException` will be raised.
+
+Like other types, byte arrays can be deserialized from optional values as well as required values, but the same null guarantee is provided, so any null values will still result in an exception.
+
+### Collections, Sequences & Enumerables
+
+Applies to: `'Element[]`, `'Element list`, `ResizeArray<'Element>`
+
+TODO: Add docs
+
+### Records, Structs & Classes
+
+Applies to: `'FSharpRecord`
+
+TODO: Add docs
+
+### Optional Types
+
+Applies to: `'Value option`, `Nullable<'Value>`
+
+TODO: Add docs
+
+### Discriminated Unions
+
+Applies to: `'FSharpUnion`
+
+TODO: Add docs

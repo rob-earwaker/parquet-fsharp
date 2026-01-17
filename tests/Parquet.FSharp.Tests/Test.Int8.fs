@@ -12,6 +12,7 @@ module ``serialize int8`` =
 
     [<Theory>]
     [<InlineData(0y)>]
+    [<InlineData(1y)>]
     [<InlineData(SByte.MinValue)>]
     [<InlineData(SByte.MaxValue)>]
     let ``value`` value =
@@ -51,6 +52,7 @@ module ``serialize int8 option`` =
 
     [<Theory>]
     [<InlineData(0y)>]
+    [<InlineData(1y)>]
     [<InlineData(SByte.MinValue)>]
     [<InlineData(SByte.MaxValue)>]
     let ``some value`` value =
@@ -90,6 +92,7 @@ module ``serialize nullable int8`` =
 
     [<Theory>]
     [<InlineData(0y)>]
+    [<InlineData(1y)>]
     [<InlineData(SByte.MinValue)>]
     [<InlineData(SByte.MaxValue)>]
     let ``non-null value`` value =
@@ -113,6 +116,7 @@ module ``deserialize int8 from required int8`` =
 
     [<Theory>]
     [<InlineData(0y)>]
+    [<InlineData(1y)>]
     [<InlineData(SByte.MinValue)>]
     [<InlineData(SByte.MaxValue)>]
     let ``value`` value =
@@ -138,6 +142,7 @@ module ``deserialize int8 from optional int8`` =
 
     [<Theory>]
     [<InlineData(0y)>]
+    [<InlineData(1y)>]
     [<InlineData(SByte.MinValue)>]
     [<InlineData(SByte.MaxValue)>]
     let ``non-null value`` value =
@@ -152,6 +157,7 @@ module ``deserialize int8 option from required int8`` =
 
     [<Theory>]
     [<InlineData(0y)>]
+    [<InlineData(1y)>]
     [<InlineData(SByte.MinValue)>]
     [<InlineData(SByte.MaxValue)>]
     let ``value`` value =
@@ -173,6 +179,7 @@ module ``deserialize int8 option from optional int8`` =
 
     [<Theory>]
     [<InlineData(0y)>]
+    [<InlineData(1y)>]
     [<InlineData(SByte.MinValue)>]
     [<InlineData(SByte.MaxValue)>]
     let ``non-null value`` value =
@@ -194,6 +201,7 @@ module ``deserialize nullable int8 from optional int8`` =
 
     [<Theory>]
     [<InlineData(0y)>]
+    [<InlineData(1y)>]
     [<InlineData(SByte.MinValue)>]
     [<InlineData(SByte.MaxValue)>]
     let ``non-null value`` value =

@@ -11,10 +11,10 @@ module ``serialize int16`` =
     type Output = { Field1: int16 }
 
     [<Theory>]
-    [<InlineData(0s)>]
-    [<InlineData(1s)>]
-    [<InlineData(-1s)>]
     [<InlineData(Int16.MinValue)>]
+    [<InlineData(           -1s)>]
+    [<InlineData(            0s)>]
+    [<InlineData(            1s)>]
     [<InlineData(Int16.MaxValue)>]
     let ``value`` value =
         let inputRecords = [| { Input.Field1 = value } |]
@@ -36,10 +36,10 @@ module ``deserialize int16 from required int16`` =
     type Output = { Field1: int16 }
 
     [<Theory>]
-    [<InlineData(0s)>]
-    [<InlineData(1s)>]
-    [<InlineData(-1s)>]
     [<InlineData(Int16.MinValue)>]
+    [<InlineData(           -1s)>]
+    [<InlineData(            0s)>]
+    [<InlineData(            1s)>]
     [<InlineData(Int16.MaxValue)>]
     let ``value`` value =
         let inputRecords = [| { Input.Field1 = value } |]
@@ -63,10 +63,10 @@ module ``deserialize int16 from optional int16`` =
                     + $" non-nullable type '{typeof<int16>.FullName}'" @>)
 
     [<Theory>]
-    [<InlineData(0s)>]
-    [<InlineData(1s)>]
-    [<InlineData(-1s)>]
     [<InlineData(Int16.MinValue)>]
+    [<InlineData(           -1s)>]
+    [<InlineData(            0s)>]
+    [<InlineData(            1s)>]
     [<InlineData(Int16.MaxValue)>]
     let ``non-null value`` value =
         let inputRecords = [| { Input.Field1 = Option.Some value } |]
@@ -79,16 +79,16 @@ module ``deserialize int16 from required int8`` =
     type Output = { Field1: int16 }
 
     [<Theory>]
-    [<InlineData((* inputValue *) 0y,             (* expectedOutputValue *) 0s)>]
-    [<InlineData((* inputValue *) 1y,             (* expectedOutputValue *) 1s)>]
-    [<InlineData((* inputValue *) -1y,            (* expectedOutputValue *) -1s)>]
-    [<InlineData((* inputValue *) SByte.MinValue, (* expectedOutputValue *) -128s)>]
-    [<InlineData((* inputValue *) SByte.MaxValue, (* expectedOutputValue *) 127s)>]
-    let ``value`` inputValue expectedOutputValue =
+    [<InlineData((* inputValue *) SByte.MinValue, (* outputValue *) -128s)>]
+    [<InlineData((* inputValue *)            -1y, (* outputValue *)   -1s)>]
+    [<InlineData((* inputValue *)             0y, (* outputValue *)    0s)>]
+    [<InlineData((* inputValue *)             1y, (* outputValue *)    1s)>]
+    [<InlineData((* inputValue *) SByte.MaxValue, (* outputValue *)  127s)>]
+    let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = expectedOutputValue } |] @>
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
 module ``deserialize int16 from optional int8`` =
     type Input = { Field1: int8 option }
@@ -106,13 +106,52 @@ module ``deserialize int16 from optional int8`` =
                     + $" non-nullable type '{typeof<int16>.FullName}'" @>)
 
     [<Theory>]
-    [<InlineData((* inputValue *) 0y,             (* expectedOutputValue *) 0s)>]
-    [<InlineData((* inputValue *) 1y,             (* expectedOutputValue *) 1s)>]
-    [<InlineData((* inputValue *) -1y,            (* expectedOutputValue *) -1s)>]
-    [<InlineData((* inputValue *) SByte.MinValue, (* expectedOutputValue *) -128s)>]
-    [<InlineData((* inputValue *) SByte.MaxValue, (* expectedOutputValue *) 127s)>]
-    let ``non-null value`` inputValue expectedOutputValue =
+    [<InlineData((* inputValue *) SByte.MinValue, (* outputValue *) -128s)>]
+    [<InlineData((* inputValue *)            -1y, (* outputValue *)   -1s)>]
+    [<InlineData((* inputValue *)             0y, (* outputValue *)    0s)>]
+    [<InlineData((* inputValue *)             1y, (* outputValue *)    1s)>]
+    [<InlineData((* inputValue *) SByte.MaxValue, (* outputValue *)  127s)>]
+    let ``non-null value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = expectedOutputValue } |] @>
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
+
+module ``deserialize int16 from required uint8`` =
+    type Input = { Field1: uint8 }
+    type Output = { Field1: int16 }
+
+    [<Theory>]
+    [<InlineData((* inputValue *) Byte.MinValue, (* outputValue *)   0s)>]
+    [<InlineData((* inputValue *)           1uy, (* outputValue *)   1s)>]
+    [<InlineData((* inputValue *) Byte.MaxValue, (* outputValue *) 255s)>]
+    let ``value`` inputValue outputValue =
+        let inputRecords = [| { Input.Field1 = inputValue } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
+
+module ``deserialize int16 from optional uint8`` =
+    type Input = { Field1: uint8 option }
+    type Output = { Field1: int16 }
+
+    [<Fact>]
+    let ``null value`` () =
+        let inputRecords = [| { Input.Field1 = Option.None } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Deserialize<Output>(bytes) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "null value encountered during deserialization for"
+                    + $" non-nullable type '{typeof<int16>.FullName}'" @>)
+
+    [<Theory>]
+    [<InlineData((* inputValue *) Byte.MinValue, (* outputValue *)   0s)>]
+    [<InlineData((* inputValue *)           1uy, (* outputValue *)   1s)>]
+    [<InlineData((* inputValue *) Byte.MaxValue, (* outputValue *) 255s)>]
+    let ``non-null value`` inputValue outputValue =
+        let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>

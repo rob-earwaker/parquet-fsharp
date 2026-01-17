@@ -88,7 +88,7 @@ module ``serialize atomic reference-type option`` =
                 Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = Option.Some "hello" } |] @>
 
-module ``deserialize atomic value-type option from required atomic`` =
+module ``deserialize atomic value-type option from required atomic value-type`` =
     type Input = { Field1: int }
     type Output = { Field1: int option }
 
@@ -99,7 +99,7 @@ module ``deserialize atomic value-type option from required atomic`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some 1 } |] @>
 
-module ``deserialize atomic value-type option from optional atomic`` =
+module ``deserialize atomic value-type option from optional atomic value-type`` =
     type Input = { Field1: int option }
     type Output = { Field1: int option }
 
@@ -117,7 +117,7 @@ module ``deserialize atomic value-type option from optional atomic`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some 1 } |] @>
 
-module ``deserialize atomic reference-type option from required atomic`` =
+module ``deserialize atomic reference-type option from required atomic reference-type`` =
     type Input = { Field1: string }
     type Output = { Field1: string option }
 
@@ -128,7 +128,7 @@ module ``deserialize atomic reference-type option from required atomic`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some "hello" } |] @>
 
-module ``deserialize atomic reference-type option from optional atomic`` =
+module ``deserialize atomic reference-type option from optional atomic reference-type`` =
     type Input = { Field1: string option }
     type Output = { Field1: string option }
 

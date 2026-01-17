@@ -417,7 +417,7 @@ module internal RecordDeserializer =
 module internal ValueConverter =
     // TODO: Rename all of these to Default*Converter?
     let All : IValueConverter[] = [|
-        PrimitiveConverter<bool>()
+        BoolConverter()
         Int8Converter()
         Int16Converter()
         Int32Converter()
@@ -471,6 +471,40 @@ type internal PrimitiveConverter<'Value>() =
             if targetType = dotnetType
             then Option.Some deserializer
             else Option.None
+
+type internal BoolConverter() =
+    let dotnetType = typeof<bool>
+    let dataDotnetType = dotnetType
+
+    let serializer =
+        let getDataValue = id
+        Serializer.atomic dotnetType dataDotnetType getDataValue
+
+    let requiredDeserializer =
+        let createFromDataValue = id
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    let optionalDeserializer =
+        requiredDeserializer
+        |> Deserializer.optionalValueTypeWrapper
+
+    interface IValueConverter with
+        member this.TryCreateSerializer(sourceType) =
+            if sourceType = dotnetType
+            then Option.Some serializer
+            else Option.None
+
+        member this.TryCreateDeserializer(sourceSchema, targetType) =
+            if targetType <> dotnetType
+            then Option.None
+            else
+                match sourceSchema with
+                | ValueSchema.Atomic atomicSchema
+                    when atomicSchema.DotnetType = dotnetType ->
+                    if atomicSchema.IsOptional
+                    then Option.Some optionalDeserializer
+                    else Option.Some requiredDeserializer
+                | _ -> Option.None
 
 type internal Int8Converter() =
     let dotnetType = typeof<int8>

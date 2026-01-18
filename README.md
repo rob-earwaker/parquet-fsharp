@@ -51,6 +51,8 @@ use file = File.OpenRead("./nodes.parquet")
 let nodes = ParquetSerializer.Deserialize<Node>(file)
 ```
 
+[[Return to top]](#parquetfsharp)
+
 ## Supported Types
 
 ### Booleans
@@ -58,6 +60,8 @@ let nodes = ParquetSerializer.Deserialize<Node>(file)
 Applies to: `bool`
 
 Booleans are serialized as required values by default. They can be deserialized from either required or optional boolean values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
+
+[[Return to top]](#parquetfsharp)
 
 ### Numeric Types
 
@@ -81,17 +85,23 @@ For deserialization, the target .NET numeric type does not have to match the sou
 | `float[64]` | `float[64]`, `float32`, `int32`, `int16`, `int8`, `uint32`, `uint16`, `uint8` |
 | `decimal` | `decimal`, `int64`, `int32`, `int16`, `int8`, `uint64`, `uint32`, `uint16`, `uint8` |
 
+[[Return to top]](#parquetfsharp)
+
 ### Date Times
 
 Applies to: `DateTime`, `DateTimeOffset`
 
 TODO: Add docs
 
+[[Return to top]](#parquetfsharp)
+
 ### GUIDs
 
 Applies to: `Guid`
 
 TODO: Add docs
+
+[[Return to top]](#parquetfsharp)
 
 ### Strings
 
@@ -100,6 +110,8 @@ Applies to: `string`
 Strings are serialized as required values by default despite being reference types and having null as a valid value. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating strings as required provides a guarantee that any serialized or deserialized values are not null. If a null value is encountered during serialization or deserialization, a `SerializationException` will be raised.
 
 Like other types, strings can be deserialized from optional values as well as required values, but the same null guarantee is provided, so any null values will still result in an exception.
+
+[[Return to top]](#parquetfsharp)
 
 ### Byte Arrays
 
@@ -111,11 +123,15 @@ Byte arrays are serialized as required values by default despite being reference
 
 Like other types, byte arrays can be deserialized from optional values as well as required values, but the same null guarantee is provided, so any null values will still result in an exception.
 
+[[Return to top]](#parquetfsharp)
+
 ### Collections, Sequences & Enumerables
 
 Applies to: `'Element[]`, `'Element list`, `ResizeArray<'Element>`
 
 TODO: Add docs
+
+[[Return to top]](#parquetfsharp)
 
 ### Records, Structs & Classes
 
@@ -123,14 +139,20 @@ Applies to: `'FSharpRecord`
 
 TODO: Add docs
 
+[[Return to top]](#parquetfsharp)
+
 ### Optional Types
 
 Applies to: `'Value option`, `Nullable<'Value>`
 
 TODO: Add docs
 
+[[Return to top]](#parquetfsharp)
+
 ### Discriminated Unions
 
 Applies to: `'FSharpUnion`
 
 TODO: Add docs
+
+[[Return to top]](#parquetfsharp)

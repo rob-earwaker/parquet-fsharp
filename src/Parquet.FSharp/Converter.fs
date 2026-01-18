@@ -990,11 +990,9 @@ type internal DateTimeOffsetConverter() =
 
     let requiredDeserializer =
         let createFromDataValue (dateTime: Expression) =
-            // DateTimeOffset(dateTime.ToUniversalTime())
             Expression.New(
                 typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
-                // TODO: Is this necessary or are they always UTC date times?
-                Expression.Call(dateTime, "ToUniversalTime", []))
+                dateTime)
             :> Expression
         Deserializer.atomic dotnetType dataDotnetType createFromDataValue
 

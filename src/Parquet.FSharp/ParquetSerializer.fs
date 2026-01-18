@@ -11,7 +11,7 @@ type ParquetSerializer =
     static member AsyncSerialize<'Record>(records: 'Record seq, stream: Stream) =
         async {
             let shredder = Shredder.createFor<'Record>
-            let parquetNetSchema = Schema.toParquetNet shredder.Schema
+            let parquetNetSchema = RootSchema.toParquetNet shredder.Schema
             let! cancellationToken = Async.CancellationToken
             use! fileWriter =
                 ParquetWriter.CreateAsync(
@@ -54,7 +54,7 @@ type ParquetSerializer =
                     cancellationToken = cancellationToken)
                 |> Async.AwaitTask
             // TODO: Support reading multiple row groups.
-            let fileSchema = Schema.ofParquetNet fileReader.Schema
+            let fileSchema = RootSchema.ofParquetNet fileReader.Schema
             let assembler = Assembler.createFor<'Record> fileSchema
             use rowGroupReader = fileReader.OpenRowGroupReader(0)
             let! columns =
@@ -62,7 +62,7 @@ type ParquetSerializer =
                 // rather than the file schema. The type we're deserializing
                 // into may not include all of the columns. This is what allows
                 // for efficient loading of subsets of the file.
-                Schema.toParquetNet assembler.Schema
+                RootSchema.toParquetNet assembler.Schema
                 |> fun schema -> schema.DataFields
                 |> Array.map (fun field ->
                     rowGroupReader.ReadColumnAsync(field, cancellationToken)

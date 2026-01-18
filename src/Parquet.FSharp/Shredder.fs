@@ -324,8 +324,8 @@ type private Shredder<'Record>() =
             | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
         | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
 
-    let schema = RecordSerializer.getRootSchema recordSerializer
-    let parquetNetSchema = Schema.toParquetNet schema
+    let schema = RootSchema.ofValueSchema recordSerializer.Schema
+    let parquetNetSchema = RootSchema.toParquetNet schema
 
     let recordShredder =
         let maxRepLevel = 0

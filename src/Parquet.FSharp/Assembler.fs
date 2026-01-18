@@ -516,12 +516,12 @@ module private rec ValueAssembler =
         | Deserializer.Optional optionalDeserializer ->
             ValueAssembler.forOptional optionalDeserializer parentMaxRepLevel parentMaxDefLevel
 
-type internal Assembler<'Record>(sourceSchema: Schema) =
+type internal Assembler<'Record>(sourceSchema: RootSchema) =
     let recordDeserializer =
         let sourceSchema =
-            { ValueSchema.IsOptional = false
-              ValueSchema.Type = ValueTypeSchema.Record {
-                Fields = sourceSchema.Fields } }
+            let isOptional = false
+            let valueType = ValueTypeSchema.record sourceSchema.Fields
+            ValueSchema.create isOptional valueType
         match Deserializer.resolve sourceSchema typeof<'Record> with
         | Deserializer.Record recordDeserializer -> recordDeserializer
         // TODO: F# records are currently treated as optional for compatability
@@ -533,7 +533,7 @@ type internal Assembler<'Record>(sourceSchema: Schema) =
             | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
         | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
 
-    let schema = RecordDeserializer.getRootSchema recordDeserializer
+    let schema = RootSchema.ofValueSchema recordDeserializer.Schema
 
     let recordAssembler =
         let maxRepLevel = 0
@@ -600,7 +600,7 @@ module private Assembler =
     // TODO: We probably won;t be able to cache at this level eventually when
     // we introduce settings that control deserialization, since the behaviour
     // will depend on the settings, e.g. which deserializers are registered.
-    let private Cache = Dictionary<Type * Schema, obj>()
+    let private Cache = Dictionary<Type * RootSchema, obj>()
 
     let private tryGetCached<'Record> sourceSchema =
         lock Cache (fun () ->

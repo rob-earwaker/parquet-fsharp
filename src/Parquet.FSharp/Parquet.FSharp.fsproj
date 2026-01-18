@@ -24,6 +24,7 @@
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <Compile Include="Expression.fs" />
+    <Compile Include="DotnetType.fs" />
     <Compile Include="Schema.fs" />
     <Compile Include="Converter.fs" />
     <Compile Include="Shredder.fs" />

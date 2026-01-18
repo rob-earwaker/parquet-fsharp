@@ -941,6 +941,7 @@ type internal GuidConverter() =
 // TODO: Currently this is stored as an INT96 due to Parquet.Net's default behaviour.
 // If we want to write as a timestamp we need to update the DataField generated for
 // fields of this type.
+// TODO: Handle UTC vs Local for both serialization and deserialization.
 type internal DateTimeConverter() =
     let dotnetType = typeof<DateTime>
     let dataDotnetType = dotnetType
@@ -978,6 +979,7 @@ type internal DateTimeConverter() =
 // TODO: Currently this is stored as an INT96 due to Parquet.Net's default behaviour.
 // If we want to write as a timestamp we need to update the DataField generated for
 // fields of this type.
+// TODO: Handle UTC vs Local for both serialization and deserialization.
 type internal DateTimeOffsetConverter() =
     let dotnetType = typeof<DateTimeOffset>
     let dataDotnetType = typeof<DateTime>

@@ -44,7 +44,7 @@ module ``serialize date time`` =
         test <@ outputRecord.Field1 = value @>
         test <@ outputRecord.Field1.Kind = kind @>
 
-module ``deserialize date time from required date time`` =
+module ``deserialize date time from required int96`` =
     type Input = { Field1: DateTime }
     type Output = { Field1: DateTime }
 
@@ -73,7 +73,7 @@ module ``deserialize date time from required date time`` =
         test <@ outputRecord.Field1 = value @>
         test <@ outputRecord.Field1.Kind = kind @>
 
-module ``deserialize date time from optional date time`` =
+module ``deserialize date time from optional int96`` =
     type Input = { Field1: DateTime option }
     type Output = { Field1: DateTime }
 

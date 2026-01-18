@@ -29,7 +29,7 @@ module ``serialize guid`` =
                 Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize guid from required guid`` =
+module ``deserialize guid from required uuid`` =
     type Input = { Field1: Guid }
     type Output = { Field1: Guid }
 
@@ -43,7 +43,7 @@ module ``deserialize guid from required guid`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize guid from optional guid`` =
+module ``deserialize guid from optional uuid`` =
     type Input = { Field1: Guid option }
     type Output = { Field1: Guid }
 

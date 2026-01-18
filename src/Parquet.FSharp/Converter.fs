@@ -938,6 +938,9 @@ type internal GuidConverter() =
                     else Option.Some requiredDeserializer
                 | _ -> Option.None
 
+// TODO: Currently this is stored as an INT96 due to Parquet.Net's default behaviour.
+// If we want to write as a timestamp we need to update the DataField generated for
+// fields of this type.
 type internal DateTimeConverter() =
     let dotnetType = typeof<DateTime>
     let dataDotnetType = dotnetType
@@ -946,9 +949,13 @@ type internal DateTimeConverter() =
         let getDataValue = id
         Serializer.atomic dotnetType dataDotnetType getDataValue
 
-    let deserializer =
+    let requiredDeserializer =
         let createFromDataValue = id
         Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    let optionalDeserializer =
+        requiredDeserializer
+        |> Deserializer.optionalValueTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -957,10 +964,20 @@ type internal DateTimeConverter() =
             else Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType) =
-            if targetType = dotnetType
-            then Option.Some deserializer
-            else Option.None
+            if targetType <> dotnetType
+            then Option.None
+            else
+                match sourceSchema with
+                | ValueSchema.Atomic atomicSchema
+                    when atomicSchema.DotnetType = dotnetType ->
+                    if atomicSchema.IsOptional
+                    then Option.Some optionalDeserializer
+                    else Option.Some requiredDeserializer
+                | _ -> Option.None
 
+// TODO: Currently this is stored as an INT96 due to Parquet.Net's default behaviour.
+// If we want to write as a timestamp we need to update the DataField generated for
+// fields of this type.
 type internal DateTimeOffsetConverter() =
     let dotnetType = typeof<DateTimeOffset>
     let dataDotnetType = typeof<DateTime>
@@ -971,13 +988,19 @@ type internal DateTimeOffsetConverter() =
             :> Expression
         Serializer.atomic dotnetType dataDotnetType getDataValue
 
-    let deserializer =
-        let createFromDataValue (dataValue: Expression) =
+    let requiredDeserializer =
+        let createFromDataValue (dateTime: Expression) =
+            // DateTimeOffset(dateTime.ToUniversalTime())
             Expression.New(
                 typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
-                Expression.Call(dataValue, "ToUniversalTime", []))
+                // TODO: Is this necessary or are they always UTC date times?
+                Expression.Call(dateTime, "ToUniversalTime", []))
             :> Expression
         Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    let optionalDeserializer =
+        requiredDeserializer
+        |> Deserializer.optionalValueTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -986,9 +1009,16 @@ type internal DateTimeOffsetConverter() =
             else Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType) =
-            if targetType = dotnetType
-            then Option.Some deserializer
-            else Option.None
+            if targetType <> dotnetType
+            then Option.None
+            else
+                match sourceSchema with
+                | ValueSchema.Atomic atomicSchema
+                    when atomicSchema.DotnetType = dataDotnetType ->
+                    if atomicSchema.IsOptional
+                    then Option.Some optionalDeserializer
+                    else Option.Some requiredDeserializer
+                | _ -> Option.None
 
 type internal StringConverter() =
     let dotnetType = typeof<string>

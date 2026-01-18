@@ -21,6 +21,8 @@
     <Compile Include="Test.UInt32.fs" />
     <Compile Include="Test.UInt64.fs" />
     <Compile Include="Test.Guid.fs" />
+    <Compile Include="Test.DateTime.fs" />
+    <Compile Include="Test.DateTimeOffset.fs" />
     <Compile Include="Test.String.fs" />
     <Compile Include="Test.ByteArray.fs" />
     <Compile Include="Test.Option.fs" />

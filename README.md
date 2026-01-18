@@ -99,7 +99,7 @@ TODO: Add docs
 
 Applies to: `Guid`
 
-TODO: Add docs
+GUIDs are serialized as required values by default. They can be deserialized from either required or optional GUID values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
 
 [[Return to top]](#parquetfsharp)
 

@@ -429,9 +429,9 @@ module internal ValueConverter =
         Float32Converter()
         Float64Converter()
         DecimalConverter()
-        PrimitiveConverter<DateTime>()
+        GuidConverter()
+        DateTimeConverter()
         DateTimeOffsetConverter()
-        PrimitiveConverter<Guid>()
         StringConverter()
         // This must come before the generic array type since byte arrays are
         // supported as a primitive type in Parquet and are therefore handled as
@@ -448,29 +448,6 @@ module internal ValueConverter =
         UnionConverter()
         ClassConverter()
     |]
-
-type internal PrimitiveConverter<'Value>() =
-    let dotnetType = typeof<'Value>
-    let dataDotnetType = dotnetType
-
-    let serializer =
-        let getDataValue = id
-        Serializer.atomic dotnetType dataDotnetType getDataValue
-
-    let deserializer =
-        let createFromDataValue = id
-        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
-
-    interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
-            if sourceType = dotnetType
-            then Option.Some serializer
-            else Option.None
-
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
-            if targetType = dotnetType
-            then Option.Some deserializer
-            else Option.None
 
 type internal BoolConverter() =
     let dotnetType = typeof<bool>
@@ -927,6 +904,63 @@ type internal DecimalConverter() =
                     Option.Some (createDeserializer atomicSchema.DotnetType)
                 | _ -> Option.None
 
+type internal GuidConverter() =
+    let dotnetType = typeof<Guid>
+    let dataDotnetType = dotnetType
+
+    let serializer =
+        let getDataValue = id
+        Serializer.atomic dotnetType dataDotnetType getDataValue
+
+    let requiredDeserializer =
+        let createFromDataValue = id
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    let optionalDeserializer =
+        requiredDeserializer
+        |> Deserializer.optionalValueTypeWrapper
+
+    interface IValueConverter with
+        member this.TryCreateSerializer(sourceType) =
+            if sourceType = dotnetType
+            then Option.Some serializer
+            else Option.None
+
+        member this.TryCreateDeserializer(sourceSchema, targetType) =
+            if targetType <> dotnetType
+            then Option.None
+            else
+                match sourceSchema with
+                | ValueSchema.Atomic atomicSchema
+                    when atomicSchema.DotnetType = dotnetType ->
+                    if atomicSchema.IsOptional
+                    then Option.Some optionalDeserializer
+                    else Option.Some requiredDeserializer
+                | _ -> Option.None
+
+type internal DateTimeConverter() =
+    let dotnetType = typeof<DateTime>
+    let dataDotnetType = dotnetType
+
+    let serializer =
+        let getDataValue = id
+        Serializer.atomic dotnetType dataDotnetType getDataValue
+
+    let deserializer =
+        let createFromDataValue = id
+        Deserializer.atomic dotnetType dataDotnetType createFromDataValue
+
+    interface IValueConverter with
+        member this.TryCreateSerializer(sourceType) =
+            if sourceType = dotnetType
+            then Option.Some serializer
+            else Option.None
+
+        member this.TryCreateDeserializer(sourceSchema, targetType) =
+            if targetType = dotnetType
+            then Option.Some deserializer
+            else Option.None
+
 type internal DateTimeOffsetConverter() =
     let dotnetType = typeof<DateTimeOffset>
     let dataDotnetType = typeof<DateTime>
@@ -1042,6 +1076,7 @@ type internal ByteArrayConverter() =
                 match sourceSchema with
                 // Only support atomic values with the correct type.
                 | ValueSchema.Atomic atomicSchema
+                    // TODO: Support reading binary-backed types, e.g. Guid, string?
                     when atomicSchema.DotnetType = dotnetType ->
                     // Choose the right deserializer based on whether the values
                     // are optional.

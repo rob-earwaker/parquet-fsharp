@@ -216,6 +216,10 @@ module Field =
         let hasNoValue (field: Field) =
             test <@ isNull field.Schema.LogicalType @>
 
+        let isUuid (field: Field) =
+            test <@ not (isNull field.Schema.LogicalType) @>
+            test <@ not (isNull field.Schema.LogicalType.UUID) @>
+
         let isString (field: Field) =
             test <@ not (isNull field.Schema.LogicalType) @>
             test <@ not (isNull field.Schema.LogicalType.STRING) @>

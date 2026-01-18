@@ -519,9 +519,9 @@ module private rec ValueAssembler =
 type internal Assembler<'Record>(sourceSchema: Schema) =
     let recordDeserializer =
         let sourceSchema =
-            ValueSchema.Record {
-                IsOptional = false
-                Fields = sourceSchema.Fields }
+            { ValueSchema.IsOptional = false
+              ValueSchema.Type = ValueTypeSchema.Record {
+                Fields = sourceSchema.Fields } }
         match Deserializer.resolve sourceSchema typeof<'Record> with
         | Deserializer.Record recordDeserializer -> recordDeserializer
         // TODO: F# records are currently treated as optional for compatability

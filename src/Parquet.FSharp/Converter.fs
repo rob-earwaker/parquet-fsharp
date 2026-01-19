@@ -453,12 +453,12 @@ type internal BoolConverter() =
     let dataDotnetType = dotnetType
 
     let serializer =
-        let schema = ValueTypeSchema.Bool
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let requiredDeserializer =
-        let schema = ValueTypeSchema.Bool
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue = id
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
@@ -477,7 +477,8 @@ type internal BoolConverter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Bool ->
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dotnetType ->
                     if sourceSchema.IsOptional
                     then Option.Some optionalDeserializer
                     else Option.Some requiredDeserializer
@@ -488,12 +489,12 @@ type internal Int8Converter() =
     let dataDotnetType = dotnetType
 
     let serializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let requiredDeserializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue = id
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
@@ -512,8 +513,8 @@ type internal Int8Converter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
-                    when atomicSchema.DotnetType = dotnetType ->
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dotnetType ->
                     if sourceSchema.IsOptional
                     then Option.Some optionalDeserializer
                     else Option.Some requiredDeserializer
@@ -525,12 +526,12 @@ type internal Int16Converter() =
     // TODO: Could support serializing as smaller integer type using an attribute.
     let serializer =
         let dataDotnetType = dotnetType
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let createRequiredDeserializer dataDotnetType =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue (dataValue: Expression) =
             if dataDotnetType = dotnetType
             then dataValue
@@ -552,13 +553,13 @@ type internal Int16Converter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
-                    when atomicSchema.DotnetType = dotnetType
-                        || atomicSchema.DotnetType = typeof<int8>
-                        || atomicSchema.DotnetType = typeof<uint8> ->
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dotnetType
+                        || primitiveSchema.DataDotnetType = typeof<int8>
+                        || primitiveSchema.DataDotnetType = typeof<uint8> ->
                     if sourceSchema.IsOptional
-                    then Option.Some (createOptionalDeserializer atomicSchema.DotnetType)
-                    else Option.Some (createRequiredDeserializer atomicSchema.DotnetType)
+                    then Option.Some (createOptionalDeserializer primitiveSchema.DataDotnetType)
+                    else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
 type internal Int32Converter() =
@@ -566,12 +567,12 @@ type internal Int32Converter() =
 
     let serializer =
         let dataDotnetType = dotnetType
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let createRequiredDeserializer dataDotnetType =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue (dataValue: Expression) =
             if dataDotnetType = dotnetType
             then dataValue
@@ -593,15 +594,15 @@ type internal Int32Converter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
-                    when atomicSchema.DotnetType = dotnetType
-                        || atomicSchema.DotnetType = typeof<int16>
-                        || atomicSchema.DotnetType = typeof<int8>
-                        || atomicSchema.DotnetType = typeof<uint16>
-                        || atomicSchema.DotnetType = typeof<uint8> ->
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dotnetType
+                        || primitiveSchema.DataDotnetType = typeof<int16>
+                        || primitiveSchema.DataDotnetType = typeof<int8>
+                        || primitiveSchema.DataDotnetType = typeof<uint16>
+                        || primitiveSchema.DataDotnetType = typeof<uint8> ->
                     if sourceSchema.IsOptional
-                    then Option.Some (createOptionalDeserializer atomicSchema.DotnetType)
-                    else Option.Some (createRequiredDeserializer atomicSchema.DotnetType)
+                    then Option.Some (createOptionalDeserializer primitiveSchema.DataDotnetType)
+                    else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
 type internal Int64Converter() =
@@ -609,12 +610,12 @@ type internal Int64Converter() =
 
     let serializer =
         let dataDotnetType = dotnetType
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let createRequiredDeserializer dataDotnetType =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue (dataValue: Expression) =
             if dataDotnetType = dotnetType
             then dataValue
@@ -636,17 +637,17 @@ type internal Int64Converter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
-                    when atomicSchema.DotnetType = dotnetType
-                        || atomicSchema.DotnetType = typeof<int32>
-                        || atomicSchema.DotnetType = typeof<int16>
-                        || atomicSchema.DotnetType = typeof<int8>
-                        || atomicSchema.DotnetType = typeof<uint32>
-                        || atomicSchema.DotnetType = typeof<uint16>
-                        || atomicSchema.DotnetType = typeof<uint8> ->
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dotnetType
+                        || primitiveSchema.DataDotnetType = typeof<int32>
+                        || primitiveSchema.DataDotnetType = typeof<int16>
+                        || primitiveSchema.DataDotnetType = typeof<int8>
+                        || primitiveSchema.DataDotnetType = typeof<uint32>
+                        || primitiveSchema.DataDotnetType = typeof<uint16>
+                        || primitiveSchema.DataDotnetType = typeof<uint8> ->
                     if sourceSchema.IsOptional
-                    then Option.Some (createOptionalDeserializer atomicSchema.DotnetType)
-                    else Option.Some (createRequiredDeserializer atomicSchema.DotnetType)
+                    then Option.Some (createOptionalDeserializer primitiveSchema.DataDotnetType)
+                    else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
 type internal UInt8Converter() =
@@ -654,12 +655,12 @@ type internal UInt8Converter() =
     let dataDotnetType = dotnetType
     
     let serializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let requiredDeserializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue = id
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
@@ -678,8 +679,8 @@ type internal UInt8Converter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
-                    when atomicSchema.DotnetType = dotnetType ->
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dotnetType ->
                     if sourceSchema.IsOptional
                     then Option.Some optionalDeserializer
                     else Option.Some requiredDeserializer
@@ -690,12 +691,12 @@ type internal UInt16Converter() =
 
     let serializer =
         let dataDotnetType = dotnetType
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let createRequiredDeserializer dataDotnetType =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue (dataValue: Expression) =
             if dataDotnetType = dotnetType
             then dataValue
@@ -717,12 +718,12 @@ type internal UInt16Converter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
-                    when atomicSchema.DotnetType = dotnetType
-                        || atomicSchema.DotnetType = typeof<uint8> ->
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dotnetType
+                        || primitiveSchema.DataDotnetType = typeof<uint8> ->
                     if sourceSchema.IsOptional
-                    then Option.Some (createOptionalDeserializer atomicSchema.DotnetType)
-                    else Option.Some (createRequiredDeserializer atomicSchema.DotnetType)
+                    then Option.Some (createOptionalDeserializer primitiveSchema.DataDotnetType)
+                    else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
 type internal UInt32Converter() =
@@ -730,12 +731,12 @@ type internal UInt32Converter() =
 
     let serializer =
         let dataDotnetType = dotnetType
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let createRequiredDeserializer dataDotnetType =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue (dataValue: Expression) =
             if dataDotnetType = dotnetType
             then dataValue
@@ -757,13 +758,13 @@ type internal UInt32Converter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
-                    when atomicSchema.DotnetType = dotnetType
-                        || atomicSchema.DotnetType = typeof<uint16>
-                        || atomicSchema.DotnetType = typeof<uint8> ->
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dotnetType
+                        || primitiveSchema.DataDotnetType = typeof<uint16>
+                        || primitiveSchema.DataDotnetType = typeof<uint8> ->
                     if sourceSchema.IsOptional
-                    then Option.Some (createOptionalDeserializer atomicSchema.DotnetType)
-                    else Option.Some (createRequiredDeserializer atomicSchema.DotnetType)
+                    then Option.Some (createOptionalDeserializer primitiveSchema.DataDotnetType)
+                    else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
 type internal UInt64Converter() =
@@ -771,12 +772,12 @@ type internal UInt64Converter() =
 
     let serializer =
         let dataDotnetType = dotnetType
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let createRequiredDeserializer dataDotnetType =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue (dataValue: Expression) =
             if dataDotnetType = dotnetType
             then dataValue
@@ -798,14 +799,14 @@ type internal UInt64Converter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
-                    when atomicSchema.DotnetType = dotnetType
-                        || atomicSchema.DotnetType = typeof<uint32>
-                        || atomicSchema.DotnetType = typeof<uint16>
-                        || atomicSchema.DotnetType = typeof<uint8> ->
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dotnetType
+                        || primitiveSchema.DataDotnetType = typeof<uint32>
+                        || primitiveSchema.DataDotnetType = typeof<uint16>
+                        || primitiveSchema.DataDotnetType = typeof<uint8> ->
                     if sourceSchema.IsOptional
-                    then Option.Some (createOptionalDeserializer atomicSchema.DotnetType)
-                    else Option.Some (createRequiredDeserializer atomicSchema.DotnetType)
+                    then Option.Some (createOptionalDeserializer primitiveSchema.DataDotnetType)
+                    else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
 type internal Float32Converter() =
@@ -813,12 +814,12 @@ type internal Float32Converter() =
 
     let serializer =
         let dataDotnetType = dotnetType
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let createDeserializer dataDotnetType =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue dataValue =
             Expression.Convert(dataValue, dotnetType)
             :> Expression
@@ -835,14 +836,14 @@ type internal Float32Converter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
+                | ValueTypeSchema.Primitive primitiveSchema
                     when not sourceSchema.IsOptional
-                        && (atomicSchema.DotnetType = dotnetType
-                            || atomicSchema.DotnetType = typeof<int16>
-                            || atomicSchema.DotnetType = typeof<int8>
-                            || atomicSchema.DotnetType = typeof<uint16>
-                            || atomicSchema.DotnetType = typeof<uint8>) ->
-                    Option.Some (createDeserializer atomicSchema.DotnetType)
+                        && (primitiveSchema.DataDotnetType = dotnetType
+                            || primitiveSchema.DataDotnetType = typeof<int16>
+                            || primitiveSchema.DataDotnetType = typeof<int8>
+                            || primitiveSchema.DataDotnetType = typeof<uint16>
+                            || primitiveSchema.DataDotnetType = typeof<uint8>) ->
+                    Option.Some (createDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
 type internal Float64Converter() =
@@ -850,12 +851,12 @@ type internal Float64Converter() =
 
     let serializer =
         let dataDotnetType = dotnetType
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let createDeserializer dataDotnetType =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue dataValue =
             Expression.Convert(dataValue, dotnetType)
             :> Expression
@@ -872,17 +873,17 @@ type internal Float64Converter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
+                | ValueTypeSchema.Primitive primitiveSchema
                     when not sourceSchema.IsOptional
-                        && (atomicSchema.DotnetType = dotnetType
-                            || atomicSchema.DotnetType = typeof<float32>
-                            || atomicSchema.DotnetType = typeof<int32>
-                            || atomicSchema.DotnetType = typeof<int16>
-                            || atomicSchema.DotnetType = typeof<int8>
-                            || atomicSchema.DotnetType = typeof<uint32>
-                            || atomicSchema.DotnetType = typeof<uint16>
-                            || atomicSchema.DotnetType = typeof<uint8>) ->
-                    Option.Some (createDeserializer atomicSchema.DotnetType)
+                        && (primitiveSchema.DataDotnetType = dotnetType
+                            || primitiveSchema.DataDotnetType = typeof<float32>
+                            || primitiveSchema.DataDotnetType = typeof<int32>
+                            || primitiveSchema.DataDotnetType = typeof<int16>
+                            || primitiveSchema.DataDotnetType = typeof<int8>
+                            || primitiveSchema.DataDotnetType = typeof<uint32>
+                            || primitiveSchema.DataDotnetType = typeof<uint16>
+                            || primitiveSchema.DataDotnetType = typeof<uint8>) ->
+                    Option.Some (createDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
 type internal DecimalConverter() =
@@ -890,12 +891,12 @@ type internal DecimalConverter() =
 
     let serializer =
         let dataDotnetType = dotnetType
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let createDeserializer dataDotnetType =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue dataValue =
             Expression.Convert(dataValue, dotnetType)
             :> Expression
@@ -912,18 +913,18 @@ type internal DecimalConverter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
+                | ValueTypeSchema.Primitive primitiveSchema
                     when not sourceSchema.IsOptional
-                        && (atomicSchema.DotnetType = dotnetType
-                            || atomicSchema.DotnetType = typeof<int64>
-                            || atomicSchema.DotnetType = typeof<int32>
-                            || atomicSchema.DotnetType = typeof<int16>
-                            || atomicSchema.DotnetType = typeof<int8>
-                            || atomicSchema.DotnetType = typeof<uint64>
-                            || atomicSchema.DotnetType = typeof<uint32>
-                            || atomicSchema.DotnetType = typeof<uint16>
-                            || atomicSchema.DotnetType = typeof<uint8>) ->
-                    Option.Some (createDeserializer atomicSchema.DotnetType)
+                        && (primitiveSchema.DataDotnetType = dotnetType
+                            || primitiveSchema.DataDotnetType = typeof<int64>
+                            || primitiveSchema.DataDotnetType = typeof<int32>
+                            || primitiveSchema.DataDotnetType = typeof<int16>
+                            || primitiveSchema.DataDotnetType = typeof<int8>
+                            || primitiveSchema.DataDotnetType = typeof<uint64>
+                            || primitiveSchema.DataDotnetType = typeof<uint32>
+                            || primitiveSchema.DataDotnetType = typeof<uint16>
+                            || primitiveSchema.DataDotnetType = typeof<uint8>) ->
+                    Option.Some (createDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
 type internal GuidConverter() =
@@ -931,12 +932,12 @@ type internal GuidConverter() =
     let dataDotnetType = dotnetType
 
     let serializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let requiredDeserializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue = id
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
@@ -955,8 +956,8 @@ type internal GuidConverter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
-                    when atomicSchema.DotnetType = dotnetType ->
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dotnetType ->
                     if sourceSchema.IsOptional
                     then Option.Some optionalDeserializer
                     else Option.Some requiredDeserializer
@@ -994,12 +995,12 @@ type internal DateTimeConverter() =
     let dataDotnetType = dotnetType
 
     let serializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let requiredDeserializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue = id
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
@@ -1018,8 +1019,8 @@ type internal DateTimeConverter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
-                    when atomicSchema.DotnetType = dotnetType ->
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dotnetType ->
                     if sourceSchema.IsOptional
                     then Option.Some optionalDeserializer
                     else Option.Some requiredDeserializer
@@ -1034,14 +1035,14 @@ type internal DateTimeOffsetConverter() =
     let dataDotnetType = typeof<DateTime>
 
     let serializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue (value: Expression) =
             Expression.Property(value, "UtcDateTime")
             :> Expression
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let requiredDeserializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue (dateTime: Expression) =
             Expression.New(
                 typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
@@ -1064,8 +1065,8 @@ type internal DateTimeOffsetConverter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Atomic atomicSchema
-                    when atomicSchema.DotnetType = dataDotnetType ->
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dataDotnetType ->
                     if sourceSchema.IsOptional
                     then Option.Some optionalDeserializer
                     else Option.Some requiredDeserializer
@@ -1076,7 +1077,7 @@ type internal StringConverter() =
     let dataDotnetType = dotnetType
 
     let serializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue (value: Expression) =
             Expression.Block(
                 Serializer.throwIfNull value,
@@ -1087,7 +1088,7 @@ type internal StringConverter() =
     // Deserializer for required values, i.e. those that will never have null
     // values according to the source schema.
     let requiredDeserializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue = id
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
@@ -1111,8 +1112,8 @@ type internal StringConverter() =
             else
                 match sourceSchema.Type with
                 // Only support atomic values with the correct type.
-                | ValueTypeSchema.Atomic atomicSchema
-                    when atomicSchema.DotnetType = dotnetType ->
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dotnetType ->
                     // Choose the right deserializer based on whether the values
                     // are optional.
                     if sourceSchema.IsOptional
@@ -1125,7 +1126,7 @@ type internal ByteArrayConverter() =
     let dataDotnetType = dotnetType
 
     let serializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue (value: Expression) =
             Expression.Block(
                 Serializer.throwIfNull value,
@@ -1136,7 +1137,7 @@ type internal ByteArrayConverter() =
     // Deserializer for required values, i.e. those that will never have null
     // values according to the source schema.
     let requiredDeserializer =
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue = id
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
@@ -1160,9 +1161,9 @@ type internal ByteArrayConverter() =
             else
                 match sourceSchema.Type with
                 // Only support atomic values with the correct type.
-                | ValueTypeSchema.Atomic atomicSchema
+                | ValueTypeSchema.Primitive primitiveSchema
                     // TODO: Support reading binary-backed types, e.g. Guid, string?
-                    when atomicSchema.DotnetType = dotnetType ->
+                    when primitiveSchema.DataDotnetType = dotnetType ->
                     // Choose the right deserializer based on whether the values
                     // are optional.
                     if sourceSchema.IsOptional
@@ -1378,7 +1379,7 @@ type internal UnionConverter() =
         // can't be null and must be one of the possible cases, this value is
         // not optional.
         let dataDotnetType = typeof<string>
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = unionInfo.GetCaseName
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
@@ -1422,7 +1423,7 @@ type internal UnionConverter() =
                 // can treat strings as required.
                 let dotnetType = typeof<string>
                 let dataDotnetType = dotnetType
-                let schema = ValueTypeSchema.atomic dataDotnetType
+                let schema = ValueTypeSchema.primitive dataDotnetType
                 let getDataValue = id
                 Serializer.atomic schema dotnetType dataDotnetType getDataValue
             let getValue = unionInfo.GetCaseName
@@ -1470,7 +1471,7 @@ type internal UnionConverter() =
         // can't be null and must be one of the possible cases, this value is
         // not optional.
         let dataDotnetType = typeof<string>
-        let schema = ValueTypeSchema.atomic dataDotnetType
+        let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue (caseName: Expression) =
             let returnLabel = Expression.Label(dotnetType, "union")
             Expression.Block(
@@ -1544,7 +1545,7 @@ type internal UnionConverter() =
                 let deserializer =
                     let dotnetType = typeof<string>
                     let dataDotnetType = dotnetType
-                    let schema = ValueTypeSchema.atomic dataDotnetType
+                    let schema = ValueTypeSchema.primitive dataDotnetType
                     let createFromDataValue = id
                     Deserializer.atomic
                         schema dotnetType dataDotnetType createFromDataValue
@@ -1688,7 +1689,7 @@ type internal OptionConverter() =
         | Deserializer.Atomic atomicDeserializer ->
             let dotnetType = targetType
             let dataDotnetType = atomicDeserializer.DataDotnetType
-            let schema = ValueTypeSchema.atomic dataDotnetType
+            let schema = ValueTypeSchema.primitive dataDotnetType
             let createFromDataValue dataValue =
                 let value = atomicDeserializer.CreateFromDataValue dataValue
                 createSome value
@@ -1784,7 +1785,7 @@ type internal NullableConverter() =
         | Deserializer.Atomic atomicDeserializer ->
             let dotnetType = targetType
             let dataDotnetType = atomicDeserializer.DataDotnetType
-            let schema = ValueTypeSchema.atomic dataDotnetType
+            let schema = ValueTypeSchema.primitive dataDotnetType
             let createFromDataValue dataValue =
                 let value = atomicDeserializer.CreateFromDataValue dataValue
                 createFromValue value

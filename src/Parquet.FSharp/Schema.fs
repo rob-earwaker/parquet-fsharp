@@ -28,24 +28,22 @@ type internal ValueSchema = {
         $"{optionality} {string this.Type}"
 
 type internal ValueTypeSchema =
-    | Bool
-    | Atomic of AtomicTypeSchema
+    | Primitive of PrimitiveTypeSchema
     | List of ListTypeSchema
     | Record of RecordTypeSchema
 
     override this.ToString() =
         match this with
-        | ValueTypeSchema.Bool -> "bool"
-        | ValueTypeSchema.Atomic atomic -> string atomic
+        | ValueTypeSchema.Primitive primitive -> string primitive
         | ValueTypeSchema.List list -> string list
         | ValueTypeSchema.Record record -> string record
 
-type internal AtomicTypeSchema = {
-    DotnetType: Type }
+type internal PrimitiveTypeSchema = {
+    DataDotnetType: Type }
     with
     override this.ToString() =
         // TODO: Could enumerate all primitive types here to make it nicer.
-        this.DotnetType.Name
+        this.DataDotnetType.Name
 
 type internal ListTypeSchema = {
     Element: ValueSchema }
@@ -61,8 +59,8 @@ type internal RecordTypeSchema = {
         $"{{ {fields} }}"
 
 module internal ValueTypeSchema =
-    let atomic dotnetType =
-        ValueTypeSchema.Atomic { DotnetType = dotnetType }
+    let primitive dataDotnetType =
+        ValueTypeSchema.Primitive { DataDotnetType = dataDotnetType }
 
     let list element =
         ValueTypeSchema.List { Element = element }
@@ -80,9 +78,8 @@ module internal ValueSchema =
         let valueType =
             match field with
             | :? DataField as dataField ->
-                match dataField.ClrType with
-                | DotnetType.Bool -> ValueTypeSchema.Bool
-                | dotnetType -> ValueTypeSchema.atomic dotnetType
+                let dataDotnetType = dataField.ClrType
+                ValueTypeSchema.primitive dataDotnetType
             | :? ListField as listField ->
                 let element = ValueSchema.ofParquetNet listField.Item
                 ValueTypeSchema.list element
@@ -95,11 +92,10 @@ module internal ValueSchema =
         ValueSchema.create isOptional valueType
 
     let toParquetNet fieldName (valueSchema: ValueSchema) =
-        let createDataField dotnetType =
-            DataField(fieldName, dotnetType, valueSchema.IsOptional) :> Field
         match valueSchema.Type with
-        | ValueTypeSchema.Bool -> createDataField typeof<bool>
-        | ValueTypeSchema.Atomic atomicSchema -> createDataField atomicSchema.DotnetType
+        | ValueTypeSchema.Primitive primitiveSchema ->
+            DataField(fieldName, primitiveSchema.DataDotnetType, valueSchema.IsOptional)
+            :> Field
         | ValueTypeSchema.List listSchema ->
             // Lists are always optional in Parquet.Net.
             let element = toParquetNet ListField.ElementName listSchema.Element

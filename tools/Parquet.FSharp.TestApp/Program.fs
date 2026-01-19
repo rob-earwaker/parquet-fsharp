@@ -24,14 +24,10 @@ type Data = {
     Value2: Nullable<float>
     Value3: Nullable<int> }
 
-open Parquet.Serialization.Attributes
-
-[<CLIMutable>]
 type Message = {
     (*Id: Guid*)
-    [<ParquetTimestampAttribute(ParquetTimestampResolution.Milliseconds, true, false)>]
     Time: DateTime
-    (*Timestamp: DateTimeOffset
+(*    Timestamp: DateTimeOffset
     Source: string
     Level: float
     Alternative: Alternative
@@ -152,44 +148,16 @@ module Random =
           Message.Values = array 3 data
           Message.Money = decimal ()*) }
 
-module ParquetNet =
-    let serialize (records: 'Record seq) =
-        use stream = new MemoryStream()
-        Parquet.Serialization.ParquetSerializer.SerializeAsync(records, stream)
-        |> Async.AwaitTask
-        |> Async.Ignore
-        |> Async.RunSynchronously
-        stream.ToArray()
-
-    let deserialize<'Record when 'Record : (new: unit -> 'Record)> (bytes: byte[]) =
-        use stream = new MemoryStream(bytes)
-        Parquet.Serialization.ParquetSerializer.DeserializeAsync<'Record>(stream)
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
-
 [<EntryPoint>]
 let main _ =
-    let records = [|
-        { Message.Time = DateTime(                  0L, DateTimeKind.Unspecified) }
-        { Message.Time = DateTime( 621355968000000000L, DateTimeKind.Unspecified) }
-        { Message.Time = DateTime( 638752524170000000L, DateTimeKind.Unspecified) }
-        { Message.Time = DateTime(3155378975999999999L, DateTimeKind.Unspecified) }
-        { Message.Time = DateTime(                  0L, DateTimeKind.Utc) }
-        { Message.Time = DateTime( 621355968000000000L, DateTimeKind.Utc) }
-        { Message.Time = DateTime( 638752524170000000L, DateTimeKind.Utc) }
-        { Message.Time = DateTime(3155378975999999999L, DateTimeKind.Utc) }
-        { Message.Time = DateTime(                  0L, DateTimeKind.Local) }
-        { Message.Time = DateTime( 621355968000000000L, DateTimeKind.Local) }
-        { Message.Time = DateTime( 638752524170000000L, DateTimeKind.Local) }
-        { Message.Time = DateTime(3155378975999999999L, DateTimeKind.Local) }
-    |]
-
+    let records = Array.init 10 (fun _ -> Random.message ())
     let filePath = @"..\..\..\..\..\data\data.parquet"
     // Write
-    let bytes = ParquetNet.serialize records
-    File.WriteAllBytes(filePath, bytes)
+    use writeStream = new MemoryStream()
+    ParquetSerializer.Serialize(records, writeStream)
+    File.WriteAllBytes(filePath, writeStream.ToArray())
     // Read
-    let bytes = File.ReadAllBytes(filePath)
-    let roundtrippedRecords = ParquetNet.deserialize<Message> bytes
+    let fileContent = File.ReadAllBytes(filePath)
+    use readStream = new MemoryStream(fileContent)
+    let roundtrippedRecords = ParquetSerializer.Deserialize<Message>(readStream)
     0
-

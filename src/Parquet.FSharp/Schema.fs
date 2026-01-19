@@ -28,6 +28,7 @@ type internal ValueSchema = {
         $"{optionality} {string this.Type}"
 
 type internal ValueTypeSchema =
+    // TODO: Maybe these should just capture the Parquet.Net fields?
     | Primitive of PrimitiveTypeSchema
     | DateTime of DateTimeTypeSchema
     | List of ListTypeSchema

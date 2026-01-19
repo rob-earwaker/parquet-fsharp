@@ -31,12 +31,26 @@ type Expression with
         Expression.Call(instance, methodName, [||], Array.ofSeq arguments)
         :> Expression
 
-    static member FailWith<'Exception when 'Exception :> Exception>(message: string) =
+    static member private FailWith<'Exception when 'Exception :> Exception>(message: Expression) =
         Expression.Throw(
             Expression.New(
                 typeof<'Exception>.GetConstructor([| typeof<string> |]),
-                Expression.Constant(message)))
+                message))
         :> Expression
 
-    static member FailWith(message) =
+    static member FailWith<'Exception when 'Exception :> Exception>(message: string) =
+        let message = Expression.Constant(message)
+        Expression.FailWith<'Exception>(message)
+
+    static member FailWith(message: string) =
         Expression.FailWith<Exception>(message)
+
+    static member FailWith<'Exception when 'Exception :> Exception>(
+        [<ParamArray>] messageComponents: Expression[]) =
+        let message =
+            Expression.Call(
+                typeof<string>.GetMethod("Concat", [| typeof<string[]> |]),
+                Expression.NewArrayInit(
+                    typeof<string>,
+                    messageComponents))
+        Expression.FailWith<'Exception>(message)

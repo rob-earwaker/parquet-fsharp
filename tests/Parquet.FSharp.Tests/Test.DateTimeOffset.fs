@@ -48,10 +48,10 @@ module ``deserialize date time offset from required int96`` =
     type Output = { Field1: DateTimeOffset }
 
     [<Theory>]
-    [<InlineData((* ticks *)                   0L)>] // Min value
-    [<InlineData((* ticks *)  621355968000000000L)>] // Unix epoch
-    [<InlineData((* ticks *)  638752524170000000L)>] // 15/02/2025 21:40:17
-    [<InlineData((* ticks *) 3155378975999999999L)>] // Max value
+    [<InlineData(                  0L)>] // Min value
+    [<InlineData( 621355968000000000L)>] // Unix epoch
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData(3155378975999999999L)>] // Max value
     let ``value`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -76,10 +76,10 @@ module ``deserialize date time offset from optional int96`` =
                     + $" non-nullable type '{typeof<DateTimeOffset>.FullName}'" @>)
 
     [<Theory>]
-    [<InlineData((* ticks *)                   0L)>] // Min value
-    [<InlineData((* ticks *)  621355968000000000L)>] // Unix epoch
-    [<InlineData((* ticks *)  638752524170000000L)>] // 15/02/2025 21:40:17
-    [<InlineData((* ticks *) 3155378975999999999L)>] // Max value
+    [<InlineData(                  0L)>] // Min value
+    [<InlineData( 621355968000000000L)>] // Unix epoch
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData(3155378975999999999L)>] // Max value
     let ``non-null value`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = Option.Some value } |]

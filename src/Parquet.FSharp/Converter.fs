@@ -998,7 +998,24 @@ type internal DateTimeConverter() =
         let schema =
             let isAdjustedToUtc = true
             ValueTypeSchema.dateTime isAdjustedToUtc
-        let getDataValue = id
+        let getDataValue (dateTime: Expression) =
+            // if dateTime.Kind <> DateTimeKind.Utc then
+            //     raise SerializationException(...)
+            // dateTime
+            let kind = Expression.Property(dateTime, "Kind")
+            Expression.Block(
+                Expression.IfThen(
+                    Expression.NotEqual(kind, Expression.Constant(DateTimeKind.Utc)),
+                    Expression.FailWith<SerializationException>(
+                        Expression.Constant(
+                            "encountered 'DateTime' with 'DateTimeKind."),
+                        Expression.Call(kind, "ToString", []),
+                        Expression.Constant(
+                            "' during serialization of timestamp with instant"
+                            + " semantics which only allows 'DateTimeKind.Utc'"
+                            + " by default"))),
+                dateTime)
+            :> Expression
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let requiredDeserializer =

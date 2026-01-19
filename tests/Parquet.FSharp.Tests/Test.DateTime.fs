@@ -11,20 +11,29 @@ module ``serialize date time`` =
     type Output = { Field1: DateTime }
 
     [<Theory>]
-    //[<InlineData((* ticks *)                   0L, (* kind *) DateTimeKind.Unspecified)>] // Min value
-    //[<InlineData((* ticks *)  621355968000000000L, (* kind *) DateTimeKind.Unspecified)>] // Unix epoch
-    //[<InlineData((* ticks *)  638752524170000000L, (* kind *) DateTimeKind.Unspecified)>] // 15/02/2025 21:40:17
-    //[<InlineData((* ticks *) 3155378975999999999L, (* kind *) DateTimeKind.Unspecified)>] // Max value
-    [<InlineData((* ticks *)                   0L, (* kind *) DateTimeKind.Utc)>] // Min value
-    [<InlineData((* ticks *)  621355968000000000L, (* kind *) DateTimeKind.Utc)>] // Unix epoch
-    [<InlineData((* ticks *)  638752524170000000L, (* kind *) DateTimeKind.Utc)>] // 15/02/2025 21:40:17
-    [<InlineData((* ticks *) 3155378975999999999L, (* kind *) DateTimeKind.Utc)>] // Max value
-    //[<InlineData((* ticks *)                   0L, (* kind *) DateTimeKind.Local)>] // Min value
-    //[<InlineData((* ticks *)  621355968000000000L, (* kind *) DateTimeKind.Local)>] // Unix epoch
-    //[<InlineData((* ticks *)  638752524170000000L, (* kind *) DateTimeKind.Local)>] // 15/02/2025 21:40:17
-    //[<InlineData((* ticks *) 3155378975999999999L, (* kind *) DateTimeKind.Local)>] // Max value
-    let ``value`` (ticks: int64) kind =
-        let value = DateTime(ticks, kind)
+    [<InlineData(                  0L)>] // Min value
+    [<InlineData( 621355968000000000L)>] // Unix epoch
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData(3155378975999999999L)>] // Max value
+    let ``unspecified kind`` (ticks: int64) =
+        let value = DateTime(ticks, DateTimeKind.Unspecified)
+        let inputRecords = [| { Input.Field1 = value } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "encountered 'DateTime' with 'DateTimeKind.Unspecified'"
+                    + " during serialization of timestamp with instant"
+                    + " semantics which only allows 'DateTimeKind.Utc' by"
+                    + " default" @>)
+
+    [<Theory>]
+    [<InlineData(                  0L)>] // Min value
+    [<InlineData( 621355968000000000L)>] // Unix epoch
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData(3155378975999999999L)>] // Max value
+    let ``utc kind`` (ticks: int64) =
+        let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
@@ -42,27 +51,35 @@ module ``serialize date time`` =
         test <@ outputRecords.Length = 1 @>
         let outputRecord = outputRecords[0]
         test <@ outputRecord.Field1 = value @>
-        test <@ outputRecord.Field1.Kind = kind @>
+        test <@ outputRecord.Field1.Kind = DateTimeKind.Utc @>
+
+    [<Theory>]
+    [<InlineData(                  0L)>] // Min value
+    [<InlineData( 621355968000000000L)>] // Unix epoch
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData(3155378975999999999L)>] // Max value
+    let ``local kind`` (ticks: int64) =
+        let value = DateTime(ticks, DateTimeKind.Local)
+        let inputRecords = [| { Input.Field1 = value } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "encountered 'DateTime' with 'DateTimeKind.Local' during"
+                    + " serialization of timestamp with instant semantics which"
+                    + " only allows 'DateTimeKind.Utc' by default" @>)
 
 module ``deserialize date time from required int96`` =
     type Input = { Field1: DateTime }
     type Output = { Field1: DateTime }
 
     [<Theory>]
-    //[<InlineData((* ticks *)                   0L, (* kind *) DateTimeKind.Unspecified)>] // Min value
-    //[<InlineData((* ticks *)  621355968000000000L, (* kind *) DateTimeKind.Unspecified)>] // Unix epoch
-    //[<InlineData((* ticks *)  638752524170000000L, (* kind *) DateTimeKind.Unspecified)>] // 15/02/2025 21:40:17
-    //[<InlineData((* ticks *) 3155378975999999999L, (* kind *) DateTimeKind.Unspecified)>] // Max value
-    [<InlineData((* ticks *)                   0L, (* kind *) DateTimeKind.Utc)>] // Min value
-    [<InlineData((* ticks *)  621355968000000000L, (* kind *) DateTimeKind.Utc)>] // Unix epoch
-    [<InlineData((* ticks *)  638752524170000000L, (* kind *) DateTimeKind.Utc)>] // 15/02/2025 21:40:17
-    [<InlineData((* ticks *) 3155378975999999999L, (* kind *) DateTimeKind.Utc)>] // Max value
-    //[<InlineData((* ticks *)                   0L, (* kind *) DateTimeKind.Local)>] // Min value
-    //[<InlineData((* ticks *)  621355968000000000L, (* kind *) DateTimeKind.Local)>] // Unix epoch
-    //[<InlineData((* ticks *)  638752524170000000L, (* kind *) DateTimeKind.Local)>] // 15/02/2025 21:40:17
-    //[<InlineData((* ticks *) 3155378975999999999L, (* kind *) DateTimeKind.Local)>] // Max value
-    let ``value`` (ticks: int64) kind =
-        let value = DateTime(ticks, kind)
+    [<InlineData(                  0L)>] // Min value
+    [<InlineData( 621355968000000000L)>] // Unix epoch
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData(3155378975999999999L)>] // Max value
+    let ``value`` (ticks: int64) =
+        let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
@@ -71,7 +88,7 @@ module ``deserialize date time from required int96`` =
         test <@ outputRecords.Length = 1 @>
         let outputRecord = outputRecords[0]
         test <@ outputRecord.Field1 = value @>
-        test <@ outputRecord.Field1.Kind = kind @>
+        test <@ outputRecord.Field1.Kind = DateTimeKind.Utc @>
 
 module ``deserialize date time from optional int96`` =
     type Input = { Field1: DateTime option }
@@ -89,20 +106,12 @@ module ``deserialize date time from optional int96`` =
                     + $" non-nullable type '{typeof<DateTime>.FullName}'" @>)
 
     [<Theory>]
-    //[<InlineData((* ticks *)                   0L, (* kind *) DateTimeKind.Unspecified)>] // Min value
-    //[<InlineData((* ticks *)  621355968000000000L, (* kind *) DateTimeKind.Unspecified)>] // Unix epoch
-    //[<InlineData((* ticks *)  638752524170000000L, (* kind *) DateTimeKind.Unspecified)>] // 15/02/2025 21:40:17
-    //[<InlineData((* ticks *) 3155378975999999999L, (* kind *) DateTimeKind.Unspecified)>] // Max value
-    [<InlineData((* ticks *)                   0L, (* kind *) DateTimeKind.Utc)>] // Min value
-    [<InlineData((* ticks *)  621355968000000000L, (* kind *) DateTimeKind.Utc)>] // Unix epoch
-    [<InlineData((* ticks *)  638752524170000000L, (* kind *) DateTimeKind.Utc)>] // 15/02/2025 21:40:17
-    [<InlineData((* ticks *) 3155378975999999999L, (* kind *) DateTimeKind.Utc)>] // Max value
-    //[<InlineData((* ticks *)                   0L, (* kind *) DateTimeKind.Local)>] // Min value
-    //[<InlineData((* ticks *)  621355968000000000L, (* kind *) DateTimeKind.Local)>] // Unix epoch
-    //[<InlineData((* ticks *)  638752524170000000L, (* kind *) DateTimeKind.Local)>] // 15/02/2025 21:40:17
-    //[<InlineData((* ticks *) 3155378975999999999L, (* kind *) DateTimeKind.Local)>] // Max value
-    let ``non-null value`` (ticks: int64) kind =
-        let value = DateTime(ticks, kind)
+    [<InlineData(                  0L)>] // Min value
+    [<InlineData( 621355968000000000L)>] // Unix epoch
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData(3155378975999999999L)>] // Max value
+    let ``non-null value`` (ticks: int64) =
+        let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = Option.Some value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
@@ -111,4 +120,4 @@ module ``deserialize date time from optional int96`` =
         test <@ outputRecords.Length = 1 @>
         let outputRecord = outputRecords[0]
         test <@ outputRecord.Field1 = value @>
-        test <@ outputRecord.Field1.Kind = kind @>
+        test <@ outputRecord.Field1.Kind = DateTimeKind.Utc @>

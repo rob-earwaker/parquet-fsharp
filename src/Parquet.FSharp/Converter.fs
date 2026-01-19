@@ -995,12 +995,16 @@ type internal DateTimeConverter() =
     let dataDotnetType = dotnetType
 
     let serializer =
-        let schema = ValueTypeSchema.primitive dataDotnetType
+        let schema =
+            let isAdjustedToUtc = true
+            ValueTypeSchema.dateTime isAdjustedToUtc
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let requiredDeserializer =
-        let schema = ValueTypeSchema.primitive dataDotnetType
+        let schema =
+            let isAdjustedToUtc = true
+            ValueTypeSchema.dateTime isAdjustedToUtc
         let createFromDataValue = id
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
@@ -1019,8 +1023,8 @@ type internal DateTimeConverter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Primitive primitiveSchema
-                    when primitiveSchema.DataDotnetType = dotnetType ->
+                | ValueTypeSchema.DateTime dateTimeSchema
+                    when dateTimeSchema.IsAdjustedToUtc ->
                     if sourceSchema.IsOptional
                     then Option.Some optionalDeserializer
                     else Option.Some requiredDeserializer
@@ -1035,14 +1039,18 @@ type internal DateTimeOffsetConverter() =
     let dataDotnetType = typeof<DateTime>
 
     let serializer =
-        let schema = ValueTypeSchema.primitive dataDotnetType
+        let schema =
+            let isAdjustedToUtc = true
+            ValueTypeSchema.dateTime isAdjustedToUtc
         let getDataValue (value: Expression) =
             Expression.Property(value, "UtcDateTime")
             :> Expression
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let requiredDeserializer =
-        let schema = ValueTypeSchema.primitive dataDotnetType
+        let schema =
+            let isAdjustedToUtc = true
+            ValueTypeSchema.dateTime isAdjustedToUtc
         let createFromDataValue (dateTime: Expression) =
             Expression.New(
                 typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
@@ -1065,8 +1073,8 @@ type internal DateTimeOffsetConverter() =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.Primitive primitiveSchema
-                    when primitiveSchema.DataDotnetType = dataDotnetType ->
+                | ValueTypeSchema.DateTime dateTimeSchema
+                    when dateTimeSchema.IsAdjustedToUtc ->
                     if sourceSchema.IsOptional
                     then Option.Some optionalDeserializer
                     else Option.Some requiredDeserializer

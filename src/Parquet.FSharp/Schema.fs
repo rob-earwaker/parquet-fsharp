@@ -29,12 +29,14 @@ type internal ValueSchema = {
 
 type internal ValueTypeSchema =
     | Primitive of PrimitiveTypeSchema
+    | DateTime of DateTimeTypeSchema
     | List of ListTypeSchema
     | Record of RecordTypeSchema
 
     override this.ToString() =
         match this with
         | ValueTypeSchema.Primitive primitive -> string primitive
+        | ValueTypeSchema.DateTime dateTime -> string dateTime
         | ValueTypeSchema.List list -> string list
         | ValueTypeSchema.Record record -> string record
 
@@ -44,6 +46,13 @@ type internal PrimitiveTypeSchema = {
     override this.ToString() =
         // TODO: Could enumerate all primitive types here to make it nicer.
         this.DataDotnetType.Name
+
+type internal DateTimeTypeSchema = {
+    IsAdjustedToUtc: bool }
+    with
+    override this.ToString() =
+        let kind = if this.IsAdjustedToUtc then "utc" else "local"
+        $"DateTime[{kind}]"
 
 type internal ListTypeSchema = {
     Element: ValueSchema }
@@ -61,6 +70,9 @@ type internal RecordTypeSchema = {
 module internal ValueTypeSchema =
     let primitive dataDotnetType =
         ValueTypeSchema.Primitive { DataDotnetType = dataDotnetType }
+        
+    let dateTime isAdjustedToUtc =
+        ValueTypeSchema.DateTime { IsAdjustedToUtc = isAdjustedToUtc }
 
     let list element =
         ValueTypeSchema.List { Element = element }
@@ -77,6 +89,10 @@ module internal ValueSchema =
         let isOptional = field.IsNullable
         let valueType =
             match field with
+            // This inherits from {DateField} so must come before it.
+            | :? DateTimeDataField as dateTimeField ->
+                let isAdjustedToUtc = dateTimeField.IsAdjustedToUTC
+                ValueTypeSchema.dateTime isAdjustedToUtc
             | :? DataField as dataField ->
                 let dataDotnetType = dataField.ClrType
                 ValueTypeSchema.primitive dataDotnetType
@@ -93,16 +109,24 @@ module internal ValueSchema =
 
     let toParquetNet fieldName (valueSchema: ValueSchema) =
         match valueSchema.Type with
-        | ValueTypeSchema.Primitive primitiveSchema ->
-            DataField(fieldName, primitiveSchema.DataDotnetType, valueSchema.IsOptional)
+        | ValueTypeSchema.Primitive primitive ->
+            DataField(fieldName, primitive.DataDotnetType, valueSchema.IsOptional)
             :> Field
-        | ValueTypeSchema.List listSchema ->
+        | ValueTypeSchema.DateTime dateTime ->
+            DateTimeDataField(
+                fieldName,
+                // For now, always write using Parquet.Net's default, which uses
+                // the INT96 primitive Parquet type.
+                DateTimeFormat.Impala,
+                isNullable = valueSchema.IsOptional)
+            :> Field
+        | ValueTypeSchema.List list ->
             // Lists are always optional in Parquet.Net.
-            let element = toParquetNet ListField.ElementName listSchema.Element
+            let element = toParquetNet ListField.ElementName list.Element
             ListField(fieldName, element) :> Field
-        | ValueTypeSchema.Record recordSchema ->
+        | ValueTypeSchema.Record record ->
             // Records are always optional in Parquet.Net.
-            let fields = recordSchema.Fields |> Array.map FieldSchema.toParquetNet
+            let fields = record.Fields |> Array.map FieldSchema.toParquetNet
             StructField(fieldName, fields) :> Field
 
 module internal FieldSchema =

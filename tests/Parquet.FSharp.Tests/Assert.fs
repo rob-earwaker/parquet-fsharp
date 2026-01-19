@@ -238,6 +238,21 @@ module Field =
             test <@ field.Schema.Scale = Nullable(scale) @>
             test <@ field.Schema.Precision = Nullable(precision) @>
 
+        let isTimestamp isAdjustedToUtc unit (field: Field) =
+            test <@ not (isNull field.Schema.LogicalType) @>
+            test <@ not (isNull field.Schema.LogicalType.TIMESTAMP) @>
+            test <@ not (isNull field.Schema.LogicalType.TIMESTAMP.Unit) @>
+            test <@ field.Schema.LogicalType.TIMESTAMP.IsAdjustedToUTC = isAdjustedToUtc @>
+            match unit with
+            | "milliseconds" ->
+                test <@ not (isNull field.Schema.LogicalType.TIMESTAMP.Unit.MILLIS) @>
+            | "microseconds" ->
+                test <@ not (isNull field.Schema.LogicalType.TIMESTAMP.Unit.MICROS) @>
+            | "nanoseconds" ->
+                test <@ not (isNull field.Schema.LogicalType.TIMESTAMP.Unit.NANOS) @>
+            | _ ->
+                failwith $"invalid unit '{unit}'"
+
     module ConvertedType =
         let private is convertedType (field: Field) =
             test <@ field.Schema.ConvertedType = Nullable(convertedType) @>

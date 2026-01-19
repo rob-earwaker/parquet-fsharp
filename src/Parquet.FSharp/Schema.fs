@@ -116,10 +116,10 @@ module internal ValueSchema =
         | ValueTypeSchema.DateTime dateTime ->
             DateTimeDataField(
                 fieldName,
-                // For now, always write using Parquet.Net's default, which uses
-                // the INT96 primitive Parquet type.
-                DateTimeFormat.Impala,
-                isNullable = valueSchema.IsOptional)
+                DateTimeFormat.Timestamp,
+                dateTime.IsAdjustedToUtc,
+                Nullable(DateTimeTimeUnit.Micros),
+                valueSchema.IsOptional)
             :> Field
         | ValueTypeSchema.List list ->
             // Lists are always optional in Parquet.Net.

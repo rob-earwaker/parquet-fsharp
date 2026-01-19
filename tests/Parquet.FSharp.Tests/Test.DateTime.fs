@@ -13,8 +13,8 @@ module ``serialize date time`` =
     [<Theory>]
     [<InlineData(                  0L)>] // Min value
     [<InlineData( 621355968000000000L)>] // Unix epoch
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
-    [<InlineData(3155378975999999999L)>] // Max value
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``unspecified kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Unspecified)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -30,8 +30,8 @@ module ``serialize date time`` =
     [<Theory>]
     [<InlineData(                  0L)>] // Min value
     [<InlineData( 621355968000000000L)>] // Unix epoch
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
-    [<InlineData(3155378975999999999L)>] // Max value
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``utc kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -42,8 +42,8 @@ module ``serialize date time`` =
             Assert.field [
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isRequired
-                Assert.Field.Type.isInt96
-                Assert.Field.LogicalType.hasNoValue
+                Assert.Field.Type.isInt64
+                Assert.Field.LogicalType.isTimestamp true "microseconds"
                 Assert.Field.ConvertedType.hasNoValue
                 Assert.Field.hasNoChildren ] ]
         // Default {DateTime} equality only compares the number of ticks and
@@ -56,8 +56,8 @@ module ``serialize date time`` =
     [<Theory>]
     [<InlineData(                  0L)>] // Min value
     [<InlineData( 621355968000000000L)>] // Unix epoch
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
-    [<InlineData(3155378975999999999L)>] // Max value
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``local kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Local)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -76,8 +76,8 @@ module ``deserialize date time from required int96`` =
     [<Theory>]
     [<InlineData(                  0L)>] // Min value
     [<InlineData( 621355968000000000L)>] // Unix epoch
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
-    [<InlineData(3155378975999999999L)>] // Max value
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``value`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -108,8 +108,8 @@ module ``deserialize date time from optional int96`` =
     [<Theory>]
     [<InlineData(                  0L)>] // Min value
     [<InlineData( 621355968000000000L)>] // Unix epoch
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
-    [<InlineData(3155378975999999999L)>] // Max value
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``non-null value`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = Option.Some value } |]

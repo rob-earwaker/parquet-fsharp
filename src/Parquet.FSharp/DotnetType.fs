@@ -3,6 +3,8 @@ module internal Parquet.FSharp.DotnetType
 open FSharp.Reflection
 open System
 
+// TODO: Check how much of this is actually used.
+
 let private ActivePatternTypeMatch<'Type> dotnetType =
     if dotnetType = typeof<'Type>
     then Option.Some ()

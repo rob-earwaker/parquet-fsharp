@@ -818,12 +818,17 @@ type internal Float32Converter() =
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
-    let createDeserializer dataDotnetType =
+    let createRequiredDeserializer dataDotnetType =
         let schema = ValueTypeSchema.primitive dataDotnetType
-        let createFromDataValue dataValue =
-            Expression.Convert(dataValue, dotnetType)
-            :> Expression
+        let createFromDataValue (dataValue: Expression) =
+            if dataDotnetType = dotnetType
+            then dataValue
+            else Expression.Convert(dataValue, dotnetType)
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
+
+    let createOptionalDeserializer dataDotnetType =
+        createRequiredDeserializer dataDotnetType
+        |> Deserializer.optionalValueTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -837,13 +842,14 @@ type internal Float32Converter() =
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.Primitive primitiveSchema
-                    when not sourceSchema.IsOptional
-                        && (primitiveSchema.DataDotnetType = dotnetType
-                            || primitiveSchema.DataDotnetType = typeof<int16>
-                            || primitiveSchema.DataDotnetType = typeof<int8>
-                            || primitiveSchema.DataDotnetType = typeof<uint16>
-                            || primitiveSchema.DataDotnetType = typeof<uint8>) ->
-                    Option.Some (createDeserializer primitiveSchema.DataDotnetType)
+                    when primitiveSchema.DataDotnetType = dotnetType
+                        || primitiveSchema.DataDotnetType = typeof<int16>
+                        || primitiveSchema.DataDotnetType = typeof<int8>
+                        || primitiveSchema.DataDotnetType = typeof<uint16>
+                        || primitiveSchema.DataDotnetType = typeof<uint8> ->
+                    if sourceSchema.IsOptional
+                    then Option.Some (createOptionalDeserializer primitiveSchema.DataDotnetType)
+                    else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
 type internal Float64Converter() =

@@ -10,6 +10,13 @@ open System.Reflection
 type SerializationException(message) =
     inherit Exception(message)
 
+// TODO: Attribute ideas:
+//   - ParquetDecimal(scale, precision)
+//   - ParquetRequired()
+//   - ParquetOptional(allowNulls)
+//   - ParquetDateTime(isAdjustedToUtc, unit)
+//   - ParquetDateTimeOffset(unit)
+
 // TODO: Types supported by Parquet.Net:
 
 //   Implemented:
@@ -981,9 +988,7 @@ type internal GuidConverter() =
                     else Option.Some requiredDeserializer
                 | _ -> Option.None
 
-// TODO: Currently this is stored as an INT96 due to Parquet.Net's default behaviour.
-// If we want to write as a timestamp we need to update the DataField generated for
-// fields of this type.
+// TODO: Support other TimestampTypes from Parquet.Net
 // TODO: Handle UTC vs Local for both serialization and deserialization.
 // ---
 // Parquet.Net behaviour:

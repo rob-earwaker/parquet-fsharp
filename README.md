@@ -9,8 +9,8 @@ An F# serailization library for the [Apache Parquet](https://parquet.apache.org/
 - [Supported Types](#supported-types)
   - [Booleans](#booleans)
   - [Numeric Types](#numeric-types)
-  - [Date Times](#date-times)
   - [GUIDs](#guids)
+  - [Date Times](#date-times)
   - [Strings](#strings)
   - [Byte Arrays](#byte-arrays)
   - [Collections, Sequences \& Enumerables](#collections-sequences--enumerables)
@@ -87,14 +87,6 @@ For deserialization, the target .NET numeric type does not have to match the sou
 
 [[Return to top]](#parquetfsharp)
 
-### Date Times
-
-Applies to: `DateTime`, `DateTimeOffset`
-
-TODO: Add docs
-
-[[Return to top]](#parquetfsharp)
-
 ### GUIDs
 
 Applies to: `Guid`
@@ -103,11 +95,25 @@ GUIDs are serialized as required values by default. They can be deserialized fro
 
 [[Return to top]](#parquetfsharp)
 
+### Date Times
+
+Applies to: `DateTime`, `DateTimeOffset`
+
+Date times are serialized as required UTC values with microsecond precision by default. They can be deserialized from either required or optional date time values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
+
+Since `DateTime` values have an associated `DateTimeKind`, which is one of `Unspecified`, `Utc` or `Local`, conversion to UTC can be ambiguous. Default serialization does not make any assumptions or do any implicit conversions, so any `DateTime` values that are not defined with `DateTimeKind.Utc` will result in a `SerializationException`.
+
+`DateTimeOffset` values always map to a specific instant in time, so can always be converted to UTC in an unambiguous way. During serialization, `DateTimeOffset` values will be converted to their UTC equivalent. This means that the offset information is lost, but the serialized value is guaranteed to identify the same instant in time.
+
+Both `DateTime` and `DateTimeOffset` use 'ticks' as their base unit, where each tick represents a 100 nanosecond period. Since the default precision is microseconds, serialization results in a slight truncation, equivalent to rounding the values down to the nearest 10 ticks.
+
+[[Return to top]](#parquetfsharp)
+
 ### Strings
 
 Applies to: `string`
 
-Strings are serialized as required values by default despite being reference types and having null as a valid value. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating strings as required provides a guarantee that any serialized or deserialized values are not null. If a null value is encountered during serialization or deserialization, a `SerializationException` will be raised.
+Strings are serialized as required values by default, despite being reference types and having null as a valid value. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating strings as required provides a guarantee that any serialized or deserialized values are not null. If a null value is encountered during serialization or deserialization, a `SerializationException` will be raised.
 
 Like other types, strings can be deserialized from optional values as well as required values, but the same null guarantee is provided, so any null values will still result in an exception.
 
@@ -119,7 +125,7 @@ Applies to: `byte[]`
 
 Byte arrays are not treated the same as other array types since Parquet has native support for them. This means that instead of being treated as repeated values they are treated as atomic values.
 
-Byte arrays are serialized as required values by default despite being reference types and having null as a valid value. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating byte arrays as required provides a guarantee that any serialized or deserialized values are not null. If a null value is encountered during serialization or deserialization, a `SerializationException` will be raised.
+Byte arrays are serialized as required values by default, despite being reference types and having null as a valid value. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating byte arrays as required provides a guarantee that any serialized or deserialized values are not null. If a null value is encountered during serialization or deserialization, a `SerializationException` will be raised.
 
 Like other types, byte arrays can be deserialized from optional values as well as required values, but the same null guarantee is provided, so any null values will still result in an exception.
 

@@ -173,6 +173,12 @@ let arrayLengthEqual (expected: 'Item1[]) (actual: 'Item2[]) =
 let failWith message =
     Assert.Fail(message)
 
+let float64RelativeEqual (expected: float) (actual: float) precision =
+    let absActual = Math.Abs(expected)
+    let absExpected = Math.Abs(actual)
+    let absDiff = Math.Abs(expected - actual)
+    test <@ expected = actual || absDiff / (absActual + absExpected) < precision @>
+
 let schema (schema: Schema) fieldAssertions =
     test <@ schema.Fields.Length = Seq.length fieldAssertions @>
     for field, assertField in Seq.zip schema.Fields fieldAssertions do

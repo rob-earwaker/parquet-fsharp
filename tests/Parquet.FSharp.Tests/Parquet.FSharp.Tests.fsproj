@@ -22,6 +22,7 @@
     <Compile Include="Test.UInt64.fs" />
     <Compile Include="Test.Float32.fs" />
     <Compile Include="Test.Float64.fs" />
+    <Compile Include="Test.Decimal.fs" />
     <Compile Include="Test.Guid.fs" />
     <Compile Include="Test.DateTime.fs" />
     <Compile Include="Test.DateTimeOffset.fs" />

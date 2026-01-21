@@ -48,6 +48,10 @@ type SerializationException(message) =
 // TODO: Attribute to select specific serializer type to use? Alternatively could
 // be part of the serializer configuration?
 
+// TODO: Add converter type to serializer/deserializer to we can catch exceptions
+// that occur when calling the compiled lambda functions and enrich with info about
+// which converter they originated from and which lambda function they originated from.
+
 type internal IValueConverter =
     abstract member TryCreateSerializer
         : sourceType:Type -> Serializer option

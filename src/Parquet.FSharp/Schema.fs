@@ -108,11 +108,24 @@ module internal ValueSchema =
             | _ -> failwith $"unsupported field type '{field.GetType().FullName}'"
         ValueSchema.create isOptional valueType
 
-    let toParquetNet fieldName (valueSchema: ValueSchema) =
+    // The {ListField} and {StructField} defined in Parquet.Net assume all lists
+    // and structs are nullable, and there's no constructor argument or public
+    // setter that allows this to be configured. The only way to change this
+    // behaviour is to derive from the {ListField} and {StructField} types and
+    // override the {IsNullable} property.
+
+    type private RequiredListField(name, item: Field) =
+        inherit ListField(name, item)
+        override this.IsNullable = false
+
+    type private RequiredStructField(name, fields) =
+        inherit StructField(name, fields)
+        override this.IsNullable = false
+
+    let toParquetNet fieldName (valueSchema: ValueSchema) : Field =
         match valueSchema.Type with
         | ValueTypeSchema.Primitive primitive ->
             DataField(fieldName, primitive.DataDotnetType, valueSchema.IsOptional)
-            :> Field
         | ValueTypeSchema.DateTime dateTime ->
             DateTimeDataField(
                 fieldName,
@@ -120,15 +133,16 @@ module internal ValueSchema =
                 dateTime.IsAdjustedToUtc,
                 Nullable(DateTimeTimeUnit.Micros),
                 valueSchema.IsOptional)
-            :> Field
         | ValueTypeSchema.List list ->
-            // Lists are always optional in Parquet.Net.
             let element = toParquetNet ListField.ElementName list.Element
-            ListField(fieldName, element) :> Field
+            if valueSchema.IsOptional
+            then ListField(fieldName, element)
+            else RequiredListField(fieldName, element)
         | ValueTypeSchema.Record record ->
-            // Records are always optional in Parquet.Net.
             let fields = record.Fields |> Array.map FieldSchema.toParquetNet
-            StructField(fieldName, fields) :> Field
+            if valueSchema.IsOptional
+            then StructField(fieldName, fields)
+            else RequiredStructField(fieldName, fields)
 
 module internal FieldSchema =
     let create name value =

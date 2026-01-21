@@ -96,9 +96,7 @@ module Random =
         else Option.Some (int ())
 
     let array count (createItem: unit -> 'Item) =
-        if Random.NextDouble() >= 0.75
-        then null
-        else Array.init count (fun _ -> createItem ())
+        Array.init count (fun _ -> createItem ())
 
     let list count (createItem: unit -> 'Item) =
         List.init count (fun _ -> createItem ())

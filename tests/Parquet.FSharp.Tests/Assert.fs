@@ -230,6 +230,10 @@ module Field =
             test <@ not (isNull field.Schema.LogicalType) @>
             test <@ not (isNull field.Schema.LogicalType.STRING) @>
 
+        let isList (field: Field) =
+            test <@ not (isNull field.Schema.LogicalType) @>
+            test <@ not (isNull field.Schema.LogicalType.LIST) @>
+
         let isInteger (bitWidth: int) isSigned (field: Field) =
             test <@ not (isNull field.Schema.LogicalType) @>
             test <@ not (isNull field.Schema.LogicalType.INTEGER) @>
@@ -276,6 +280,7 @@ module Field =
         let isUInt32 = is ConvertedType.UINT_32
         let isUInt64 = is ConvertedType.UINT_64
         let isDecimal = is ConvertedType.DECIMAL
+        let isList = is ConvertedType.LIST
 
     let hasNoChildren (field: Field) =
         test <@ field.Children = [||] @>
@@ -284,3 +289,6 @@ module Field =
         test <@ field.Children.Length = Seq.length childAssertions @>
         for childField, assertChild in Seq.zip field.Children childAssertions do
             assertChild childField
+
+    let child childAssertions (field: Field) =
+        children [ Assert.field childAssertions ] field

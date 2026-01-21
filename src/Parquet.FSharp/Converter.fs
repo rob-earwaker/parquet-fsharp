@@ -354,7 +354,6 @@ module internal Deserializer =
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
-    // TODO: Should this require an attribute since it's somewhat unsafe?
     let optionalValueTypeWrapper (valueDeserializer: Deserializer) =
         let dotnetType = valueDeserializer.DotnetType
         let createNull =
@@ -432,7 +431,6 @@ module private FieldDeserializer =
         create name deserializer
 
 module internal ValueConverter =
-    // TODO: Rename all of these to Default*Converter?
     let All : IValueConverter[] = [|
         DefaultBoolConverter()
         DefaultInt8Converter()
@@ -1081,9 +1079,6 @@ type internal DefaultDateTimeConverter() =
                     else Option.Some requiredDeserializer
                 | _ -> Option.None
 
-// TODO: Currently this is stored as an INT96 due to Parquet.Net's default behaviour.
-// If we want to write as a timestamp we need to update the DataField generated for
-// fields of this type.
 // TODO: Handle UTC vs Local for both serialization and deserialization.
 type internal DefaultDateTimeOffsetConverter() =
     let dotnetType = typeof<DateTimeOffset>
@@ -1238,14 +1233,22 @@ type internal DefaultArray1dConverter() =
     let createSerializer (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetElementType()
         let elementSerializer = Serializer.resolve elementDotnetType
-        let getEnumerator =
-            let enumerableType =
-                typedefof<IEnumerable<_>>.MakeGenericType(elementDotnetType)
-            fun (array: Expression) ->
-                let enumerable = Expression.Convert(array, enumerableType)
-                Expression.Call(enumerable, "GetEnumerator", [])
+        let getEnumerator (array: Expression) =
+            // if isNull array then
+            //     raise SerializationException(...)
+            // let enumerable = array :> IEnumerable<'Element>
+            // enumerable.GetEnumerator()
+            let enumerable =
+                Expression.Variable(
+                    typedefof<IEnumerable<_>>.MakeGenericType(elementDotnetType),
+                    "enumerable")
+            Expression.Block(
+                [ enumerable ],
+                Serializer.throwIfNull array,
+                Expression.Assign(enumerable, Expression.Convert(array, enumerable.Type)),
+                Expression.Call(enumerable, "GetEnumerator", []))
+            :> Expression
         Serializer.list dotnetType elementSerializer getEnumerator
-        |> Serializer.referenceTypeWrapper
 
     let createDeserializer (schema: ListTypeSchema) (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetElementType()
@@ -1257,7 +1260,6 @@ type internal DefaultArray1dConverter() =
             Expression.Call(elementValues, "ToArray", [])
         Deserializer.list
             dotnetType elementDeserializer createEmpty createFromElementValues
-        |> Deserializer.referenceTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1287,7 +1289,6 @@ type internal DefaultGenericListConverter() =
                 let enumerable = Expression.Convert(list, enumerableType)
                 Expression.Call(enumerable, "GetEnumerator", [])
         Serializer.list dotnetType elementSerializer getEnumerator
-        |> Serializer.referenceTypeWrapper
 
     let createDeserializer (dotnetType: Type) (schema: ListTypeSchema) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
@@ -1297,7 +1298,6 @@ type internal DefaultGenericListConverter() =
         let createFromElementValues = id
         Deserializer.list
             dotnetType elementDeserializer createEmpty createFromElementValues
-        |> Deserializer.referenceTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1326,13 +1326,7 @@ type internal DefaultFSharpListConverter() =
             fun (list: Expression) ->
                 let enumerable = Expression.Convert(list, enumerableType)
                 Expression.Call(enumerable, "GetEnumerator", [])
-        // TODO: F# lists are not nullable by default, however Parquet.Net
-        // does not support list fields that aren't nullable and a nullable
-        // list field class can't easily be created since some of the relevant
-        // properties are internal. For now, wrap as a non-nullable reference
-        // type.
         Serializer.list dotnetType elementSerializer getEnumerator
-        |> Serializer.nonNullableReferenceTypeWrapper
 
     let createDeserializer (dotnetType: Type) (schema: ListTypeSchema) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
@@ -1348,14 +1342,8 @@ type internal DefaultFSharpListConverter() =
             fun (elementValues: Expression) ->
                 Expression.Call(seqModuleType, "ToList", [| elementDotnetType |], elementValues)
                 :> Expression
-        // TODO: F# lists are not nullable by default, however Parquet.Net
-        // does not support list fields that aren't nullable and a nullable
-        // list field class can't easily be created since some of the relevant
-        // properties are internal. For now, wrap as a non-nullable reference
-        // type.
         Deserializer.list
             dotnetType elementDeserializer createEmpty createFromElementValues
-        |> Deserializer.nonNullableReferenceTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1379,13 +1367,7 @@ type internal DefaultFSharpRecordConverter() =
         let fields =
             FSharpType.GetRecordFields(dotnetType)
             |> Array.map FieldSerializer.ofProperty
-        // TODO: F# records are not nullable by default, however Parquet.Net
-        // does not support struct fields that aren't nullable and a nullable
-        // struct field class can't easily be created since some of the relevant
-        // properties are internal. For now, wrap as a non-nullable reference
-        // type.
         Serializer.record dotnetType fields
-        |> Serializer.nonNullableReferenceTypeWrapper
 
     let tryCreateDeserializer (dotnetType: Type) (recordSchema: RecordTypeSchema) =
         let fields = FSharpType.GetRecordFields(dotnetType)
@@ -1404,13 +1386,7 @@ type internal DefaultFSharpRecordConverter() =
                 fun (fieldValues: Expression[]) ->
                     Expression.New(constructor, fieldValues)
                     :> Expression
-            // TODO: F# records are not nullable by default, however Parquet.Net
-            // does not support struct fields that aren't nullable and a nullable
-            // struct field class can't easily be created since some of the relevant
-            // properties are internal. For now, wrap as a non-nullable reference
-            // type.
             Deserializer.record dotnetType fieldDeserializers createFromFieldValues
-            |> Deserializer.nonNullableReferenceTypeWrapper
             |> Option.Some
 
     interface IValueConverter with
@@ -1508,11 +1484,7 @@ type internal DefaultUnionConverter() =
                 let getValue = id
                 FieldSerializer.create name valueSerializer getValue)
         let fields = Array.append [| typeField |] caseFields
-        // TODO: F# unions are not nullable by default, however we are mapping
-        // to a struct and Parquet.Net does not support struct fields that
-        // aren't nullable, so wrap as a non-nullable reference type.
         Serializer.record dotnetType fields
-        |> Serializer.nonNullableReferenceTypeWrapper
 
     let createUnionSerializer dotnetType =
         // Unions are represented in one of two ways depending on whether any of
@@ -1668,11 +1640,7 @@ type internal DefaultUnionConverter() =
                         yield Expression.Label(returnLabel, Expression.Default(returnLabel.Type))
                     })
                 :> Expression
-            // TODO: F# unions are not nullable by default, however we are mapping
-            // to a struct and Parquet.Net does not support struct fields that
-            // aren't nullable, so wrap as a non-nullable reference type.
             Deserializer.record dotnetType fields createFromFieldValues
-            |> Deserializer.nonNullableReferenceTypeWrapper
             |> Option.Some
 
     interface IValueConverter with
@@ -1902,7 +1870,6 @@ type internal DefaultClassConverter() =
             getProperties dotnetType
             |> Array.map FieldSerializer.ofProperty
         Serializer.record dotnetType fieldSerializers
-        |> Serializer.referenceTypeWrapper
 
     let tryCreateDeserializer (dotnetType: Type) (recordSchema: RecordTypeSchema) =
         let properties = getProperties dotnetType
@@ -1934,7 +1901,6 @@ type internal DefaultClassConverter() =
                         })
                     :> Expression
             Deserializer.record dotnetType fieldDeserializers createFromFieldValues
-            |> Deserializer.referenceTypeWrapper
             |> Option.Some
 
     interface IValueConverter with

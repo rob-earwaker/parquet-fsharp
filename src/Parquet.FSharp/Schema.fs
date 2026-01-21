@@ -90,7 +90,7 @@ module internal ValueSchema =
         let isOptional = field.IsNullable
         let valueType =
             match field with
-            // This inherits from {DateField} so must come before it.
+            // This inherits from {DataField} so must come before it.
             | :? DateTimeDataField as dateTimeField ->
                 let isAdjustedToUtc = dateTimeField.IsAdjustedToUTC
                 ValueTypeSchema.dateTime isAdjustedToUtc

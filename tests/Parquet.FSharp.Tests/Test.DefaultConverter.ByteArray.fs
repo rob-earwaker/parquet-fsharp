@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.ByteArray
+namespace Parquet.FSharp.Tests.DefaultConverter.ByteArray
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests

@@ -430,39 +430,39 @@ module private FieldDeserializer =
 module internal ValueConverter =
     // TODO: Rename all of these to Default*Converter?
     let All : IValueConverter[] = [|
-        BoolConverter()
-        Int8Converter()
-        Int16Converter()
-        Int32Converter()
-        Int64Converter()
-        UInt8Converter()
-        UInt16Converter()
-        UInt32Converter()
-        UInt64Converter()
-        Float32Converter()
-        Float64Converter()
-        DecimalConverter()
-        GuidConverter()
-        DateTimeConverter()
-        DateTimeOffsetConverter()
-        StringConverter()
+        DefaultBoolConverter()
+        DefaultInt8Converter()
+        DefaultInt16Converter()
+        DefaultInt32Converter()
+        DefaultInt64Converter()
+        DefaultUInt8Converter()
+        DefaultUInt16Converter()
+        DefaultUInt32Converter()
+        DefaultUInt64Converter()
+        DefaultFloat32Converter()
+        DefaultFloat64Converter()
+        DefaultDecimalConverter()
+        DefaultGuidConverter()
+        DefaultDateTimeConverter()
+        DefaultDateTimeOffsetConverter()
+        DefaultStringConverter()
         // This must come before the generic array type since byte arrays are
         // supported as a primitive type in Parquet and are therefore handled as
         // atomic values rather than lists.
-        ByteArrayConverter()
-        Array1dConverter()
-        GenericListConverter()
-        FSharpListConverter()
-        FSharpRecordConverter()
+        DefaultByteArrayConverter()
+        DefaultArray1dConverter()
+        DefaultGenericListConverter()
+        DefaultFSharpListConverter()
+        DefaultFSharpRecordConverter()
         // This must come before the generic union type since option types are
         // handled in a special way.
-        OptionConverter()
-        NullableConverter()
-        UnionConverter()
-        ClassConverter()
+        DefaultOptionConverter()
+        DefaultNullableConverter()
+        DefaultUnionConverter()
+        DefaultClassConverter()
     |]
 
-type internal BoolConverter() =
+type internal DefaultBoolConverter() =
     let dotnetType = typeof<bool>
     let dataDotnetType = dotnetType
 
@@ -498,7 +498,7 @@ type internal BoolConverter() =
                     else Option.Some requiredDeserializer
                 | _ -> Option.None
 
-type internal Int8Converter() =
+type internal DefaultInt8Converter() =
     let dotnetType = typeof<int8>
     let dataDotnetType = dotnetType
 
@@ -534,7 +534,7 @@ type internal Int8Converter() =
                     else Option.Some requiredDeserializer
                 | _ -> Option.None
 
-type internal Int16Converter() =
+type internal DefaultInt16Converter() =
     let dotnetType = typeof<int16>
 
     // TODO: Could support serializing as smaller integer type using an attribute.
@@ -576,7 +576,7 @@ type internal Int16Converter() =
                     else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
-type internal Int32Converter() =
+type internal DefaultInt32Converter() =
     let dotnetType = typeof<int32>
 
     let serializer =
@@ -619,7 +619,7 @@ type internal Int32Converter() =
                     else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
-type internal Int64Converter() =
+type internal DefaultInt64Converter() =
     let dotnetType = typeof<int64>
 
     let serializer =
@@ -664,7 +664,7 @@ type internal Int64Converter() =
                     else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
-type internal UInt8Converter() =
+type internal DefaultUInt8Converter() =
     let dotnetType = typeof<uint8>
     let dataDotnetType = dotnetType
     
@@ -700,7 +700,7 @@ type internal UInt8Converter() =
                     else Option.Some requiredDeserializer
                 | _ -> Option.None
 
-type internal UInt16Converter() =
+type internal DefaultUInt16Converter() =
     let dotnetType = typeof<uint16>
 
     let serializer =
@@ -740,7 +740,7 @@ type internal UInt16Converter() =
                     else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
-type internal UInt32Converter() =
+type internal DefaultUInt32Converter() =
     let dotnetType = typeof<uint32>
 
     let serializer =
@@ -781,7 +781,7 @@ type internal UInt32Converter() =
                     else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
-type internal UInt64Converter() =
+type internal DefaultUInt64Converter() =
     let dotnetType = typeof<uint64>
 
     let serializer =
@@ -823,7 +823,7 @@ type internal UInt64Converter() =
                     else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
-type internal Float32Converter() =
+type internal DefaultFloat32Converter() =
     let dotnetType = typeof<float32>
 
     let serializer =
@@ -866,7 +866,7 @@ type internal Float32Converter() =
                     else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
-type internal Float64Converter() =
+type internal DefaultFloat64Converter() =
     let dotnetType = typeof<float>
 
     let serializer =
@@ -912,7 +912,7 @@ type internal Float64Converter() =
                     else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
-type internal DecimalConverter() =
+type internal DefaultDecimalConverter() =
     let dotnetType = typeof<decimal>
 
     let serializer =
@@ -959,7 +959,7 @@ type internal DecimalConverter() =
                     else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
                 | _ -> Option.None
 
-type internal GuidConverter() =
+type internal DefaultGuidConverter() =
     let dotnetType = typeof<Guid>
     let dataDotnetType = dotnetType
 
@@ -1020,7 +1020,7 @@ type internal GuidConverter() =
 //   => serialization ignores Kind, truncates to <resolution>
 //   => deserialization assumes Local
 
-type internal DateTimeConverter() =
+type internal DefaultDateTimeConverter() =
     let dotnetType = typeof<DateTime>
     let dataDotnetType = dotnetType
 
@@ -1081,7 +1081,7 @@ type internal DateTimeConverter() =
 // If we want to write as a timestamp we need to update the DataField generated for
 // fields of this type.
 // TODO: Handle UTC vs Local for both serialization and deserialization.
-type internal DateTimeOffsetConverter() =
+type internal DefaultDateTimeOffsetConverter() =
     let dotnetType = typeof<DateTimeOffset>
     let dataDotnetType = typeof<DateTime>
 
@@ -1127,7 +1127,7 @@ type internal DateTimeOffsetConverter() =
                     else Option.Some requiredDeserializer
                 | _ -> Option.None
 
-type internal StringConverter() =
+type internal DefaultStringConverter() =
     let dotnetType = typeof<string>
     let dataDotnetType = dotnetType
 
@@ -1176,7 +1176,7 @@ type internal StringConverter() =
                     else Option.Some requiredDeserializer
                 | _ -> Option.None
 
-type internal ByteArrayConverter() =
+type internal DefaultByteArrayConverter() =
     let dotnetType = typeof<byte[]>
     let dataDotnetType = dotnetType
 
@@ -1226,7 +1226,7 @@ type internal ByteArrayConverter() =
                     else Option.Some requiredDeserializer
                 | _ -> Option.None
 
-type internal Array1dConverter() =
+type internal DefaultArray1dConverter() =
     let isArray1dType (dotnetType: Type) =
         dotnetType.IsArray
         && dotnetType.GetArrayRank() = 1
@@ -1270,7 +1270,7 @@ type internal Array1dConverter() =
                     Option.Some (createDeserializer listSchema targetType)
                 | _ -> Option.None
 
-type internal GenericListConverter() =
+type internal DefaultGenericListConverter() =
     let isGenericListType = DotnetType.isGenericType<ResizeArray<_>>
 
     let createSerializer (dotnetType: Type) =
@@ -1310,7 +1310,7 @@ type internal GenericListConverter() =
                     Option.Some (createDeserializer targetType listSchema)
                 | _ -> Option.None
 
-type internal FSharpListConverter() =
+type internal DefaultFSharpListConverter() =
     let isFSharpListType = DotnetType.isGenericType<list<_>>
 
     let createSerializer (dotnetType: Type) =
@@ -1368,7 +1368,7 @@ type internal FSharpListConverter() =
                     Option.Some (createDeserializer targetType listSchema)
                 | _ -> Option.None
 
-type internal FSharpRecordConverter() =
+type internal DefaultFSharpRecordConverter() =
     let isFSharpRecordType = FSharpType.IsRecord
 
     let createSerializer (dotnetType: Type) =
@@ -1424,7 +1424,7 @@ type internal FSharpRecordConverter() =
                     tryCreateDeserializer targetType recordSchema
                 | _ -> Option.None
 
-type internal UnionConverter() =
+type internal DefaultUnionConverter() =
     let isUnionType = FSharpType.IsUnion
 
     let createSimpleUnionSerializer (unionInfo: UnionInfo) =
@@ -1693,7 +1693,7 @@ type internal UnionConverter() =
                         tryCreateComplexUnionDeserializer unionInfo recordSchema
                     | _ -> Option.None
 
-type internal OptionConverter() =
+type internal DefaultOptionConverter() =
     let isOptionType = DotnetType.isGenericType<option<_>>
     
     // TODO: Quite a lot of duplicated reflection going on in here!
@@ -1797,7 +1797,7 @@ type internal OptionConverter() =
                 then Option.Some (createOptionalDeserializer sourceSchema targetType)
                 else Option.Some (createRequiredDeserializer sourceSchema targetType)
 
-type internal NullableConverter() =
+type internal DefaultNullableConverter() =
     let isNullableType = DotnetType.isGenericType<Nullable<_>>
     
     // TODO: Quite a lot of duplicated reflection going on in here!
@@ -1885,7 +1885,7 @@ type internal NullableConverter() =
                 then Option.Some (createOptionalDeserializer sourceSchema targetType)
                 else Option.Some (createRequiredDeserializer sourceSchema targetType)
 
-type internal ClassConverter() =
+type internal DefaultClassConverter() =
     let isClassWithDefaultConstructor (dotnetType: Type) =
         dotnetType.IsClass
         && not (isNull (dotnetType.GetConstructor([||])))

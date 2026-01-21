@@ -25,19 +25,19 @@ type Data = {
     Value3: Nullable<int> }
 
 type Message = {
-    (*Id: Guid*)
+    Id: Guid
     Time: DateTime
-(*    Timestamp: DateTimeOffset
+    Timestamp: DateTimeOffset
     Source: string
     Level: float
     Alternative: Alternative
-    FileType: FileType
+(*    FileType: FileType*)
     Flag: Nullable<bool>
     Count: int option
     Samples: int list
     Gps: Gps
     Values: Data[]
-    Money: decimal*) }
+    Money: decimal }
 
 module Random =
     let private Random = Random()
@@ -66,12 +66,9 @@ module Random =
         Guid.NewGuid()
 
     let string () =
-        if Random.NextDouble() >= 0.75
-        then null
-        else
-            let alphabet = "abcdefghijklmnopqrstuvxxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            Array.init 8 (fun _ -> alphabet[Random.Next(0, alphabet.Length)])
-            |> String
+        let alphabet = "abcdefghijklmnopqrstuvxxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        Array.init 8 (fun _ -> alphabet[Random.Next(0, alphabet.Length)])
+        |> String
 
     let nullableBool () =
         if Random.NextDouble() >= 0.75
@@ -134,19 +131,19 @@ module Random =
           Data.Value3 = nullableInt () }
 
     let message () =
-        { (*Message.Id = guid ()*)
+        { Message.Id = guid ()
           Message.Time = dateTime ()
-          (*Message.Timestamp = dateTimeOffset ()
+          Message.Timestamp = dateTimeOffset ()
           Message.Source = string ()
           Message.Level = float ()
           Message.Alternative = alternative ()
-          Message.FileType = fileType ()
+         (* Message.FileType = fileType ()*)
           Message.Flag = nullableBool ()
           Message.Count = intOption ()
           Message.Samples = list 5 int
           Message.Gps = gps ()
           Message.Values = array 3 data
-          Message.Money = decimal ()*) }
+          Message.Money = decimal () }
 
 [<EntryPoint>]
 let main _ =

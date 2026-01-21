@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.Float64
+namespace Parquet.FSharp.Tests.DefaultConverter.Float64
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests

@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.Nullable
+namespace Parquet.FSharp.Tests.DefaultConverter.Nullable
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests

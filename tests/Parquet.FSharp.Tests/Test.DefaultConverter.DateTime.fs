@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.DateTime
+namespace Parquet.FSharp.Tests.DefaultConverter.DateTime
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests

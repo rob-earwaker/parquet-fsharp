@@ -11,11 +11,18 @@ type SerializationException(message) =
     inherit Exception(message)
 
 // TODO: Attribute ideas:
-//   - ParquetDecimal(scale, precision)
+//   - ParquetAttribute (base class)
+//
+//   - ParquetField(name: string, required: bool, optional: bool, allowNulls: bool)
+//   - ParquetDecimalField(<inherited>, scale: int, precision: int)
+//   - ParquetDateTimeField(<inherited>, isAdjustedToUtc: bool, unit: <enum TimeUnit>)
+//   - ParquetDateTimeOffsetField(<inherited>, unit: <enum TimeUnit>)
+//   - ParquetUnionField(<inherited>, caseTypeFieldName: string)
+
+//   - ParquetUnion(caseTypeFieldName: string)
+//   - ParquetUnionCase(typeName: string, dataFieldName: string)
 //   - ParquetRequired()
-//   - ParquetOptional(allowNulls)
-//   - ParquetDateTime(isAdjustedToUtc, unit)
-//   - ParquetDateTimeOffset(unit)
+//   - ParquetOptional(allowNulls: bool)
 
 // TODO: Types supported by Parquet.Net:
 

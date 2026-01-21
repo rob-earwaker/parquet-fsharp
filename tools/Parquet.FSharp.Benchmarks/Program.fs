@@ -70,18 +70,11 @@ module Random =
     let guid () =
         Guid.NewGuid()
 
-    let private refType<'Value when 'Value: null> (createValue: unit -> 'Value) =
-        if Random.NextDouble() < 0.8
-        then createValue ()
-        else null
-
     let array count (createItem: unit -> 'Item) =
-        refType (fun () ->
-            Array.init count (fun _ -> createItem ()))
+        Array.init count (fun _ -> createItem ())
 
     let genericList count (createItem: unit -> 'Item) =
-        refType (fun () ->
-            ResizeArray(Array.init count (fun _ -> createItem ())))
+        ResizeArray(Array.init count (fun _ -> createItem ()))
 
     let nullable<'Value
         when 'Value: struct
@@ -93,8 +86,7 @@ module Random =
         else Nullable()
 
     let inner () =
-        refType (fun () ->
-            Inner(Field1 = bool (), Field2 = int ()))
+        Inner(Field1 = bool (), Field2 = int ())
 
 let RowCount = 100_000
 
@@ -109,7 +101,8 @@ let Records =
           Record.Field7 = Random.genericList 100 Random.int
           Record.Field8 = Random.genericList 10 Random.inner })
 
-let Bytes = ParquetNet.serialize Records
+let ParquetNetBytes = ParquetNet.serialize Records
+let ParquetFSharpBytes = ParquetFSharp.serialize Records
 
 [<CPUUsageDiagnoser>]
 [<MemoryDiagnoser>]
@@ -124,11 +117,11 @@ type Benchmarks() =
 
     [<Benchmark>]
     member this.Deserialize_ParquetNet() =
-        ParquetNet.deserialize<Record> Bytes
+        ParquetNet.deserialize<Record> ParquetNetBytes
 
     [<Benchmark>]
     member this.Deserialize_ParquetFSharp() =
-        ParquetFSharp.deserialize<Record> Bytes
+        ParquetFSharp.deserialize<Record> ParquetFSharpBytes
 
 [<EntryPoint>]
 let main _ =

@@ -33,6 +33,7 @@
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.ByteArray.fs" />
     <Compile Include="test.defaultconverter\Test.DefaultConverter.Array1d.fs" />
     <Compile Include="test.defaultconverter\Test.DefaultConverter.GenericList.fs" />
+    <Compile Include="test.defaultconverter\Test.DefaultConverter.FSharpList.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Option.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Nullable.fs" />
   </ItemGroup>

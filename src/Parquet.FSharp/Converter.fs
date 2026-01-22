@@ -1354,30 +1354,45 @@ type internal DefaultFSharpListConverter() =
     let createSerializer (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementSerializer = Serializer.resolve elementDotnetType
-        let getEnumerator =
-            let enumerableType =
-                typedefof<IEnumerable<_>>.MakeGenericType(elementDotnetType)
-            fun (list: Expression) ->
-                let enumerable = Expression.Convert(list, enumerableType)
-                Expression.Call(enumerable, "GetEnumerator", [])
+        let getEnumerator (list: Expression) =
+            // let enumerable = list :> IEnumerable<'Element>
+            // enumerable.GetEnumerator()
+            let enumerable =
+                Expression.Variable(
+                    typedefof<IEnumerable<_>>.MakeGenericType(elementDotnetType),
+                    "enumerable")
+            Expression.Block(
+                [ enumerable ],
+                Expression.Assign(enumerable, Expression.Convert(list, enumerable.Type)),
+                Expression.Call(enumerable, "GetEnumerator", []))
+            :> Expression
         Serializer.list dotnetType elementSerializer getEnumerator
 
-    let createDeserializer (dotnetType: Type) (schema: ListTypeSchema) =
+    // Deserializer for required values, i.e. those that will never have null
+    // values according to the source schema.
+    let createRequiredDeserializer (schema: ListTypeSchema) (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementDeserializer =
             Deserializer.resolve schema.Element elementDotnetType
         let createEmpty =
             Expression.Property(null, dotnetType.GetProperty("Empty"))
-        let createFromElementValues =
+        let createFromElementValues (elementValues: Expression) =
             let seqModuleType =
                 Assembly.Load("FSharp.Core").GetTypes()
                 |> Array.filter (fun type' -> type'.Name = "SeqModule")
                 |> Array.exactlyOne
-            fun (elementValues: Expression) ->
-                Expression.Call(seqModuleType, "ToList", [| elementDotnetType |], elementValues)
-                :> Expression
+            Expression.Call(seqModuleType, "ToList", [| elementDotnetType |], elementValues)
+            :> Expression
         Deserializer.list
             dotnetType elementDeserializer createEmpty createFromElementValues
+
+    // Deserializer for optional values, i.e. those that could have null values
+    // according to the source schema. Since we usually don't want null values
+    // in F#, we just wrap as a non-nullable type. This means an exception will
+    // be thrown if a null value is encountered in the data.
+    let createOptionalDeserializer schema dotnetType =
+        createRequiredDeserializer schema dotnetType
+        |> Deserializer.nonNullableReferenceTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1391,7 +1406,9 @@ type internal DefaultFSharpListConverter() =
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.List listSchema ->
-                    Option.Some (createDeserializer targetType listSchema)
+                    if sourceSchema.IsOptional
+                    then Option.Some (createOptionalDeserializer listSchema targetType)
+                    else Option.Some (createRequiredDeserializer listSchema targetType)
                 | _ -> Option.None
 
 type internal DefaultFSharpRecordConverter() =

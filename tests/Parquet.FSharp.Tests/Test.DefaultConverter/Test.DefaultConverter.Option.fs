@@ -5,7 +5,7 @@ open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
-module ``serialize option with atomic value-type value`` =
+module ``serialize option with atomic value`` =
     type Input = { Field1: int option }
     type Output = { Field1: int option }
 
@@ -37,50 +37,7 @@ module ``serialize option with atomic value-type value`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some 1 } |] @>
 
-module ``serialize option with atomic reference-type value`` =
-    type Input = { Field1: string option }
-    type Output = { Field1: string option }
-
-    let assertSchemaMatchesExpected schema =
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isOptional
-                Assert.Field.Type.isByteArray
-                Assert.Field.LogicalType.isString
-                Assert.Field.ConvertedType.isUtf8
-                Assert.Field.hasNoChildren ] ]
-
-    [<Fact>]
-    let ``none value`` () =
-        let inputRecords = [| { Input.Field1 = Option.None } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let schema = ParquetFile.readSchema bytes
-        assertSchemaMatchesExpected schema
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = Option.None } |] @>
-
-    [<Fact>]
-    let ``some null value`` () =
-        let inputRecords = [| { Input.Field1 = Option.Some null } |]
-        raisesWith<SerializationException>
-            <@ ParquetSerializer.Serialize(inputRecords) @>
-            (fun exn ->
-                <@ exn.Message =
-                    "null value encountered during serialization for type"
-                    + $" '{typeof<string>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
-
-    [<Fact>]
-    let ``some non-null value`` () =
-        let inputRecords = [| { Input.Field1 = Option.Some "hello" } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let schema = ParquetFile.readSchema bytes
-        assertSchemaMatchesExpected schema
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = Option.Some "hello" } |] @>
-
-module ``deserialize option with atomic value-type value from required atomic`` =
+module ``deserialize option with atomic value from required atomic`` =
     type Input = { Field1: int }
     type Output = { Field1: int option }
 
@@ -91,7 +48,7 @@ module ``deserialize option with atomic value-type value from required atomic`` 
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some 1 } |] @>
 
-module ``deserialize option with atomic value-type value from optional atomic`` =
+module ``deserialize option with atomic value from optional atomic`` =
     type Input = { Field1: int option }
     type Output = { Field1: int option }
 
@@ -108,32 +65,3 @@ module ``deserialize option with atomic value-type value from optional atomic`` 
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some 1 } |] @>
-
-module ``deserialize option with atomic reference-type value from required atomic`` =
-    type Input = { Field1: string }
-    type Output = { Field1: string option }
-
-    [<Fact>]
-    let ``value`` () =
-        let inputRecords = [| { Input.Field1 = "hello" } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = Option.Some "hello" } |] @>
-
-module ``deserialize option with atomic reference-type value from optional atomic`` =
-    type Input = { Field1: string option }
-    type Output = { Field1: string option }
-
-    [<Fact>]
-    let ``null value`` () =
-        let inputRecords = [| { Input.Field1 = Option.None } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = Option.None } |] @>
-
-    [<Fact>]
-    let ``non-null value`` () =
-        let inputRecords = [| { Input.Field1 = Option.Some "hello" } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = Option.Some "hello" } |] @>

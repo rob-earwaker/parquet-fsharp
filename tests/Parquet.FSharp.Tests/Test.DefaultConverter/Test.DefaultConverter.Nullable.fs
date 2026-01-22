@@ -6,7 +6,7 @@ open Swensen.Unquote
 open System
 open Xunit
 
-module ``serialize nullable atomic`` =
+module ``serialize nullable with atomic value`` =
     type Input = { Field1: Nullable<int> }
     type Output = { Field1: int option }
 
@@ -38,7 +38,7 @@ module ``serialize nullable atomic`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some 1 } |] @>
 
-module ``deserialize nullable atomic from required atomic`` =
+module ``deserialize nullable with atomic value from required atomic`` =
     type Input = { Field1: int }
     type Output = { Field1: Nullable<int> }
 
@@ -49,7 +49,7 @@ module ``deserialize nullable atomic from required atomic`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Nullable(1) } |] @>
 
-module ``deserialize nullable atomic from optional atomic`` =
+module ``deserialize nullable with atomic value from optional atomic`` =
     type Input = { Field1: int option }
     type Output = { Field1: Nullable<int> }
 

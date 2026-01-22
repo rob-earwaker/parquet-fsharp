@@ -9,6 +9,16 @@ module ``serialize string`` =
     type Input = { Field1: string }
     type Output = { Field1: string }
 
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isRequired
+                Assert.Field.Type.isByteArray
+                Assert.Field.LogicalType.isString
+                Assert.Field.ConvertedType.isUtf8
+                Assert.Field.hasNoChildren ] ]
+
     [<Fact>]
     let ``null value`` () =
         let inputRecords = [| { Input.Field1 = null } |]
@@ -31,15 +41,8 @@ module ``serialize string`` =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isRequired
-                Assert.Field.Type.isByteArray
-                Assert.Field.LogicalType.isString
-                Assert.Field.ConvertedType.isUtf8
-                Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``deserialize string from required string`` =

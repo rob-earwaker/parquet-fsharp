@@ -10,6 +10,16 @@ module ``serialize decimal`` =
     type Input = { Field1: decimal }
     type Output = { Field1: decimal }
 
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isRequired
+                Assert.Field.Type.isFixedLengthByteArray 16
+                Assert.Field.LogicalType.isDecimal 18 38
+                Assert.Field.ConvertedType.isDecimal
+                Assert.Field.hasNoChildren ] ]
+
     let Values = [|
         [| box -99999999999999999999.999999990000000000M |]
         [| box                    -1.000000000000000000M |]
@@ -26,15 +36,8 @@ module ``serialize decimal`` =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isRequired
-                Assert.Field.Type.isFixedLengthByteArray 16
-                Assert.Field.LogicalType.isDecimal 18 38
-                Assert.Field.ConvertedType.isDecimal
-                Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``deserialize decimal from required decimal`` =

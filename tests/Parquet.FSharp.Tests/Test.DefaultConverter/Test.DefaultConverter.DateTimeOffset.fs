@@ -10,6 +10,16 @@ module ``serialize date time offset`` =
     type Input = { Field1: DateTimeOffset }
     type Output = { Field1: DateTimeOffset }
 
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isRequired
+                Assert.Field.Type.isInt64
+                Assert.Field.LogicalType.isTimestamp true "microseconds"
+                Assert.Field.ConvertedType.hasNoValue
+                Assert.Field.hasNoChildren ] ]
+
     [<Theory>]
     [<InlineData((* ticks *)                   0L, (* offsetMins *)    0L)>] // Min value
     [<InlineData((* ticks *)         36000000000L, (* offsetMins *)   60L)>] // Min value with offset
@@ -31,15 +41,8 @@ module ``serialize date time offset`` =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isRequired
-                Assert.Field.Type.isInt64
-                Assert.Field.LogicalType.isTimestamp true "microseconds"
-                Assert.Field.ConvertedType.hasNoValue
-                Assert.Field.hasNoChildren ] ]
         // Expect the value to roundtrip, i.e. no truncation.
         let expectedValue = value
         // We assert using the default {DateTimeOffset} equality comparison on
@@ -70,15 +73,8 @@ module ``serialize date time offset`` =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isRequired
-                Assert.Field.Type.isInt64
-                Assert.Field.LogicalType.isTimestamp true "microseconds"
-                Assert.Field.ConvertedType.hasNoValue
-                Assert.Field.hasNoChildren ] ]
         // Expect the value to roundtrip, i.e. no truncation.
         let expectedValue = value
         // We assert using the default {DateTimeOffset} equality comparison on
@@ -109,15 +105,8 @@ module ``serialize date time offset`` =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isRequired
-                Assert.Field.Type.isInt64
-                Assert.Field.LogicalType.isTimestamp true "microseconds"
-                Assert.Field.ConvertedType.hasNoValue
-                Assert.Field.hasNoChildren ] ]
         // Expect the value to be truncated to microsecond precision.
         let expectedValue = value.AddTicks(-(value.Ticks % 10L))
         // We assert using the default {DateTimeOffset} equality comparison on

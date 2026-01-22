@@ -10,15 +10,7 @@ module ``serialize guid`` =
     type Input = { Field1: Guid }
     type Output = { Field1: Guid }
 
-    [<Theory>]
-    [<InlineData("00000000-0000-0000-0000-000000000000")>]
-    [<InlineData("fe611b97-e924-47d0-8f2a-270c564b5df6")>]
-    let ``value`` (value: string) =
-        let value = Guid.Parse(value)
-        let inputRecords = [| { Input.Field1 = value } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let schema = ParquetFile.readSchema bytes
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+    let assertSchemaMatchesExpected schema =
         Assert.schema schema [
             Assert.field [
                 Assert.Field.nameEquals "Field1"
@@ -27,6 +19,17 @@ module ``serialize guid`` =
                 Assert.Field.LogicalType.isUuid
                 Assert.Field.ConvertedType.hasNoValue
                 Assert.Field.hasNoChildren ] ]
+
+    [<Theory>]
+    [<InlineData("00000000-0000-0000-0000-000000000000")>]
+    [<InlineData("fe611b97-e924-47d0-8f2a-270c564b5df6")>]
+    let ``value`` (value: string) =
+        let value = Guid.Parse(value)
+        let inputRecords = [| { Input.Field1 = value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``deserialize guid from required uuid`` =

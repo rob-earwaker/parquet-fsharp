@@ -10,12 +10,7 @@ module ``serialize nullable atomic`` =
     type Input = { Field1: Nullable<int> }
     type Output = { Field1: int option }
 
-    [<Fact>]
-    let ``null value`` () =
-        let inputRecords = [| { Input.Field1 = Nullable() } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let schema = ParquetFile.readSchema bytes
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+    let assertSchemaMatchesExpected schema =
         Assert.schema schema [
             Assert.field [
                 Assert.Field.nameEquals "Field1"
@@ -24,6 +19,14 @@ module ``serialize nullable atomic`` =
                 Assert.Field.LogicalType.isInteger 32 true
                 Assert.Field.ConvertedType.isInt32
                 Assert.Field.hasNoChildren ] ]
+
+    [<Fact>]
+    let ``null value`` () =
+        let inputRecords = [| { Input.Field1 = Nullable() } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.None } |] @>
 
     [<Fact>]
@@ -31,15 +34,8 @@ module ``serialize nullable atomic`` =
         let inputRecords = [| { Input.Field1 = Nullable(1) } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isOptional
-                Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInteger 32 true
-                Assert.Field.ConvertedType.isInt32
-                Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = Option.Some 1 } |] @>
 
 module ``deserialize nullable atomic from required atomic`` =

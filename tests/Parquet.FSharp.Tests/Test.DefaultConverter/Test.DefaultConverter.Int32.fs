@@ -10,6 +10,16 @@ module ``serialize int32`` =
     type Input = { Field1: int32 }
     type Output = { Field1: int32 }
 
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isRequired
+                Assert.Field.Type.isInt32
+                Assert.Field.LogicalType.isInteger 32 true
+                Assert.Field.ConvertedType.isInt32
+                Assert.Field.hasNoChildren ] ]
+
     [<Theory>]
     [<InlineData(Int32.MinValue)>]
     [<InlineData(            -1)>]
@@ -20,15 +30,8 @@ module ``serialize int32`` =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isRequired
-                Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInteger 32 true
-                Assert.Field.ConvertedType.isInt32
-                Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``deserialize int32 from required int32`` =

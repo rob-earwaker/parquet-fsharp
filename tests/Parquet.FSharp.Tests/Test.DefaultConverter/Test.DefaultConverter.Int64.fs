@@ -10,6 +10,16 @@ module ``serialize int64`` =
     type Input = { Field1: int64 }
     type Output = { Field1: int64 }
 
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isRequired
+                Assert.Field.Type.isInt64
+                Assert.Field.LogicalType.isInteger 64 true
+                Assert.Field.ConvertedType.isInt64
+                Assert.Field.hasNoChildren ] ]
+
     [<Theory>]
     [<InlineData(Int64.MinValue)>]
     [<InlineData(           -1L)>]
@@ -20,15 +30,8 @@ module ``serialize int64`` =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isRequired
-                Assert.Field.Type.isInt64
-                Assert.Field.LogicalType.isInteger 64 true
-                Assert.Field.ConvertedType.isInt64
-                Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``deserialize int64 from required int64`` =

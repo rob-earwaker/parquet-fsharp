@@ -10,15 +10,7 @@ module ``serialize uint64`` =
     type Input = { Field1: uint64 }
     type Output = { Field1: uint64 }
 
-    [<Theory>]
-    [<InlineData(UInt64.MinValue)>]
-    [<InlineData(            1UL)>]
-    [<InlineData(UInt64.MaxValue)>]
-    let ``value`` value =
-        let inputRecords = [| { Input.Field1 = value } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let schema = ParquetFile.readSchema bytes
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+    let assertSchemaMatchesExpected schema =
         Assert.schema schema [
             Assert.field [
                 Assert.Field.nameEquals "Field1"
@@ -27,6 +19,17 @@ module ``serialize uint64`` =
                 Assert.Field.LogicalType.isInteger 64 false
                 Assert.Field.ConvertedType.isUInt64
                 Assert.Field.hasNoChildren ] ]
+
+    [<Theory>]
+    [<InlineData(UInt64.MinValue)>]
+    [<InlineData(            1UL)>]
+    [<InlineData(UInt64.MaxValue)>]
+    let ``value`` value =
+        let inputRecords = [| { Input.Field1 = value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``deserialize uint64 from required uint64`` =

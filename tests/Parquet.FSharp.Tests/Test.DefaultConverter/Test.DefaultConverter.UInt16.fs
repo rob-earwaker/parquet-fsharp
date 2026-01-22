@@ -10,15 +10,7 @@ module ``serialize uint16`` =
     type Input = { Field1: uint16 }
     type Output = { Field1: uint16 }
 
-    [<Theory>]
-    [<InlineData(UInt16.MinValue)>]
-    [<InlineData(            1us)>]
-    [<InlineData(UInt16.MaxValue)>]
-    let ``value`` value =
-        let inputRecords = [| { Input.Field1 = value } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let schema = ParquetFile.readSchema bytes
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+    let assertSchemaMatchesExpected schema =
         Assert.schema schema [
             Assert.field [
                 Assert.Field.nameEquals "Field1"
@@ -27,6 +19,17 @@ module ``serialize uint16`` =
                 Assert.Field.LogicalType.isInteger 16 false
                 Assert.Field.ConvertedType.isUInt16
                 Assert.Field.hasNoChildren ] ]
+
+    [<Theory>]
+    [<InlineData(UInt16.MinValue)>]
+    [<InlineData(            1us)>]
+    [<InlineData(UInt16.MaxValue)>]
+    let ``value`` value =
+        let inputRecords = [| { Input.Field1 = value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``deserialize uint16 from required uint16`` =

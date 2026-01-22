@@ -9,14 +9,7 @@ module ``serialize bool`` =
     type Input = { Field1: bool }
     type Output = { Field1: bool }
 
-    [<Theory>]
-    [<InlineData(false)>]
-    [<InlineData( true)>]
-    let ``value`` value =
-        let inputRecords = [| { Input.Field1 = value } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let schema = ParquetFile.readSchema bytes
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+    let assertSchemaMatchesExpected schema =
         Assert.schema schema [
             Assert.field [
                 Assert.Field.nameEquals "Field1"
@@ -25,6 +18,16 @@ module ``serialize bool`` =
                 Assert.Field.LogicalType.hasNoValue
                 Assert.Field.ConvertedType.hasNoValue
                 Assert.Field.hasNoChildren ] ]
+
+    [<Theory>]
+    [<InlineData(false)>]
+    [<InlineData( true)>]
+    let ``value`` value =
+        let inputRecords = [| { Input.Field1 = value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``deserialize bool from required bool`` =

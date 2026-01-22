@@ -10,12 +10,7 @@ module ``serialize float64`` =
     type Input = { Field1: float }
     type Output = { Field1: float }
 
-    [<Fact>]
-    let ``nan value`` () =
-        let inputRecords = [| { Input.Field1 = Double.NaN } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let schema = ParquetFile.readSchema bytes
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+    let assertSchemaMatchesExpected schema =
         Assert.schema schema [
             Assert.field [
                 Assert.Field.nameEquals "Field1"
@@ -24,6 +19,14 @@ module ``serialize float64`` =
                 Assert.Field.LogicalType.hasNoValue
                 Assert.Field.ConvertedType.hasNoValue
                 Assert.Field.hasNoChildren ] ]
+
+    [<Fact>]
+    let ``nan value`` () =
+        let inputRecords = [| { Input.Field1 = Double.NaN } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords.Length = 1 @>
         let outputRecord = outputRecords[0]
         test <@ Double.IsNaN(outputRecord.Field1) @>
@@ -46,15 +49,8 @@ module ``serialize float64`` =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isRequired
-                Assert.Field.Type.isFloat64
-                Assert.Field.LogicalType.hasNoValue
-                Assert.Field.ConvertedType.hasNoValue
-                Assert.Field.hasNoChildren ] ]
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``deserialize float64 from required float64`` =

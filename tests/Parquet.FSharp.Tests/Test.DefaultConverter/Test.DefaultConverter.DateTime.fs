@@ -10,6 +10,16 @@ module ``serialize date time`` =
     type Input = { Field1: DateTime }
     type Output = { Field1: DateTime }
 
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isRequired
+                Assert.Field.Type.isInt64
+                Assert.Field.LogicalType.isTimestamp true "microseconds"
+                Assert.Field.ConvertedType.hasNoValue
+                Assert.Field.hasNoChildren ] ]
+
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
     [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
@@ -33,15 +43,8 @@ module ``serialize date time`` =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isRequired
-                Assert.Field.Type.isInt64
-                Assert.Field.LogicalType.isTimestamp true "microseconds"
-                Assert.Field.ConvertedType.hasNoValue
-                Assert.Field.hasNoChildren ] ]
         // Default {DateTime} equality only compares the number of ticks and
         // ignores the {DateTimeKind}, so we need to check this separately.
         test <@ outputRecords.Length = 1 @>
@@ -76,15 +79,8 @@ module ``serialize date time`` =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isRequired
-                Assert.Field.Type.isInt64
-                Assert.Field.LogicalType.isTimestamp true "microseconds"
-                Assert.Field.ConvertedType.hasNoValue
-                Assert.Field.hasNoChildren ] ]
         // Expect the value to roundtrip, i.e. no truncation.
         let expectedValue = value
         // Default {DateTime} equality only compares the number of ticks and
@@ -107,15 +103,8 @@ module ``serialize date time`` =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isRequired
-                Assert.Field.Type.isInt64
-                Assert.Field.LogicalType.isTimestamp true "microseconds"
-                Assert.Field.ConvertedType.hasNoValue
-                Assert.Field.hasNoChildren ] ]
         // Expect the value to roundtrip, i.e. no truncation.
         let expectedValue = value
         // Default {DateTime} equality only compares the number of ticks and
@@ -138,15 +127,8 @@ module ``serialize date time`` =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        Assert.schema schema [
-            Assert.field [
-                Assert.Field.nameEquals "Field1"
-                Assert.Field.isRequired
-                Assert.Field.Type.isInt64
-                Assert.Field.LogicalType.isTimestamp true "microseconds"
-                Assert.Field.ConvertedType.hasNoValue
-                Assert.Field.hasNoChildren ] ]
         // Expect the value to be truncated to microsecond precision.
         let expectedValue = value.AddTicks(-(value.Ticks % 10L))
         // Default {DateTime} equality only compares the number of ticks and

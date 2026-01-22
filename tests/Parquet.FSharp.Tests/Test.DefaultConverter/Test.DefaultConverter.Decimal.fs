@@ -20,7 +20,7 @@ module ``serialize decimal`` =
                 Assert.Field.ConvertedType.isDecimal
                 Assert.Field.hasNoChildren ] ]
 
-    let Values = [|
+    let Value = [|
         [| box -99999999999999999999.999999990000000000M |]
         [| box                    -1.000000000000000000M |]
         [| box                    -0.000000000000000001M |]
@@ -31,7 +31,7 @@ module ``serialize decimal`` =
         [| box 100000000000000000000.000000000000000000M |] |]
 
     [<Theory>]
-    [<MemberData(nameof Values)>]
+    [<MemberData(nameof Value)>]
     let ``value`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -44,7 +44,7 @@ module ``deserialize decimal from required decimal`` =
     type Input = { Field1: decimal }
     type Output = { Field1: decimal }
 
-    let Values = [|
+    let Value = [|
         [| box -99999999999999999999.999999990000000000M |]
         [| box                    -1.000000000000000000M |]
         [| box                    -0.000000000000000001M |]
@@ -55,7 +55,7 @@ module ``deserialize decimal from required decimal`` =
         [| box 100000000000000000000.000000000000000000M |] |]
 
     [<Theory>]
-    [<MemberData(nameof Values)>]
+    [<MemberData(nameof Value)>]
     let ``value`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -77,7 +77,7 @@ module ``deserialize decimal from optional decimal`` =
                     "null value encountered during deserialization for"
                     + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
 
-    let NonNullValues = [|
+    let NonNullValue = [|
         [| box -99999999999999999999.999999990000000000M |]
         [| box                    -1.000000000000000000M |]
         [| box                    -0.000000000000000001M |]
@@ -88,7 +88,7 @@ module ``deserialize decimal from optional decimal`` =
         [| box 100000000000000000000.000000000000000000M |] |]
 
     [<Theory>]
-    [<MemberData(nameof NonNullValues)>]
+    [<MemberData(nameof NonNullValue)>]
     let ``non-null value`` value =
         let inputRecords = [| { Input.Field1 = Option.Some value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -99,7 +99,7 @@ module ``deserialize decimal from required int64`` =
     type Input = { Field1: int64 }
     type Output = { Field1: decimal }
 
-    let Values = [|
+    let Value = [|
         [| (* inputValue *) box Int64.MinValue; (* outputValue *) box -9223372036854775808.0M |]
         [| (* inputValue *) box            -1L; (* outputValue *) box                   -1.0M |]
         [| (* inputValue *) box             0L; (* outputValue *) box                    0.0M |]
@@ -107,7 +107,7 @@ module ``deserialize decimal from required int64`` =
         [| (* inputValue *) box Int64.MaxValue; (* outputValue *) box  9223372036854775807.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof Values)>]
+    [<MemberData(nameof Value)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -129,7 +129,7 @@ module ``deserialize decimal from optional int64`` =
                     "null value encountered during deserialization for"
                     + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
 
-    let NonNullValues = [|
+    let NonNullValue = [|
         [| (* inputValue *) box Int64.MinValue; (* outputValue *) box -9223372036854775808.0M |]
         [| (* inputValue *) box            -1L; (* outputValue *) box                   -1.0M |]
         [| (* inputValue *) box             0L; (* outputValue *) box                    0.0M |]
@@ -137,7 +137,7 @@ module ``deserialize decimal from optional int64`` =
         [| (* inputValue *) box Int64.MaxValue; (* outputValue *) box  9223372036854775807.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof NonNullValues)>]
+    [<MemberData(nameof NonNullValue)>]
     let ``non-null value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -148,7 +148,7 @@ module ``deserialize decimal from required int32`` =
     type Input = { Field1: int32 }
     type Output = { Field1: decimal }
 
-    let Values = [|
+    let Value = [|
         [| (* inputValue *) box Int32.MinValue; (* outputValue *) box -2147483648.0M |]
         [| (* inputValue *) box             -1; (* outputValue *) box          -1.0M |]
         [| (* inputValue *) box              0; (* outputValue *) box           0.0M |]
@@ -156,7 +156,7 @@ module ``deserialize decimal from required int32`` =
         [| (* inputValue *) box Int32.MaxValue; (* outputValue *) box  2147483647.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof Values)>]
+    [<MemberData(nameof Value)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -178,7 +178,7 @@ module ``deserialize decimal from optional int32`` =
                     "null value encountered during deserialization for"
                     + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
 
-    let NonNullValues = [|
+    let NonNullValue = [|
         [| (* inputValue *) box Int32.MinValue; (* outputValue *) box -2147483648.0M |]
         [| (* inputValue *) box             -1; (* outputValue *) box          -1.0M |]
         [| (* inputValue *) box              0; (* outputValue *) box           0.0M |]
@@ -186,7 +186,7 @@ module ``deserialize decimal from optional int32`` =
         [| (* inputValue *) box Int32.MaxValue; (* outputValue *) box  2147483647.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof NonNullValues)>]
+    [<MemberData(nameof NonNullValue)>]
     let ``non-null value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -197,7 +197,7 @@ module ``deserialize decimal from required int16`` =
     type Input = { Field1: int16 }
     type Output = { Field1: decimal }
 
-    let Values = [|
+    let Value = [|
         [| (* inputValue *) box Int16.MinValue; (* outputValue *) box -32768.0M |]
         [| (* inputValue *) box            -1s; (* outputValue *) box     -1.0M |]
         [| (* inputValue *) box             0s; (* outputValue *) box      0.0M |]
@@ -205,7 +205,7 @@ module ``deserialize decimal from required int16`` =
         [| (* inputValue *) box Int16.MaxValue; (* outputValue *) box  32767.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof Values)>]
+    [<MemberData(nameof Value)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -227,7 +227,7 @@ module ``deserialize decimal from optional int16`` =
                     "null value encountered during deserialization for"
                     + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
 
-    let NonNullValues = [|
+    let NonNullValue = [|
         [| (* inputValue *) box Int16.MinValue; (* outputValue *) box -32768.0M |]
         [| (* inputValue *) box            -1s; (* outputValue *) box     -1.0M |]
         [| (* inputValue *) box             0s; (* outputValue *) box      0.0M |]
@@ -235,7 +235,7 @@ module ``deserialize decimal from optional int16`` =
         [| (* inputValue *) box Int16.MaxValue; (* outputValue *) box  32767.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof NonNullValues)>]
+    [<MemberData(nameof NonNullValue)>]
     let ``non-null value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -246,7 +246,7 @@ module ``deserialize decimal from required int8`` =
     type Input = { Field1: int8 }
     type Output = { Field1: decimal }
 
-    let Values = [|
+    let Value = [|
         [| (* inputValue *) box SByte.MinValue; (* outputValue *) box -128.0M |]
         [| (* inputValue *) box            -1y; (* outputValue *) box   -1.0M |]
         [| (* inputValue *) box             0y; (* outputValue *) box    0.0M |]
@@ -254,7 +254,7 @@ module ``deserialize decimal from required int8`` =
         [| (* inputValue *) box SByte.MaxValue; (* outputValue *) box  127.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof Values)>]
+    [<MemberData(nameof Value)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -276,7 +276,7 @@ module ``deserialize decimal from optional int8`` =
                     "null value encountered during deserialization for"
                     + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
 
-    let NonNullValues = [|
+    let NonNullValue = [|
         [| (* inputValue *) box SByte.MinValue; (* outputValue *) box -128.0M |]
         [| (* inputValue *) box            -1y; (* outputValue *) box   -1.0M |]
         [| (* inputValue *) box             0y; (* outputValue *) box    0.0M |]
@@ -284,7 +284,7 @@ module ``deserialize decimal from optional int8`` =
         [| (* inputValue *) box SByte.MaxValue; (* outputValue *) box  127.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof NonNullValues)>]
+    [<MemberData(nameof NonNullValue)>]
     let ``non-null value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -295,13 +295,13 @@ module ``deserialize decimal from required uint64`` =
     type Input = { Field1: uint64 }
     type Output = { Field1: decimal }
 
-    let Values = [|
+    let Value = [|
         [| (* inputValue *) box UInt64.MinValue; (* outputValue *) box                    0.0M |]
         [| (* inputValue *) box             1UL; (* outputValue *) box                    1.0M |]
         [| (* inputValue *) box UInt64.MaxValue; (* outputValue *) box 18446744073709551615.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof Values)>]
+    [<MemberData(nameof Value)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -323,13 +323,13 @@ module ``deserialize decimal from optional uint64`` =
                     "null value encountered during deserialization for"
                     + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
 
-    let NonNullValues = [|
+    let NonNullValue = [|
         [| (* inputValue *) box UInt64.MinValue; (* outputValue *) box                    0.0M |]
         [| (* inputValue *) box             1UL; (* outputValue *) box                    1.0M |]
         [| (* inputValue *) box UInt64.MaxValue; (* outputValue *) box 18446744073709551615.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof NonNullValues)>]
+    [<MemberData(nameof NonNullValue)>]
     let ``non-null value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -340,13 +340,13 @@ module ``deserialize decimal from required uint32`` =
     type Input = { Field1: uint32 }
     type Output = { Field1: decimal }
 
-    let Values = [|
+    let Value = [|
         [| (* inputValue *) box UInt32.MinValue; (* outputValue *) box          0.0M |]
         [| (* inputValue *) box              1u; (* outputValue *) box          1.0M |]
         [| (* inputValue *) box UInt32.MaxValue; (* outputValue *) box 4294967295.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof Values)>]
+    [<MemberData(nameof Value)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -368,13 +368,13 @@ module ``deserialize decimal from optional uint32`` =
                     "null value encountered during deserialization for"
                     + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
 
-    let NonNullValues = [|
+    let NonNullValue = [|
         [| (* inputValue *) box UInt32.MinValue; (* outputValue *) box          0.0M |]
         [| (* inputValue *) box              1u; (* outputValue *) box          1.0M |]
         [| (* inputValue *) box UInt32.MaxValue; (* outputValue *) box 4294967295.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof NonNullValues)>]
+    [<MemberData(nameof NonNullValue)>]
     let ``non-null value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -385,13 +385,13 @@ module ``deserialize decimal from required uint16`` =
     type Input = { Field1: uint16 }
     type Output = { Field1: decimal }
 
-    let Values = [|
+    let Value = [|
         [| (* inputValue *) box UInt16.MinValue; (* outputValue *) box     0.0M |]
         [| (* inputValue *) box             1us; (* outputValue *) box     1.0M |]
         [| (* inputValue *) box UInt16.MaxValue; (* outputValue *) box 65535.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof Values)>]
+    [<MemberData(nameof Value)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -413,13 +413,13 @@ module ``deserialize decimal from optional uint16`` =
                     "null value encountered during deserialization for"
                     + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
 
-    let NonNullValues = [|
+    let NonNullValue = [|
         [| (* inputValue *) box UInt16.MinValue; (* outputValue *) box     0.0M |]
         [| (* inputValue *) box             1us; (* outputValue *) box     1.0M |]
         [| (* inputValue *) box UInt16.MaxValue; (* outputValue *) box 65535.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof NonNullValues)>]
+    [<MemberData(nameof NonNullValue)>]
     let ``non-null value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -430,13 +430,13 @@ module ``deserialize decimal from required uint8`` =
     type Input = { Field1: uint8 }
     type Output = { Field1: decimal }
 
-    let Values = [|
+    let Value = [|
         [| (* inputValue *) box Byte.MinValue; (* outputValue *) box   0.0M |]
         [| (* inputValue *) box           1uy; (* outputValue *) box   1.0M |]
         [| (* inputValue *) box Byte.MaxValue; (* outputValue *) box 255.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof Values)>]
+    [<MemberData(nameof Value)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -458,13 +458,13 @@ module ``deserialize decimal from optional uint8`` =
                     "null value encountered during deserialization for"
                     + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
 
-    let NonNullValues = [|
+    let NonNullValue = [|
         [| (* inputValue *) box Byte.MinValue; (* outputValue *) box   0.0M |]
         [| (* inputValue *) box           1uy; (* outputValue *) box   1.0M |]
         [| (* inputValue *) box Byte.MaxValue; (* outputValue *) box 255.0M |] |]
 
     [<Theory>]
-    [<MemberData(nameof NonNullValues)>]
+    [<MemberData(nameof NonNullValue)>]
     let ``non-null value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)

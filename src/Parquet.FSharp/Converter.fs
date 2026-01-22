@@ -432,6 +432,7 @@ module private FieldDeserializer =
 
 module internal ValueConverter =
     let All : IValueConverter[] = [|
+        // TODO: These should probably be singletons.
         DefaultBoolConverter()
         DefaultInt8Converter()
         DefaultInt16Converter()
@@ -1250,7 +1251,9 @@ type internal DefaultArray1dConverter() =
             :> Expression
         Serializer.list dotnetType elementSerializer getEnumerator
 
-    let createDeserializer (schema: ListTypeSchema) (dotnetType: Type) =
+    // Deserializer for required values, i.e. those that will never have null
+    // values according to the source schema.
+    let createRequiredDeserializer (schema: ListTypeSchema) (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetElementType()
         let elementDeserializer =
             Deserializer.resolve schema.Element elementDotnetType
@@ -1260,6 +1263,14 @@ type internal DefaultArray1dConverter() =
             Expression.Call(elementValues, "ToArray", [])
         Deserializer.list
             dotnetType elementDeserializer createEmpty createFromElementValues
+
+    // Deserializer for optional values, i.e. those that could have null values
+    // according to the source schema. Since we usually don't want null values
+    // in F#, we just wrap as a non-nullable type. This means an exception will
+    // be thrown if a null value is encountered in the data.
+    let createOptionalDeserializer schema dotnetType =
+        createRequiredDeserializer schema dotnetType
+        |> Deserializer.nonNullableReferenceTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1273,7 +1284,9 @@ type internal DefaultArray1dConverter() =
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.List listSchema ->
-                    Option.Some (createDeserializer listSchema targetType)
+                    if sourceSchema.IsOptional
+                    then Option.Some (createOptionalDeserializer listSchema targetType)
+                    else Option.Some (createRequiredDeserializer listSchema targetType)
                 | _ -> Option.None
 
 type internal DefaultGenericListConverter() =

@@ -13,7 +13,7 @@ An F# serailization library for the [Apache Parquet](https://parquet.apache.org/
   - [Date Times](#date-times)
   - [Strings](#strings)
   - [Byte Arrays](#byte-arrays)
-  - [Collections, Sequences \& Enumerables](#collections-sequences--enumerables)
+  - [Arrays, Lists \& Enumerables](#arrays-lists--enumerables)
   - [Records, Structs \& Classes](#records-structs--classes)
   - [Optional Types](#optional-types)
   - [Discriminated Unions](#discriminated-unions)
@@ -131,11 +131,15 @@ Like other types, byte arrays can be deserialized from optional values as well a
 
 [[Return to top]](#parquetfsharp)
 
-### Collections, Sequences & Enumerables
+### Arrays, Lists & Enumerables
 
 Applies to: `'Element[]`, `'Element list`, `ResizeArray<'Element>`
 
-TODO: Add docs
+Sequences of values are stored as [Parquet lists](https://github.com/apache/parquet-format/blob/4b1c72c837bec5b792b2514f0057533030fcedf8/LogicalTypes.md#lists), which contain repeated elements, analagous to the `'Element seq` or  `IEnumerable<'Element>` .NET types.
+
+Supported sequence types are serialized as required Parquet lists by default, even for sequences that allow null as a valid value. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating sequences as required provides a guarantee that any serialized or deserialized sequences are not null. If a null Parquet list is encountered during serialization or deserialization, a `SerializationException` will be raised.
+
+Sequences can be deserialized from both optional and required Parquet lists, but the same null guarantee is provided, so any null lists encountered will still result in an exception.
 
 [[Return to top]](#parquetfsharp)
 

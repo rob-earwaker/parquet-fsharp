@@ -31,9 +31,9 @@
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.DateTimeOffset.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.String.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.ByteArray.fs" />
+    <Compile Include="Test.DefaultConverter\Test.DefaultConverter.List.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Array1d.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.ResizeArray.fs" />
-    <Compile Include="Test.DefaultConverter\Test.DefaultConverter.List.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Record.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Option.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Nullable.fs" />

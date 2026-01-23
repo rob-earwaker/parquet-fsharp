@@ -6,8 +6,8 @@ open Swensen.Unquote
 open Xunit
 
 module ``serialize 1d array with atomic elements`` =
-    type Input = { Field1: int[] }
-    type Output = { Field1: int[] }
+    type Input = { Field1: int array }
+    type Output = { Field1: int array }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -39,7 +39,7 @@ module ``serialize 1d array with atomic elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int[]>.FullName}' which is not treated as"
+                    + $" '{typeof<int array>.FullName}' which is not treated as"
                     + " nullable by default" @>)
 
     let NonNull = [|
@@ -58,8 +58,8 @@ module ``serialize 1d array with atomic elements`` =
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``serialize 1d array with list elements`` =
-    type Input = { Field1: int[][] }
-    type Output = { Field1: int[][] }
+    type Input = { Field1: int list array }
+    type Output = { Field1: int list array }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -103,15 +103,15 @@ module ``serialize 1d array with list elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int[][]>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<int list array>.FullName}' which is not"
+                    + " treated as nullable by default" @>)
 
     let NonNull = [|
-        [| box<int[][]> (**) [||] (**) |]
-        [| box<int[][]> (**) [| [||] |] (**) |]
-        [| box<int[][]> (**) [| [| 1; 2; 3 |] |] (**) |]
-        [| box<int[][]> (**) [| [||]; [||]; [||] |] (**) |]
-        [| box<int[][]> (**) [| [| 1 |]; [||]; [| 2; 3; 4 |] |] (**) |] |]
+        [| box<int list array> (**) [||] (**) |]
+        [| box<int list array> (**) [| [] |] (**) |]
+        [| box<int list array> (**) [| [ 1; 2; 3 ] |] (**) |]
+        [| box<int list array> (**) [| []; []; [] |] (**) |]
+        [| box<int list array> (**) [| [ 1 ]; []; [ 2; 3; 4 ] |] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNull)>]
@@ -125,8 +125,8 @@ module ``serialize 1d array with list elements`` =
 
 module ``serialize 1d array with record elements`` =
     type Record = { Field2: int }
-    type Input = { Field1: Record[] }
-    type Output = { Field1: Record[] }
+    type Input = { Field1: Record array }
+    type Output = { Field1: Record array }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -164,13 +164,13 @@ module ``serialize 1d array with record elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<Record[]>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<Record array>.FullName}' which is not treated"
+                    + " as nullable by default" @>)
 
     let NonNull = [|
-        [| box<Record[]> (**) [||] (**) |]
-        [| box<Record[]> (**) [| { Field2 = 1 } |] (**) |]
-        [| box<Record[]> (**) [| { Field2 = 1 }; { Field2 = 2 }; { Field2 = 3 } |] (**) |] |]
+        [| box<Record array> (**) [||] (**) |]
+        [| box<Record array> (**) [| { Field2 = 1 } |] (**) |]
+        [| box<Record array> (**) [| { Field2 = 1 }; { Field2 = 2 } |] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNull)>]
@@ -183,8 +183,8 @@ module ``serialize 1d array with record elements`` =
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``serialize 1d array with optional elements`` =
-    type Input = { Field1: option<int>[] }
-    type Output = { Field1: option<int>[] }
+    type Input = { Field1: int option array }
+    type Output = { Field1: int option array }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -216,16 +216,16 @@ module ``serialize 1d array with optional elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<option<int>[]>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<int option array>.FullName}' which is not"
+                    + " treated as nullable by default" @>)
 
     let NonNull = [|
-        [| box<option<int>[]> (**) [||] (**) |]
-        [| box<option<int>[]> (**) [| Option.None |] (**) |]
-        [| box<option<int>[]> (**) [| Option.Some 1; |] (**) |]
-        [| box<option<int>[]> (**) [| Option.None; Option.None; Option.None |] (**) |]
-        [| box<option<int>[]> (**) [| Option.Some 1; Option.None; Option.Some 3 |] (**) |]
-        [| box<option<int>[]> (**) [| Option.Some 1; Option.Some 2; Option.Some 3 |] (**) |] |]
+        [| box<int option array> (**) [||] (**) |]
+        [| box<int option array> (**) [| Option.None |] (**) |]
+        [| box<int option array> (**) [| Option.Some 1 |] (**) |]
+        [| box<int option array> (**) [| Option.None; Option.None; Option.None |] (**) |]
+        [| box<int option array> (**) [| Option.Some 1; Option.None; Option.Some 3 |] (**) |]
+        [| box<int option array> (**) [| Option.Some 1; Option.Some 2 |] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNull)>]
@@ -238,25 +238,30 @@ module ``serialize 1d array with optional elements`` =
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
 module ``deserialize 1d array with atomic elements from required list with atomic elements`` =
-    type Input = { Field1: int[] }
-    type Output = { Field1: int[] }
+    type Input = { Field1: int list }
+    type Output = { Field1: int array }
 
     let Value = [|
-        [| box<int[]> (**) [||] (**) |]
-        [| box<int[]> (**) [| 1 |] (**) |]
-        [| box<int[]> (**) [| 1; 2; 3 |] (**) |] |]
+        [| box<int list> (* inputValue *) [] (**);
+            box<int array> (* outputValue *) [||] (**) |]
+
+        [| box<int list> (* inputValue *) [ 1 ] (**);
+            box<int array> (* outputValue *) [| 1 |] (**) |]
+
+        [| box<int list> (* inputValue *) [ 1; 2; 3 ] (**);
+            box<int array> (* outputValue *) [| 1; 2; 3 |] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
-    let ``value`` value =
-        let inputRecords = [| { Input.Field1 = value } |]
+    let ``value`` inputValue outputValue =
+        let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
         
 module ``deserialize 1d array with atomic elements from optional list with atomic elements`` =
-    type Input = { Field1: int[] option }
-    type Output = { Field1: int[] }
+    type Input = { Field1: int list option }
+    type Output = { Field1: int array }
 
     [<Fact>]
     let ``null value`` () =
@@ -267,44 +272,58 @@ module ``deserialize 1d array with atomic elements from optional list with atomi
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<int[]>.FullName}' which is not treated as"
+                    + $" '{typeof<int array>.FullName}' which is not treated as"
                     + " nullable by default" @>)
 
     let NonNullValue = [|
-        [| box<int[]> (**) [||] (**) |]
-        [| box<int[]> (**) [| 1 |] (**) |]
-        [| box<int[]> (**) [| 1; 2; 3 |] (**) |] |]
+        [| box<int list> (* inputValue *) [] (**);
+            box<int array> (* outputValue *) [||] (**) |]
+
+        [| box<int list> (* inputValue *) [ 1 ] (**);
+            box<int array> (* outputValue *) [| 1 |] (**) |]
+
+        [| box<int list> (* inputValue *) [ 1; 2; 3 ] (**);
+            box<int array> (* outputValue *) [| 1; 2; 3 |] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNullValue)>]
-    let ``non-null value`` value =
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
+    let ``non-null value`` inputValue outputValue =
+        let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
         
 module ``deserialize 1d array with list elements from required list with list elements`` =
-    type Input = { Field1: int[][] }
-    type Output = { Field1: int[][] }
+    type Input = { Field1: int list list }
+    type Output = { Field1: int list array }
 
     let Value = [|
-        [| box<int[][]> (**) [||] (**) |]
-        [| box<int[][]> (**) [| [||] |] (**) |]
-        [| box<int[][]> (**) [| [| 1; 2; 3 |] |] (**) |]
-        [| box<int[][]> (**) [| [||]; [||]; [||] |] (**) |]
-        [| box<int[][]> (**) [| [| 1 |]; [||]; [| 2; 3; 4 |] |] (**) |] |]
+        [| box<int list list> (* inputValue *) [] (**);
+            box<int list array> (* outputValue*) [||] (**) |]
+
+        [| box<int list list> (* inputValue *) [ [] ] (**);
+            box<int list array> (* outputValue*) [| [] |] (**) |]
+
+        [| box<int list list> (* inputValue *) [ [ 1; 2; 3 ] ] (**);
+            box<int list array> (* outputValue*) [| [ 1; 2; 3 ] |] (**) |]
+
+        [| box<int list list> (* inputValue *) [ []; []; [] ] (**);
+            box<int list array> (* outputValue*) [| []; []; [] |] (**) |]
+
+        [| box<int list list> (* inputValue *) [ [ 1 ]; []; [ 2; 3; 4 ] ] (**);
+            box<int list array> (* outputValue*) [| [ 1 ]; []; [ 2; 3; 4 ] |] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
-    let ``value`` value =
-        let inputRecords = [| { Input.Field1 = value } |]
+    let ``value`` inputValue outputValue =
+        let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
         
 module ``deserialize 1d array with list elements from optional list with list elements`` =
-    type Input = { Field1: int[][] option }
-    type Output = { Field1: int[][] }
+    type Input = { Field1: int list list option }
+    type Output = { Field1: int list array }
 
     [<Fact>]
     let ``null value`` () =
@@ -315,46 +334,60 @@ module ``deserialize 1d array with list elements from optional list with list el
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<int[][]>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<int list array>.FullName}' which is not"
+                    + " treated as nullable by default" @>)
 
     let NonNullValue = [|
-        [| box<int[][]> (**) [||] (**) |]
-        [| box<int[][]> (**) [| [||] |] (**) |]
-        [| box<int[][]> (**) [| [| 1; 2; 3 |] |] (**) |]
-        [| box<int[][]> (**) [| [||]; [||]; [||] |] (**) |]
-        [| box<int[][]> (**) [| [| 1 |]; [||]; [| 2; 3; 4 |] |] (**) |] |]
+        [| box<int list list> (* inputValue *) [] (**);
+            box<int list array> (* outputValue*) [||] (**) |]
+
+        [| box<int list list> (* inputValue *) [ [] ] (**);
+            box<int list array> (* outputValue*) [| [] |] (**) |]
+
+        [| box<int list list> (* inputValue *) [ [ 1; 2; 3 ] ] (**);
+            box<int list array> (* outputValue*) [| [ 1; 2; 3 ] |] (**) |]
+
+        [| box<int list list> (* inputValue *) [ []; []; [] ] (**);
+            box<int list array> (* outputValue*) [| []; []; [] |] (**) |]
+
+        [| box<int list list> (* inputValue *) [ [ 1 ]; []; [ 2; 3; 4 ] ] (**);
+            box<int list array> (* outputValue*) [| [ 1 ]; []; [ 2; 3; 4 ] |] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNullValue)>]
-    let ``non-null value`` value =
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
+    let ``non-null value`` inputValue outputValue =
+        let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
         
 module ``deserialize 1d array with record elements from required list with record elements`` =
     type Record = { Field2: int }
-    type Input = { Field1: Record[] }
-    type Output = { Field1: Record[] }
+    type Input = { Field1: Record list }
+    type Output = { Field1: Record array }
 
     let Value = [|
-        [| box<Record[]> (**) [||] (**) |]
-        [| box<Record[]> (**) [| { Field2 = 1 } |] (**) |]
-        [| box<Record[]> (**) [| { Field2 = 1 }; { Field2 = 2 }; { Field2 = 3 } |] (**) |] |]
+        [| box<Record list> (* inputValue *) [] (**);
+            box<Record array> (* outputValue *) [||] (**) |]
+
+        [| box<Record list> (* inputValue *) [ { Field2 = 1 } ] (**);
+            box<Record array> (* outputValue *) [| { Field2 = 1 } |] (**) |]
+
+        [| box<Record list> (* inputValue *) [ { Field2 = 1 }; { Field2 = 2 } ] (**);
+            box<Record array> (* outputValue *) [| { Field2 = 1 }; { Field2 = 2 } |] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
-    let ``value`` value =
-        let inputRecords = [| { Input.Field1 = value } |]
+    let ``value`` inputValue outputValue =
+        let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
         
 module ``deserialize 1d array with record elements from optional list with record elements`` =
     type Record = { Field2: int }
-    type Input = { Field1: Record[] option }
-    type Output = { Field1: Record[] }
+    type Input = { Field1: Record list option }
+    type Output = { Field1: Record array }
 
     [<Fact>]
     let ``null value`` () =
@@ -365,45 +398,61 @@ module ``deserialize 1d array with record elements from optional list with recor
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<Record[]>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<Record array>.FullName}' which is not treated"
+                    + " as nullable by default" @>)
 
     let NonNullValue = [|
-        [| box<Record[]> (**) [||] (**) |]
-        [| box<Record[]> (**) [| { Field2 = 1 } |] (**) |]
-        [| box<Record[]> (**) [| { Field2 = 1 }; { Field2 = 2 }; { Field2 = 3 } |] (**) |] |]
+        [| box<Record list> (* inputValue *) [] (**);
+            box<Record array> (* outputValue *) [||] (**) |]
+
+        [| box<Record list> (* inputValue *) [ { Field2 = 1 } ] (**);
+            box<Record array> (* outputValue *) [| { Field2 = 1 } |] (**) |]
+
+        [| box<Record list> (* inputValue *) [ { Field2 = 1 }; { Field2 = 2 } ] (**);
+            box<Record array> (* outputValue *) [| { Field2 = 1 }; { Field2 = 2 } |] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNullValue)>]
-    let ``non-null value`` value =
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
+    let ``non-null value`` inputValue outputValue =
+        let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
         
 module ``deserialize 1d array with optional elements from required list with optional elements`` =
-    type Input = { Field1: option<int>[] }
-    type Output = { Field1: option<int>[] }
+    type Input = { Field1: int option list }
+    type Output = { Field1: int option array }
 
     let Value = [|
-        [| box<option<int>[]> (**) [||] (**) |]
-        [| box<option<int>[]> (**) [| Option.None |] (**) |]
-        [| box<option<int>[]> (**) [| Option.Some 1; |] (**) |]
-        [| box<option<int>[]> (**) [| Option.None; Option.None; Option.None |] (**) |]
-        [| box<option<int>[]> (**) [| Option.Some 1; Option.None; Option.Some 3 |] (**) |]
-        [| box<option<int>[]> (**) [| Option.Some 1; Option.Some 2; Option.Some 3 |] (**) |] |]
+        [| box<int option list> (* inputValue *) [] (**);
+            box<int option array> (* outputValue *) [||] (**) |]
+
+        [| box<int option list> (* inputValue *) [ Option.None ] (**);
+            box<int option array> (* outputValue *) [| Option.None |] (**) |]
+
+        [| box<int option list> (* inputValue *) [ Option.Some 1 ] (**);
+            box<int option array> (* outputValue *) [| Option.Some 1 |] (**) |]
+
+        [| box<int option list> (* inputValue *) [ Option.None; Option.None; Option.None ] (**);
+            box<int option array> (* outputValue *) [| Option.None; Option.None; Option.None |] (**) |]
+
+        [| box<int option list> (* inputValue *) [ Option.Some 1; Option.None; Option.Some 3 ] (**);
+            box<int option array> (* outputValue *) [| Option.Some 1; Option.None; Option.Some 3 |] (**) |]
+
+        [| box<int option list> (* inputValue *) [ Option.Some 1; Option.Some 2 ] (**);
+            box<int option array> (* outputValue *) [| Option.Some 1; Option.Some 2 |] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
-    let ``value`` value =
-        let inputRecords = [| { Input.Field1 = value } |]
+    let ``value`` inputValue outputValue =
+        let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
         
 module ``deserialize 1d array with optional elements from optional list with optional elements`` =
-    type Input = { Field1: option<int>[] option }
-    type Output = { Field1: option<int>[] }
+    type Input = { Field1: int option list option }
+    type Output = { Field1: int option array }
 
     [<Fact>]
     let ``null value`` () =
@@ -414,21 +463,32 @@ module ``deserialize 1d array with optional elements from optional list with opt
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<option<int>[]>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<int option array>.FullName}' which is not"
+                    + " treated as nullable by default" @>)
 
     let NonNullValue = [|
-        [| box<option<int>[]> (**) [||] (**) |]
-        [| box<option<int>[]> (**) [| Option.None |] (**) |]
-        [| box<option<int>[]> (**) [| Option.Some 1; |] (**) |]
-        [| box<option<int>[]> (**) [| Option.None; Option.None; Option.None |] (**) |]
-        [| box<option<int>[]> (**) [| Option.Some 1; Option.None; Option.Some 3 |] (**) |]
-        [| box<option<int>[]> (**) [| Option.Some 1; Option.Some 2; Option.Some 3 |] (**) |] |]
+        [| box<int option list> (* inputValue *) [] (**);
+            box<int option array> (* outputValue *) [||] (**) |]
+
+        [| box<int option list> (* inputValue *) [ Option.None ] (**);
+            box<int option array> (* outputValue *) [| Option.None |] (**) |]
+
+        [| box<int option list> (* inputValue *) [ Option.Some 1 ] (**);
+            box<int option array> (* outputValue *) [| Option.Some 1 |] (**) |]
+
+        [| box<int option list> (* inputValue *) [ Option.None; Option.None; Option.None ] (**);
+            box<int option array> (* outputValue *) [| Option.None; Option.None; Option.None |] (**) |]
+
+        [| box<int option list> (* inputValue *) [ Option.Some 1; Option.None; Option.Some 3 ] (**);
+            box<int option array> (* outputValue *) [| Option.Some 1; Option.None; Option.Some 3 |] (**) |]
+
+        [| box<int option list> (* inputValue *) [ Option.Some 1; Option.Some 2 ] (**);
+            box<int option array> (* outputValue *) [| Option.Some 1; Option.Some 2 |] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNullValue)>]
-    let ``non-null value`` value =
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
+    let ``non-null value`` inputValue outputValue =
+        let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>

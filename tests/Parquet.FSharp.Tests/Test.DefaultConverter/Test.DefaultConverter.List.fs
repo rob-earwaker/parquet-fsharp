@@ -47,8 +47,8 @@ module ``serialize list with atomic elements`` =
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``serialize list with list elements`` =
-    type Input = { Field1: int[] list }
-    type Output = { Field1: int[] list }
+    type Input = { Field1: int list list }
+    type Output = { Field1: int list list }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -85,11 +85,11 @@ module ``serialize list with list elements`` =
                                 Assert.Field.hasNoChildren ] ] ] ] ] ]
 
     let Value = [|
-        [| box<int[] list> (**) [] (**) |]
-        [| box<int[] list> (**) [ [||] ] (**) |]
-        [| box<int[] list> (**) [ [| 1; 2; 3 |] ] (**) |]
-        [| box<int[] list> (**) [ [||]; [||]; [||] ] (**) |]
-        [| box<int[] list> (**) [ [| 1 |]; [||]; [| 2; 3; 4 |] ] (**) |] |]
+        [| box<int list list> (**) [] (**) |]
+        [| box<int list list> (**) [ [] ] (**) |]
+        [| box<int list list> (**) [ [ 1; 2; 3 ] ] (**) |]
+        [| box<int list list> (**) [ []; []; [] ] (**) |]
+        [| box<int list list> (**) [ [ 1 ]; []; [ 2; 3; 4 ] ] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
@@ -137,7 +137,7 @@ module ``serialize list with record elements`` =
     let Value = [|
         [| box<Record list> (**) [] (**) |]
         [| box<Record list> (**) [ { Field2 = 1 } ] (**) |]
-        [| box<Record list> (**) [ { Field2 = 1 }; { Field2 = 2 }; { Field2 = 3 } ] (**) |] |]
+        [| box<Record list> (**) [ { Field2 = 1 }; { Field2 = 2 } ] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
@@ -150,8 +150,8 @@ module ``serialize list with record elements`` =
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``serialize list with optional elements`` =
-    type Input = { Field1: option<int> list }
-    type Output = { Field1: option<int> list }
+    type Input = { Field1: int option list }
+    type Output = { Field1: int option list }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -176,12 +176,12 @@ module ``serialize list with optional elements`` =
                         Assert.Field.hasNoChildren ] ] ] ]
 
     let Value = [|
-        [| box<option<int> list> (**) [] (**) |]
-        [| box<option<int> list> (**) [ Option.None ] (**) |]
-        [| box<option<int> list> (**) [ Option.Some 1; ] (**) |]
-        [| box<option<int> list> (**) [ Option.None; Option.None; Option.None ] (**) |]
-        [| box<option<int> list> (**) [ Option.Some 1; Option.None; Option.Some 3 ] (**) |]
-        [| box<option<int> list> (**) [ Option.Some 1; Option.Some 2; Option.Some 3 ] (**) |] |]
+        [| box<int option list> (**) [] (**) |]
+        [| box<int option list> (**) [ Option.None ] (**) |]
+        [| box<int option list> (**) [ Option.Some 1 ] (**) |]
+        [| box<int option list> (**) [ Option.None; Option.None; Option.None ] (**) |]
+        [| box<int option list> (**) [ Option.Some 1; Option.None; Option.Some 3 ] (**) |]
+        [| box<int option list> (**) [ Option.Some 1; Option.Some 2 ] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
@@ -240,15 +240,15 @@ module ``deserialize list with atomic elements from optional list with atomic el
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
 module ``deserialize list with list elements from required list with list elements`` =
-    type Input = { Field1: int[] list }
-    type Output = { Field1: int[] list }
+    type Input = { Field1: int list list }
+    type Output = { Field1: int list list }
 
     let Value = [|
-        [| box<int[] list> (**) [] (**) |]
-        [| box<int[] list> (**) [ [||] ] (**) |]
-        [| box<int[] list> (**) [ [| 1; 2; 3 |] ] (**) |]
-        [| box<int[] list> (**) [ [||]; [||]; [||] ] (**) |]
-        [| box<int[] list> (**) [ [| 1 |]; [||]; [| 2; 3; 4 |] ] (**) |] |]
+        [| box<int list list> (**) [] (**) |]
+        [| box<int list list> (**) [ [] ] (**) |]
+        [| box<int list list> (**) [ [ 1; 2; 3 ] ] (**) |]
+        [| box<int list list> (**) [ []; []; [] ] (**) |]
+        [| box<int list list> (**) [ [ 1 ]; []; [ 2; 3; 4 ] ] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
@@ -259,8 +259,8 @@ module ``deserialize list with list elements from required list with list elemen
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
 module ``deserialize list with list elements from optional list with list elements`` =
-    type Input = { Field1: int[] list option }
-    type Output = { Field1: int[] list }
+    type Input = { Field1: int list list option }
+    type Output = { Field1: int list list }
 
     [<Fact>]
     let ``null value`` () =
@@ -271,15 +271,15 @@ module ``deserialize list with list elements from optional list with list elemen
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<int[] list>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<int list list>.FullName}' which is not"
+                    + " treated as nullable by default" @>)
 
     let NonNullValue = [|
-        [| box<int[] list> (**) [] (**) |]
-        [| box<int[] list> (**) [ [||] ] (**) |]
-        [| box<int[] list> (**) [ [| 1; 2; 3 |] ] (**) |]
-        [| box<int[] list> (**) [ [||]; [||]; [||] ] (**) |]
-        [| box<int[] list> (**) [ [| 1 |]; [||]; [| 2; 3; 4 |] ] (**) |] |]
+        [| box<int list list> (**) [] (**) |]
+        [| box<int list list> (**) [ [] ] (**) |]
+        [| box<int list list> (**) [ [ 1; 2; 3 ] ] (**) |]
+        [| box<int list list> (**) [ []; []; [] ] (**) |]
+        [| box<int list list> (**) [ [ 1 ]; []; [ 2; 3; 4 ] ] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNullValue)>]
@@ -297,7 +297,7 @@ module ``deserialize list with record elements from required list with record el
     let Value = [|
         [| box<Record list> (**) [] (**) |]
         [| box<Record list> (**) [ { Field2 = 1 } ] (**) |]
-        [| box<Record list> (**) [ { Field2 = 1 }; { Field2 = 2 }; { Field2 = 3 } ] (**) |] |]
+        [| box<Record list> (**) [ { Field2 = 1 }; { Field2 = 2 } ] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
@@ -321,13 +321,13 @@ module ``deserialize list with record elements from optional list with record el
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<Record list>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<Record list>.FullName}' which is not treated"
+                    + " as nullable by default" @>)
 
     let NonNullValue = [|
         [| box<Record list> (**) [] (**) |]
         [| box<Record list> (**) [ { Field2 = 1 } ] (**) |]
-        [| box<Record list> (**) [ { Field2 = 1 }; { Field2 = 2 }; { Field2 = 3 } ] (**) |] |]
+        [| box<Record list> (**) [ { Field2 = 1 }; { Field2 = 2 } ] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNullValue)>]
@@ -338,16 +338,16 @@ module ``deserialize list with record elements from optional list with record el
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
 module ``deserialize list with optional elements from required list with optional elements`` =
-    type Input = { Field1: option<int> list }
-    type Output = { Field1: option<int> list }
+    type Input = { Field1: int option list }
+    type Output = { Field1: int option list }
 
     let Value = [|
-        [| box<option<int> list> (**) [] (**) |]
-        [| box<option<int> list> (**) [ Option.None ] (**) |]
-        [| box<option<int> list> (**) [ Option.Some 1; ] (**) |]
-        [| box<option<int> list> (**) [ Option.None; Option.None; Option.None ] (**) |]
-        [| box<option<int> list> (**) [ Option.Some 1; Option.None; Option.Some 3 ] (**) |]
-        [| box<option<int> list> (**) [ Option.Some 1; Option.Some 2; Option.Some 3 ] (**) |] |]
+        [| box<int option list> (**) [] (**) |]
+        [| box<int option list> (**) [ Option.None ] (**) |]
+        [| box<int option list> (**) [ Option.Some 1 ] (**) |]
+        [| box<int option list> (**) [ Option.None; Option.None; Option.None ] (**) |]
+        [| box<int option list> (**) [ Option.Some 1; Option.None; Option.Some 3 ] (**) |]
+        [| box<int option list> (**) [ Option.Some 1; Option.Some 2 ] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
@@ -358,8 +358,8 @@ module ``deserialize list with optional elements from required list with optiona
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
 module ``deserialize list with optional elements from optional list with optional elements`` =
-    type Input = { Field1: option<int> list option }
-    type Output = { Field1: option<int> list }
+    type Input = { Field1: int option list option }
+    type Output = { Field1: int option list }
 
     [<Fact>]
     let ``null value`` () =
@@ -370,16 +370,16 @@ module ``deserialize list with optional elements from optional list with optiona
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<option<int> list>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<int option list>.FullName}' which is not"
+                    + " treated as nullable by default" @>)
 
     let NonNullValue = [|
-        [| box<option<int> list> (**) [] (**) |]
-        [| box<option<int> list> (**) [ Option.None ] (**) |]
-        [| box<option<int> list> (**) [ Option.Some 1; ] (**) |]
-        [| box<option<int> list> (**) [ Option.None; Option.None; Option.None ] (**) |]
-        [| box<option<int> list> (**) [ Option.Some 1; Option.None; Option.Some 3 ] (**) |]
-        [| box<option<int> list> (**) [ Option.Some 1; Option.Some 2; Option.Some 3 ] (**) |] |]
+        [| box<int option list> (**) [] (**) |]
+        [| box<int option list> (**) [ Option.None ] (**) |]
+        [| box<int option list> (**) [ Option.Some 1 ] (**) |]
+        [| box<int option list> (**) [ Option.None; Option.None; Option.None ] (**) |]
+        [| box<int option list> (**) [ Option.Some 1; Option.None; Option.Some 3 ] (**) |]
+        [| box<int option list> (**) [ Option.Some 1; Option.Some 2 ] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNullValue)>]

@@ -222,9 +222,8 @@ module ``deserialize list with atomic elements from optional list with atomic el
             <@ ParquetSerializer.Deserialize<Output>(bytes) @>
             (fun exn ->
                 <@ exn.Message =
-                    "null value encountered during deserialization for type"
-                    + $" '{typeof<int list>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    "null value encountered during deserialization for"
+                    + $" non-nullable type '{typeof<int list>.FullName}'" @>)
 
     let NonNullValue = [|
         [| box<int list> (**) [] (**) |]
@@ -270,9 +269,8 @@ module ``deserialize list with list elements from optional list with list elemen
             <@ ParquetSerializer.Deserialize<Output>(bytes) @>
             (fun exn ->
                 <@ exn.Message =
-                    "null value encountered during deserialization for type"
-                    + $" '{typeof<int list list>.FullName}' which is not"
-                    + " treated as nullable by default" @>)
+                    "null value encountered during deserialization for"
+                    + $" non-nullable type '{typeof<int list list>.FullName}'" @>)
 
     let NonNullValue = [|
         [| box<int list list> (**) [] (**) |]
@@ -320,9 +318,8 @@ module ``deserialize list with record elements from optional list with record el
             <@ ParquetSerializer.Deserialize<Output>(bytes) @>
             (fun exn ->
                 <@ exn.Message =
-                    "null value encountered during deserialization for type"
-                    + $" '{typeof<Record list>.FullName}' which is not treated"
-                    + " as nullable by default" @>)
+                    "null value encountered during deserialization for"
+                    + $" non-nullable type '{typeof<Record list>.FullName}'" @>)
 
     let NonNullValue = [|
         [| box<Record list> (**) [] (**) |]
@@ -369,9 +366,8 @@ module ``deserialize list with optional elements from optional list with optiona
             <@ ParquetSerializer.Deserialize<Output>(bytes) @>
             (fun exn ->
                 <@ exn.Message =
-                    "null value encountered during deserialization for type"
-                    + $" '{typeof<int option list>.FullName}' which is not"
-                    + " treated as nullable by default" @>)
+                    "null value encountered during deserialization for"
+                    + $" non-nullable type '{typeof<int option list>.FullName}'" @>)
 
     let NonNullValue = [|
         [| box<int option list> (**) [] (**) |]

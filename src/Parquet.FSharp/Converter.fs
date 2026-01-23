@@ -354,7 +354,7 @@ module internal Deserializer =
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
-    let optionalValueTypeWrapper (valueDeserializer: Deserializer) =
+    let optionalNonNullableTypeWrapper (valueDeserializer: Deserializer) =
         let dotnetType = valueDeserializer.DotnetType
         let createNull =
             Expression.Block(
@@ -367,7 +367,7 @@ module internal Deserializer =
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
-    let nonNullableReferenceTypeWrapper (valueDeserializer: Deserializer) =
+    let optionalNullableTypeWrapper (valueDeserializer: Deserializer) =
         let dotnetType = valueDeserializer.DotnetType
         let createNull =
             Expression.Block(
@@ -481,7 +481,7 @@ type internal DefaultBoolConverter() =
 
     let optionalDeserializer =
         requiredDeserializer
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -517,7 +517,7 @@ type internal DefaultInt8Converter() =
 
     let optionalDeserializer =
         requiredDeserializer
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -557,7 +557,7 @@ type internal DefaultInt16Converter() =
 
     let createOptionalDeserializer dataDotnetType =
         createRequiredDeserializer dataDotnetType
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -598,7 +598,7 @@ type internal DefaultInt32Converter() =
 
     let createOptionalDeserializer dataDotnetType =
         createRequiredDeserializer dataDotnetType
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -641,7 +641,7 @@ type internal DefaultInt64Converter() =
 
     let createOptionalDeserializer dataDotnetType =
         createRequiredDeserializer dataDotnetType
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -683,7 +683,7 @@ type internal DefaultUInt8Converter() =
 
     let optionalDeserializer =
         requiredDeserializer
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -722,7 +722,7 @@ type internal DefaultUInt16Converter() =
 
     let createOptionalDeserializer dataDotnetType =
         createRequiredDeserializer dataDotnetType
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -762,7 +762,7 @@ type internal DefaultUInt32Converter() =
 
     let createOptionalDeserializer dataDotnetType =
         createRequiredDeserializer dataDotnetType
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -803,7 +803,7 @@ type internal DefaultUInt64Converter() =
 
     let createOptionalDeserializer dataDotnetType =
         createRequiredDeserializer dataDotnetType
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -845,7 +845,7 @@ type internal DefaultFloat32Converter() =
 
     let createOptionalDeserializer dataDotnetType =
         createRequiredDeserializer dataDotnetType
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -888,7 +888,7 @@ type internal DefaultFloat64Converter() =
 
     let createOptionalDeserializer dataDotnetType =
         createRequiredDeserializer dataDotnetType
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -934,7 +934,7 @@ type internal DefaultDecimalConverter() =
 
     let createOptionalDeserializer dataDotnetType =
         createRequiredDeserializer dataDotnetType
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -978,7 +978,7 @@ type internal DefaultGuidConverter() =
 
     let optionalDeserializer =
         requiredDeserializer
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1060,7 +1060,7 @@ type internal DefaultDateTimeConverter() =
 
     let optionalDeserializer =
         requiredDeserializer
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1107,7 +1107,7 @@ type internal DefaultDateTimeOffsetConverter() =
 
     let optionalDeserializer =
         requiredDeserializer
-        |> Deserializer.optionalValueTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1153,7 +1153,7 @@ type internal DefaultStringConverter() =
     // be thrown if a null value is encountered in the data.
     let optionalDeserializer =
         requiredDeserializer
-        |> Deserializer.nonNullableReferenceTypeWrapper
+        |> Deserializer.optionalNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1202,7 +1202,7 @@ type internal DefaultByteArrayConverter() =
     // be thrown if a null value is encountered in the data.
     let optionalDeserializer =
         requiredDeserializer
-        |> Deserializer.nonNullableReferenceTypeWrapper
+        |> Deserializer.optionalNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1270,7 +1270,7 @@ type internal DefaultListConverter() =
     // be thrown if a null value is encountered in the data.
     let createOptionalDeserializer schema dotnetType =
         createRequiredDeserializer schema dotnetType
-        |> Deserializer.nonNullableReferenceTypeWrapper
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1333,7 +1333,7 @@ type internal DefaultArray1dConverter() =
     // be thrown if a null value is encountered in the data.
     let createOptionalDeserializer schema dotnetType =
         createRequiredDeserializer schema dotnetType
-        |> Deserializer.nonNullableReferenceTypeWrapper
+        |> Deserializer.optionalNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1392,7 +1392,7 @@ type internal DefaultResizeArrayConverter() =
     // be thrown if a null value is encountered in the data.
     let createOptionalDeserializer schema dotnetType =
         createRequiredDeserializer schema dotnetType
-        |> Deserializer.nonNullableReferenceTypeWrapper
+        |> Deserializer.optionalNullableTypeWrapper
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
@@ -1420,7 +1420,7 @@ type internal DefaultRecordConverter() =
             |> Array.map FieldSerializer.ofProperty
         Serializer.record dotnetType fields
 
-    let tryCreateDeserializer (dotnetType: Type) (recordSchema: RecordTypeSchema) =
+    let tryCreateRequiredDeserializer (recordSchema: RecordTypeSchema) (dotnetType: Type) =
         let fields = FSharpType.GetRecordFields(dotnetType)
         let fieldDeserializers =
             fields
@@ -1440,6 +1440,10 @@ type internal DefaultRecordConverter() =
             Deserializer.record dotnetType fieldDeserializers createFromFieldValues
             |> Option.Some
 
+    let tryCreateOptionalDeserializer recordSchema dotnetType =
+        tryCreateRequiredDeserializer recordSchema dotnetType
+        |> Option.map Deserializer.optionalNonNullableTypeWrapper
+
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
             if isRecordType sourceType
@@ -1452,7 +1456,9 @@ type internal DefaultRecordConverter() =
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.Record recordSchema ->
-                    tryCreateDeserializer targetType recordSchema
+                    if sourceSchema.IsOptional
+                    then tryCreateOptionalDeserializer recordSchema targetType
+                    else tryCreateRequiredDeserializer recordSchema targetType
                 | _ -> Option.None
 
 type internal DefaultUnionConverter() =

@@ -18,6 +18,7 @@ An F# serailization library for the [Apache Parquet](https://parquet.apache.org/
   - [Optional Types](#optional-types)
   - [Discriminated Unions](#discriminated-unions)
 - [Roadmap](#roadmap)
+  - [Extend Supported Types](#extend-supported-types)
   - [Serialization Options](#serialization-options)
   - [Serialization Attributes](#serialization-attributes)
   - [Custom Serializers](#custom-serializers)
@@ -56,11 +57,11 @@ use file = File.OpenRead("./nodes.parquet")
 let nodes = ParquetSerializer.Deserialize<Node>(file)
 ```
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ## Supported Types
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### Booleans
 
@@ -68,7 +69,7 @@ Applies to: `bool`
 
 Booleans are serialized as required values by default. They can be deserialized from either required or optional boolean values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### Numeric Types
 
@@ -92,7 +93,7 @@ For deserialization, the target .NET numeric type does not have to match the sou
 | `float[64]` | `float[64]`, `float32`, `int32`, `int16`, `int8`, `uint32`, `uint16`, `uint8` |
 | `decimal` | `decimal`, `int64`, `int32`, `int16`, `int8`, `uint64`, `uint32`, `uint16`, `uint8` |
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### GUIDs
 
@@ -100,7 +101,7 @@ Applies to: `Guid`
 
 GUIDs are serialized as required values by default. They can be deserialized from either required or optional GUID values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### Date Times
 
@@ -114,7 +115,7 @@ Since `DateTime` values have an associated `DateTimeKind`, which is one of `Unsp
 
 Both `DateTime` and `DateTimeOffset` use 'ticks' as their base unit, where each tick represents a 100 nanosecond period. Since the default precision is microseconds, serialization results in a slight truncation, equivalent to rounding the values down to the nearest 10 ticks.
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### Strings
 
@@ -124,7 +125,7 @@ Strings are serialized as required values by default, despite being reference ty
 
 Strings can be deserialized from optional values as well as required values, but the same null guarantee is provided, so any null values encountered during deserialization will still result in an exception.
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### Byte Arrays
 
@@ -136,7 +137,7 @@ Byte arrays are serialized as required values by default, despite being referenc
 
 Byte arrays can be deserialized from optional values as well as required values, but the same null guarantee is provided, so any null values encountered during deserialization will still result in an exception.
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### Arrays, Lists & Enumerables
 
@@ -148,7 +149,7 @@ Supported sequence types are serialized as required Parquet lists by default, ev
 
 Sequences can be deserialized from optional Parquet lists as well as required lists, but the same null guarantee is provided, so any null lists encountered during deserialization will still result in an exception.
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### Records, Structs & Classes
 
@@ -156,7 +157,7 @@ Applies to: `'FSharpRecord`
 
 TODO: Add docs
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### Optional Types
 
@@ -164,7 +165,7 @@ Applies to: `'Value option`, `Nullable<'Value>`
 
 TODO: Add docs
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### Discriminated Unions
 
@@ -172,13 +173,26 @@ Applies to: `'FSharpUnion`
 
 TODO: Add docs
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ## Roadmap
 
-The following features and improvements are on the roadmap.
+The following features and improvements are on the roadmap, in no particular order.
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
+
+### Extend Supported Types
+
+The following types are not currently supported but will likely be added in the future:
+- `'Enum`
+- `DateOnly`
+- `TimeOnly`
+- `TimeSpan`
+- `Interval` (from **Parquet.Net**)
+- `BigDecimal` (from **Parquet.Net**)
+- `BigInteger` (from **System.Numerics**)
+
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### Serialization Options
 
@@ -191,22 +205,22 @@ The ability to specify options when serializing and deserializing to allow finer
 - Allow millisecond and nanosecond precision for date times in addition to the default microsecond precision.
 - Specify the precision and scale of decimal values.
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### Serialization Attributes
 
 Attributes that can be applied to types and fields to allow the above serialization options to be defined as part of type definitions rather than requiring configuration at the point of serialization.
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### Custom Serializers
 
 Allow the definition of custom serializers and deserializers that can be used to override the default serialization behaviour provided by the library for specific types, or allow serialization of types that aren't supported by the library. The default serialization behaviour defined in the library is already set up in this way, but the list of registered converters is not yet configurable and just contains a default converter for each supported type.
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>
 
 ### Improved Error Handling
 
 For performance reasons, serialization is implemented by generating, compiling and executing [Expression Trees](https://learn.microsoft.com/en-us/dotnet/csharp/advanced-topics/expression-trees/), in a similar fashion to **Parquet.Net**. This means that errors are not always easy to trace back to the code that caused them. To improve on this, extra exception handling could be added into the generated expression trees to provide more information about the expression that was being executed when the exception occurred, e.g. to identify the specific converter function that was being called.
 
-[[Return to top]](#parquetfsharp)
+<sup><sub>[[Return to top]](#parquetfsharp)</sub></sup>

@@ -17,6 +17,11 @@ An F# serailization library for the [Apache Parquet](https://parquet.apache.org/
   - [Records, Structs \& Classes](#records-structs--classes)
   - [Optional Types](#optional-types)
   - [Discriminated Unions](#discriminated-unions)
+- [Roadmap](#roadmap)
+  - [Serialization Options](#serialization-options)
+  - [Serialization Attributes](#serialization-attributes)
+  - [Custom Serializers](#custom-serializers)
+  - [Improved Error Handling](#improved-error-handling)
 
 ## Quickstart
 
@@ -54,6 +59,8 @@ let nodes = ParquetSerializer.Deserialize<Node>(file)
 [[Return to top]](#parquetfsharp)
 
 ## Supported Types
+
+[[Return to top]](#parquetfsharp)
 
 ### Booleans
 
@@ -164,5 +171,42 @@ TODO: Add docs
 Applies to: `'FSharpUnion`
 
 TODO: Add docs
+
+[[Return to top]](#parquetfsharp)
+
+## Roadmap
+
+The following features and improvements are on the roadmap.
+
+[[Return to top]](#parquetfsharp)
+
+### Serialization Options
+
+The ability to specify options when serializing and deserializing to allow finer-grained control of serialization behaviour. This will hopefully include the ability to apply options to either all fields that are being serialized or just to specific fields. Configuration options could include the ability to:
+
+- Override field names and union case names.
+- Serialize fields that would normally be serialized as required fields as optional instead.
+- Allow serialization and deserialization of null values for reference types.
+- Treat date time values as local rather than UTC.
+- Allow millisecond and nanosecond precision for date times in addition to the default microsecond precision.
+- Specify the precision and scale of decimal values.
+
+[[Return to top]](#parquetfsharp)
+
+### Serialization Attributes
+
+Attributes that can be applied to types and fields to allow the above serialization options to be defined as part of type definitions rather than requiring configuration at the point of serialization.
+
+[[Return to top]](#parquetfsharp)
+
+### Custom Serializers
+
+Allow the definition of custom serializers and deserializers that can be used to override the default serialization behaviour provided by the library for specific types, or allow serialization of types that aren't supported by the library. The default serialization behaviour defined in the library is already set up in this way, but the list of registered converters is not yet configurable and just contains a default converter for each supported type.
+
+[[Return to top]](#parquetfsharp)
+
+### Improved Error Handling
+
+For performance reasons, serialization is implemented by generating, compiling and executing [Expression Trees](https://learn.microsoft.com/en-us/dotnet/csharp/advanced-topics/expression-trees/), in a similar fashion to **Parquet.Net**. This means that errors are not always easy to trace back to the code that caused them. To improve on this, extra exception handling could be added into the generated expression trees to provide more information about the expression that was being executed when the exception occurred, e.g. to identify the specific converter function that was being called.
 
 [[Return to top]](#parquetfsharp)

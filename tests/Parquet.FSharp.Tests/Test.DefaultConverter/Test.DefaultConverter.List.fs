@@ -1,11 +1,11 @@
-namespace Parquet.FSharp.Tests.DefaultConverter.FSharpList
+namespace Parquet.FSharp.Tests.DefaultConverter.List
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
-module ``serialize fsharp list with atomic elements`` =
+module ``serialize list with atomic elements`` =
     type Input = { Field1: int list }
     type Output = { Field1: int list }
 
@@ -46,7 +46,7 @@ module ``serialize fsharp list with atomic elements`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``serialize fsharp list with list elements`` =
+module ``serialize list with list elements`` =
     type Input = { Field1: int[] list }
     type Output = { Field1: int[] list }
 
@@ -101,7 +101,7 @@ module ``serialize fsharp list with list elements`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``serialize fsharp list with record elements`` =
+module ``serialize list with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list }
     type Output = { Field1: Record list }
@@ -149,7 +149,7 @@ module ``serialize fsharp list with record elements`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``serialize fsharp list with optional elements`` =
+module ``serialize list with optional elements`` =
     type Input = { Field1: option<int> list }
     type Output = { Field1: option<int> list }
 
@@ -193,7 +193,7 @@ module ``serialize fsharp list with optional elements`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize fsharp list with atomic elements from required list with atomic elements`` =
+module ``deserialize list with atomic elements from required list with atomic elements`` =
     type Input = { Field1: int list }
     type Output = { Field1: int list }
 
@@ -210,7 +210,7 @@ module ``deserialize fsharp list with atomic elements from required list with at
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize fsharp list with atomic elements from optional list with atomic elements`` =
+module ``deserialize list with atomic elements from optional list with atomic elements`` =
     type Input = { Field1: int list option }
     type Output = { Field1: int list }
 
@@ -239,7 +239,7 @@ module ``deserialize fsharp list with atomic elements from optional list with at
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize fsharp list with list elements from required list with list elements`` =
+module ``deserialize list with list elements from required list with list elements`` =
     type Input = { Field1: int[] list }
     type Output = { Field1: int[] list }
 
@@ -258,7 +258,7 @@ module ``deserialize fsharp list with list elements from required list with list
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize fsharp list with list elements from optional list with list elements`` =
+module ``deserialize list with list elements from optional list with list elements`` =
     type Input = { Field1: int[] list option }
     type Output = { Field1: int[] list }
 
@@ -289,7 +289,7 @@ module ``deserialize fsharp list with list elements from optional list with list
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize fsharp list with record elements from required list with record elements`` =
+module ``deserialize list with record elements from required list with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list }
     type Output = { Field1: Record list }
@@ -307,7 +307,7 @@ module ``deserialize fsharp list with record elements from required list with re
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize fsharp list with record elements from optional list with record elements`` =
+module ``deserialize list with record elements from optional list with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list option }
     type Output = { Field1: Record list }
@@ -337,7 +337,7 @@ module ``deserialize fsharp list with record elements from optional list with re
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize fsharp list with optional elements from required list with optional elements`` =
+module ``deserialize list with optional elements from required list with optional elements`` =
     type Input = { Field1: option<int> list }
     type Output = { Field1: option<int> list }
 
@@ -357,7 +357,7 @@ module ``deserialize fsharp list with optional elements from required list with 
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize fsharp list with optional elements from optional list with optional elements`` =
+module ``deserialize list with optional elements from optional list with optional elements`` =
     type Input = { Field1: option<int> list option }
     type Output = { Field1: option<int> list }
 

@@ -1,11 +1,11 @@
-namespace Parquet.FSharp.Tests.DefaultConverter.GenericList
+namespace Parquet.FSharp.Tests.DefaultConverter.ResizeArray
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
-module ``serialize generic list with atomic elements`` =
+module ``serialize resize array with atomic elements`` =
     type Input = { Field1: ResizeArray<int> }
     type Output = { Field1: ResizeArray<int> }
 
@@ -58,7 +58,7 @@ module ``serialize generic list with atomic elements`` =
         let expectedRecords = [| { Output.Field1 = value } |]
         Assert.seqEqual expectedRecords outputRecords
 
-module ``serialize generic list with list elements`` =
+module ``serialize resize array with list elements`` =
     type Input = { Field1: ResizeArray<int[]> }
     type Output = { Field1: ResizeArray<int[]> }
 
@@ -125,7 +125,7 @@ module ``serialize generic list with list elements`` =
         let expectedRecords = [| { Output.Field1 = value } |]
         Assert.seqEqual expectedRecords outputRecords
 
-module ``serialize generic list with record elements`` =
+module ``serialize resize array with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: ResizeArray<Record> }
     type Output = { Field1: ResizeArray<Record> }
@@ -185,7 +185,7 @@ module ``serialize generic list with record elements`` =
         let expectedRecords = [| { Output.Field1 = value } |]
         Assert.seqEqual expectedRecords outputRecords
 
-module ``serialize generic list with optional elements`` =
+module ``serialize resize array with optional elements`` =
     type Input = { Field1: ResizeArray<int option> }
     type Output = { Field1: ResizeArray<int option> }
 
@@ -241,7 +241,7 @@ module ``serialize generic list with optional elements`` =
         let expectedRecords = [| { Output.Field1 = value } |]
         Assert.seqEqual expectedRecords outputRecords
         
-module ``deserialize generic list with atomic elements from required list with atomic elements`` =
+module ``deserialize resize array with atomic elements from required list with atomic elements`` =
     type Input = { Field1: ResizeArray<int> }
     type Output = { Field1: ResizeArray<int> }
 
@@ -259,7 +259,7 @@ module ``deserialize generic list with atomic elements from required list with a
         let expectedRecords = [| { Output.Field1 = value } |]
         Assert.seqEqual expectedRecords outputRecords
         
-module ``deserialize generic list with atomic elements from optional list with atomic elements`` =
+module ``deserialize resize array with atomic elements from optional list with atomic elements`` =
     type Input = { Field1: ResizeArray<int> option }
     type Output = { Field1: ResizeArray<int> }
 
@@ -289,7 +289,7 @@ module ``deserialize generic list with atomic elements from optional list with a
         let expectedRecords = [| { Output.Field1 = value } |]
         Assert.seqEqual expectedRecords outputRecords
         
-module ``deserialize generic list with list elements from required list with list elements`` =
+module ``deserialize resize array with list elements from required list with list elements`` =
     type Input = { Field1: ResizeArray<int[]> }
     type Output = { Field1: ResizeArray<int[]> }
 
@@ -309,7 +309,7 @@ module ``deserialize generic list with list elements from required list with lis
         let expectedRecords = [| { Output.Field1 = value } |]
         Assert.seqEqual expectedRecords outputRecords
         
-module ``deserialize generic list with list elements from optional list with list elements`` =
+module ``deserialize resize array with list elements from optional list with list elements`` =
     type Input = { Field1: ResizeArray<int[]> option }
     type Output = { Field1: ResizeArray<int[]> }
 
@@ -341,7 +341,7 @@ module ``deserialize generic list with list elements from optional list with lis
         let expectedRecords = [| { Output.Field1 = value } |]
         Assert.seqEqual expectedRecords outputRecords
         
-module ``deserialize generic list with record elements from required list with record elements`` =
+module ``deserialize resize array with record elements from required list with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: ResizeArray<Record> }
     type Output = { Field1: ResizeArray<Record> }
@@ -360,7 +360,7 @@ module ``deserialize generic list with record elements from required list with r
         let expectedRecords = [| { Output.Field1 = value } |]
         Assert.seqEqual expectedRecords outputRecords
         
-module ``deserialize generic list with record elements from optional list with record elements`` =
+module ``deserialize resize array with record elements from optional list with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: ResizeArray<Record> option }
     type Output = { Field1: ResizeArray<Record> }
@@ -391,7 +391,7 @@ module ``deserialize generic list with record elements from optional list with r
         let expectedRecords = [| { Output.Field1 = value } |]
         Assert.seqEqual expectedRecords outputRecords
         
-module ``deserialize generic list with optional elements from required list with optional elements`` =
+module ``deserialize resize array with optional elements from required list with optional elements`` =
     type Input = { Field1: ResizeArray<int option> }
     type Output = { Field1: ResizeArray<int option> }
 
@@ -412,7 +412,7 @@ module ``deserialize generic list with optional elements from required list with
         let expectedRecords = [| { Output.Field1 = value } |]
         Assert.seqEqual expectedRecords outputRecords
         
-module ``deserialize generic list with optional elements from optional list with optional elements`` =
+module ``deserialize resize array with optional elements from optional list with optional elements`` =
     type Input = { Field1: ResizeArray<int option> option }
     type Output = { Field1: ResizeArray<int option> }
 

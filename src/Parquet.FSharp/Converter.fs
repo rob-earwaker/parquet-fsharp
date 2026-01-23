@@ -454,9 +454,9 @@ module internal ValueConverter =
         // atomic values rather than lists.
         DefaultByteArrayConverter()
         DefaultArray1dConverter()
-        DefaultGenericListConverter()
-        DefaultFSharpListConverter()
-        DefaultFSharpRecordConverter()
+        DefaultResizeArrayConverter()
+        DefaultListConverter()
+        DefaultRecordConverter()
         // This must come before the generic union type since option types are
         // handled in a special way.
         DefaultOptionConverter()
@@ -1289,8 +1289,8 @@ type internal DefaultArray1dConverter() =
                     else Option.Some (createRequiredDeserializer listSchema targetType)
                 | _ -> Option.None
 
-type internal DefaultGenericListConverter() =
-    let isGenericListType = DotnetType.isGenericType<ResizeArray<_>>
+type internal DefaultResizeArrayConverter() =
+    let isResizeArrayType = DotnetType.isGenericType<ResizeArray<_>>
 
     let createSerializer (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
@@ -1333,12 +1333,12 @@ type internal DefaultGenericListConverter() =
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
-            if isGenericListType sourceType
+            if isResizeArrayType sourceType
             then Option.Some (createSerializer sourceType)
             else Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType) =
-            if not (isGenericListType targetType)
+            if not (isResizeArrayType targetType)
             then Option.None
             else
                 match sourceSchema.Type with
@@ -1348,8 +1348,8 @@ type internal DefaultGenericListConverter() =
                     else Option.Some (createRequiredDeserializer listSchema targetType)
                 | _ -> Option.None
 
-type internal DefaultFSharpListConverter() =
-    let isFSharpListType = DotnetType.isGenericType<list<_>>
+type internal DefaultListConverter() =
+    let isListType = DotnetType.isGenericType<list<_>>
 
     let createSerializer (dotnetType: Type) =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
@@ -1396,12 +1396,12 @@ type internal DefaultFSharpListConverter() =
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
-            if isFSharpListType sourceType
+            if isListType sourceType
             then Option.Some (createSerializer sourceType)
             else Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType) =
-            if not (isFSharpListType targetType)
+            if not (isListType targetType)
             then Option.None
             else
                 match sourceSchema.Type with
@@ -1411,8 +1411,8 @@ type internal DefaultFSharpListConverter() =
                     else Option.Some (createRequiredDeserializer listSchema targetType)
                 | _ -> Option.None
 
-type internal DefaultFSharpRecordConverter() =
-    let isFSharpRecordType = FSharpType.IsRecord
+type internal DefaultRecordConverter() =
+    let isRecordType = FSharpType.IsRecord
 
     let createSerializer (dotnetType: Type) =
         let fields =
@@ -1442,12 +1442,12 @@ type internal DefaultFSharpRecordConverter() =
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType) =
-            if isFSharpRecordType sourceType
+            if isRecordType sourceType
             then Option.Some (createSerializer sourceType)
             else Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType) =
-            if not (isFSharpRecordType targetType)
+            if not (isRecordType targetType)
             then Option.None
             else
                 match sourceSchema.Type with

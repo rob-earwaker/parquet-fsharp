@@ -1895,8 +1895,26 @@ type internal DefaultNullableConverter() =
                 let value = atomicDeserializer.CreateFromDataValue dataValue
                 createFromValue value
             Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
-        | _ ->
-            failwith "not implemented!"
+        | Deserializer.List listDeserializer ->
+            let dotnetType = targetType
+            let elementDeserializer = listDeserializer.ElementDeserializer
+            let createEmpty = createFromValue listDeserializer.CreateEmpty
+            let createFromElementValues elementValues =
+                let list = listDeserializer.CreateFromElementValues elementValues
+                createFromValue list
+            Deserializer.list
+                dotnetType elementDeserializer createEmpty createFromElementValues
+        | Deserializer.Record recordDeserializer ->
+            let dotnetType = targetType
+            let fieldDeserializers = recordDeserializer.FieldDeserializers
+            let createFromFieldValues fieldValues =
+                let record = recordDeserializer.CreateFromFieldValues fieldValues
+                createFromValue record
+            Deserializer.record dotnetType fieldDeserializers createFromFieldValues
+        | Deserializer.Optional _ ->
+            failwith <|
+                "expected non-optional deserializer to be resolved for required"
+                + $" schema '{sourceSchema}'"
 
     // Create a deserializer for an optional field value. In this situation we
     // need to wrap the value deserializer in an {OptionalDeserializer} to

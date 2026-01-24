@@ -203,7 +203,7 @@ module ``serialize record with multiple fields`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize record with atomic field from required record with atomic field`` =
+module ``deserialize record with atomic field from required record`` =
     type Record = { Field2: int }
     type Input = { Field1: Record }
     type Output = { Field1: Record }
@@ -216,7 +216,7 @@ module ``deserialize record with atomic field from required record with atomic f
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize record with atomic field from optional record with atomic field`` =
+module ``deserialize record with atomic field from optional record`` =
     type Record = { Field2: int }
     type Input = { Field1: Record option }
     type Output = { Field1: Record }
@@ -240,7 +240,7 @@ module ``deserialize record with atomic field from optional record with atomic f
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize record with list field from required record with list field`` =
+module ``deserialize record with list field from required record`` =
     type Record = { Field2: int list }
     type Input = { Field1: Record }
     type Output = { Field1: Record }
@@ -258,7 +258,7 @@ module ``deserialize record with list field from required record with list field
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize record with list field from optional record with list field`` =
+module ``deserialize record with list field from optional record`` =
     type Record = { Field2: int list }
     type Input = { Field1: Record option }
     type Output = { Field1: Record }
@@ -287,7 +287,7 @@ module ``deserialize record with list field from optional record with list field
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize record with record field from required record with record field`` =
+module ``deserialize record with record field from required record`` =
     type Inner = { Field3: int }
     type Record = { Field2: Inner }
     type Input = { Field1: Record }
@@ -301,7 +301,7 @@ module ``deserialize record with record field from required record with record f
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize record with record field from optional record with record field`` =
+module ``deserialize record with record field from optional record`` =
     type Inner = { Field3: int }
     type Record = { Field2: Inner }
     type Input = { Field1: Record option }
@@ -326,7 +326,7 @@ module ``deserialize record with record field from optional record with record f
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize record with optional field from required record with optional field`` =
+module ``deserialize record with optional field from required record`` =
     type Record = { Field2: int option }
     type Input = { Field1: Record }
     type Output = { Field1: Record }
@@ -343,7 +343,7 @@ module ``deserialize record with optional field from required record with option
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize record with optional field from optional record with optional field`` =
+module ``deserialize record with optional field from optional record`` =
     type Record = { Field2: int option }
     type Input = { Field1: Record option }
     type Output = { Field1: Record }
@@ -371,7 +371,7 @@ module ``deserialize record with optional field from optional record with option
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize record with multiple fields from required record with multiple fields`` =
+module ``deserialize record with multiple fields from required record`` =
     type Record = { Field2: int; Field3: int; Field4: int }
     type Input = { Field1: Record }
     type Output = { Field1: Record }
@@ -384,7 +384,7 @@ module ``deserialize record with multiple fields from required record with multi
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize record with multiple fields from optional record with multiple fields`` =
+module ``deserialize record with multiple fields from optional record`` =
     type Record = { Field2: int; Field3: int; Field4: int }
     type Input = { Field1: Record option }
     type Output = { Field1: Record }
@@ -407,3 +407,45 @@ module ``deserialize record with multiple fields from optional record with multi
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
+
+module ``deserialize record with subset of fields from required record`` =
+    type InputRecord = { Field2: int; Field3: bool; Field4: float }
+    type OutputRecord = { Field2: int; Field4: float }
+    type Input = { Field1: InputRecord }
+    type Output = { Field1: OutputRecord }
+
+    [<Fact>]
+    let ``value`` () =
+        let value = { InputRecord.Field2 = 1; Field3 = true; Field4 = 2.34 }
+        let inputRecords = [| { Input.Field1 = value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        let expectedValue = { OutputRecord.Field2 = 1; Field4 = 2.34 }
+        test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
+
+module ``deserialize record with subset of fields from optional record`` =
+    type InputRecord = { Field2: int; Field3: bool; Field4: float }
+    type OutputRecord = { Field2: int; Field4: float }
+    type Input = { Field1: InputRecord option }
+    type Output = { Field1: OutputRecord }
+
+    [<Fact>]
+    let ``null value`` () =
+        let inputRecords = [| { Input.Field1 = Option.None } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Deserialize<Output>(bytes) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "null value encountered during deserialization for"
+                    + " non-nullable type"
+                    + $" '{typeof<OutputRecord>.FullName}'" @>)
+
+    [<Fact>]
+    let ``non-null value`` () =
+        let value = { InputRecord.Field2 = 1; Field3 = true; Field4 = 2.34 }
+        let inputRecords = [| { Input.Field1 = Option.Some value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        let expectedValue = { OutputRecord.Field2 = 1; Field4 = 2.34 }
+        test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>

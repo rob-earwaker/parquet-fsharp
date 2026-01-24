@@ -17,7 +17,7 @@ type SerializationException(message) =
 //   - ParquetDecimalField(<inherited>, scale: int, precision: int)
 //   - ParquetDateTimeField(<inherited>, isAdjustedToUtc: bool, unit: <enum TimeUnit>)
 //   - ParquetDateTimeOffsetField(<inherited>, unit: <enum TimeUnit>)
-//   - ParquetUnionField(<inherited>, simple: bool, caseTypeFieldName: string)
+//   - ParquetUnionField(<inherited>, enum: bool, caseTypeFieldName: string)
 
 //   - ParquetUnion(caseTypeFieldName: string)
 //   - ParquetUnionCase(typeName: string, dataFieldName: string)
@@ -161,9 +161,14 @@ type internal OptionalDeserializer = {
 
 type private UnionInfo = {
     DotnetType: Type
+    UnionType: UnionType
     GetTag: Expression -> Expression
     GetCaseName: Expression -> Expression
     UnionCases: UnionCaseInfo[] }
+
+type UnionType =
+    | Enum
+    | Complex
 
 type private UnionCaseInfo = {
     DotnetType: Type
@@ -191,6 +196,10 @@ module private UnionInfo =
                   UnionCaseInfo.Name = unionCase.Name
                   UnionCaseInfo.Fields = unionCase.GetFields()
                   UnionCaseInfo.CreateFromFieldValues = createFromFieldValues })
+        let unionType =
+            if unionCases |> Array.forall (fun case -> Array.isEmpty case.Fields)
+            then UnionType.Enum
+            else UnionType.Complex
         let getTag =
             match FSharpValue.PreComputeUnionTagMemberInfo(dotnetType) with
             | :? MethodInfo as methodInfo ->
@@ -222,6 +231,7 @@ module private UnionInfo =
                 })
             :> Expression
         { UnionInfo.DotnetType = dotnetType
+          UnionInfo.UnionType = unionType
           UnionInfo.GetTag = getTag
           UnionInfo.GetCaseName = getCaseName
           UnionInfo.UnionCases = unionCases }
@@ -1463,7 +1473,7 @@ type internal DefaultRecordConverter() =
 type internal DefaultUnionConverter() =
     let isUnionType = FSharpType.IsUnion
 
-    let createSimpleUnionSerializer (unionInfo: UnionInfo) =
+    let createEnumUnionSerializer (unionInfo: UnionInfo) =
         let dotnetType = unionInfo.DotnetType
         // Unions in which all cases have no fields can be represented as a
         // simple string value containing the case name. Since a union value
@@ -1546,20 +1556,17 @@ type internal DefaultUnionConverter() =
         // Unions are represented in one of two ways depending on whether any of
         // the cases have associated data fields.
         let unionInfo = UnionInfo.ofUnion dotnetType
-        if unionInfo.UnionCases
-            |> Array.forall (fun unionCase -> unionCase.Fields.Length = 0)
-        then createSimpleUnionSerializer unionInfo
-        else createComplexUnionSerializer unionInfo
+        match unionInfo.UnionType with
+        | UnionType.Enum -> createEnumUnionSerializer unionInfo
+        | UnionType.Complex -> createComplexUnionSerializer unionInfo
 
-    let createSimpleUnionDeserializer (unionInfo: UnionInfo) =
-        let dotnetType = unionInfo.DotnetType
-        // Unions in which all cases have no fields can be represented as a
+    let tryCreateEnumUnionDeserializer (sourceSchema: ValueSchema) (unionInfo: UnionInfo) =
+        // Unions in which all cases have no fields are be represented as a
         // simple string value containing the case name. Since a union value
         // can't be null and must be one of the possible cases, this value is
         // not optional.
-        let dataDotnetType = typeof<string>
-        let schema = ValueTypeSchema.primitive dataDotnetType
-        let createFromDataValue (caseName: Expression) =
+        let dotnetType = unionInfo.DotnetType
+        let createFromCaseName caseName =
             let returnLabel = Expression.Label(dotnetType, "union")
             Expression.Block(
                 seq<Expression> {
@@ -1570,11 +1577,49 @@ type internal DefaultUnionConverter() =
                                 Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||]))
                             :> Expression)
                     yield Expression.FailWith(
-                        $"union of type '{dotnetType.FullName}' has invalid name value")
+                        $"encountered invalid case name for enum union of type '{dotnetType.FullName}'")
                     yield Expression.Label(returnLabel, Expression.Default(dotnetType))
                 })
             :> Expression
-        Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
+        // TODO: Feels like there must be a better way to do this. It's a similar
+        // pattern to what's used in the optional types where we're essentially
+        // injecting an extra expression into the {Create*} functions. Is this
+        // worth extracting out?
+        match Deserializer.resolve sourceSchema typeof<string> with
+        | Deserializer.Atomic atomicDeserializer ->
+            let dataDotnetType = atomicDeserializer.DataDotnetType
+            // TODO: This assumes that the data type is primitive.
+            let schema = ValueTypeSchema.primitive dataDotnetType
+            let createFromDataValue dataValue =
+                let caseName = Expression.Variable(typeof<string>, "caseName")
+                Expression.Block(
+                    [ caseName ],
+                    Expression.Assign(caseName, atomicDeserializer.CreateFromDataValue dataValue),
+                    createFromCaseName caseName)
+                :> Expression
+            Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
+            |> Option.Some
+        | Deserializer.Optional optionalDeserializer ->
+            let valueDeserializer = optionalDeserializer.ValueDeserializer
+            // TODO: This is a duplicate of the exception defined in the
+            // Deserializer module for the non-nullable type wrapper.
+            let createNull =
+                Expression.Block(
+                    Expression.FailWith<SerializationException>(
+                        "null value encountered during deserialization for"
+                        + $" non-nullable type '{dotnetType.FullName}'"),
+                    Expression.Default(dotnetType))
+                :> Expression
+            let createFromValue value =
+                let caseName = Expression.Variable(typeof<string>, "caseName")
+                Expression.Block(
+                    [ caseName ],
+                    Expression.Assign(caseName, optionalDeserializer.CreateFromValue value),
+                    createFromCaseName caseName)
+                :> Expression
+            Deserializer.optional dotnetType valueDeserializer createNull createFromValue
+            |> Option.Some
+        | _ -> Option.None
 
     let tryCreateUnionCaseDeserializer
         (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) (schema: RecordTypeSchema) =
@@ -1713,10 +1758,9 @@ type internal DefaultUnionConverter() =
                 // Unions are represented in one of two ways depending on
                 // whether any of the cases have associated data fields.
                 let unionInfo = UnionInfo.ofUnion targetType
-                if unionInfo.UnionCases
-                    |> Array.forall (fun unionCase -> unionCase.Fields.Length = 0)
-                then Option.Some (createSimpleUnionDeserializer unionInfo)
-                else
+                match unionInfo.UnionType with
+                | UnionType.Enum -> tryCreateEnumUnionDeserializer sourceSchema unionInfo
+                | UnionType.Complex ->
                     match sourceSchema.Type with
                     | ValueTypeSchema.Record recordSchema ->
                         tryCreateComplexUnionDeserializer unionInfo recordSchema

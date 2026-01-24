@@ -23,6 +23,7 @@ An F# serailization library for the [Apache Parquet](https://parquet.apache.org/
   - [Serialization Attributes](#serialization-attributes)
   - [Custom Serializers](#custom-serializers)
   - [Improved Error Handling](#improved-error-handling)
+  - [Schema Evolution](#schema-evolution)
 
 ## Quickstart
 
@@ -177,20 +178,25 @@ TODO: Add docs
 
 ## Roadmap
 
-The following features and improvements are on the roadmap, in no particular order.
+The following features and improvements are on the roadmap and may be implemented in the future, in no particular order.
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
 ### Extend Supported Types
 
 The following types are not currently supported but will likely be added in the future:
-- `'Enum`
+- Enums
 - `DateOnly`
 - `TimeOnly`
 - `TimeSpan`
 - `Interval` (from **Parquet.Net**)
 - `BigDecimal` (from **Parquet.Net**)
 - `BigInteger` (from **System.Numerics**)
+- Tuples
+- `'Element seq`
+- `'Value voption`
+- `Map<'Key, 'Value>`
+- `Dictionary<'Key, 'Value>`
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -222,5 +228,15 @@ Allow the definition of custom serializers and deserializers that can be used to
 ### Improved Error Handling
 
 For performance reasons, serialization is implemented by generating, compiling and executing [Expression Trees](https://learn.microsoft.com/en-us/dotnet/csharp/advanced-topics/expression-trees/), in a similar fashion to **Parquet.Net**. This means that errors are not always easy to trace back to the code that caused them. To improve on this, extra exception handling could be added into the generated expression trees to provide more information about the expression that was being executed when the exception occurred, e.g. to identify the specific converter function that was being called.
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
+### Schema Evolution
+
+Sometimes schema changes are required, and in some cases this could be done in a backwards compatible way, i.e. without breaking deserialization of Parquet files using the old schema. The following backward compatible changes could be allowed in future:
+
+- Adding optional record fields
+- Adding union cases
+- Adding optional union case fields
 
 <sub>[[Return to top]](#parquetfsharp)</sub>

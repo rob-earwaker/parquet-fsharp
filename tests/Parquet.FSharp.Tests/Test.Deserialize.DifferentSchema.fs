@@ -9,6 +9,8 @@ open System
 
 // TODO: Record with additional optional field?
 
+// TODO: Tests for backwards and forwards compatability.
+
 module ``fsharp record with subset of fields`` =
     module Input =
         type Record1 = {

@@ -13,8 +13,8 @@ An F# serailization library for the [Apache Parquet](https://parquet.apache.org/
   - [Date Times](#date-times)
   - [Strings](#strings)
   - [Byte Arrays](#byte-arrays)
-  - [Arrays, Lists \& Enumerables](#arrays-lists--enumerables)
-  - [Records, Structs \& Classes](#records-structs--classes)
+  - [Lists \& Arrays](#lists--arrays)
+  - [Records](#records)
   - [Optional Types](#optional-types)
   - [Discriminated Unions](#discriminated-unions)
 - [Roadmap](#roadmap)
@@ -140,9 +140,9 @@ Byte arrays can be deserialized from optional values as well as required values,
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
-### Arrays, Lists & Enumerables
+### Lists & Arrays
 
-Applies to: `'Element[]`, `'Element list`, `ResizeArray<'Element>`
+Applies to: `'Element list`, `'Element[]`, `ResizeArray<'Element>`
 
 Sequences of values are stored as [Parquet lists](https://github.com/apache/parquet-format/blob/4b1c72c837bec5b792b2514f0057533030fcedf8/LogicalTypes.md#lists), which contain repeated elements, analagous to the `'Element seq` or  `IEnumerable<'Element>` .NET types.
 
@@ -152,11 +152,15 @@ Sequences can be deserialized from optional Parquet lists as well as required li
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
-### Records, Structs & Classes
+### Records
 
 Applies to: `'FSharpRecord`
 
-TODO: Add docs
+As well as allowing sequences of values, Parquet allows arbitrary nesting of fields through records (also called structs). During serialization, these records are deconstructed into columns - 'shredded' in Parquet terminology - one column for each field. Information about the record nesting structure is also captured and stored alongside the columnar values, which allows records to be re-constructed - 'assembled' in Parquet terminology - during deserialization. More information on how this works can be found in Google's [Dremel paper](https://research.google.com/pubs/archive/36632.pdf), on which Parquet is based.
+
+Support for arbitrarily nested data is made possible through serialization support for F# record types. Record types are not nullable in F#, so are serialized as required values by default. They can be deserialized from either optional or required records. Any null values encountered during deserialization from an optional record will result in a `SerializationException`.
+
+One of the advantages of Parquet being a columnar data format is that it's possible and efficient to load only a subset of columns. When deserializing records, any fields in the Parquet file that are not specified in the target .NET record type will be skipped. This enables a degree of forwards compatability - if new fields are added to the schema, it will still possible to deserialize using the old .NET record types.
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 

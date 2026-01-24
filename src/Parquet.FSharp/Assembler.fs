@@ -492,7 +492,7 @@ module private rec ValueAssembler =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel
         let fieldAssemblers =
-            recordDeserializer.Fields
+            recordDeserializer.FieldDeserializers
             |> Array.map (fun fieldDeserializer ->
                 ValueAssembler.forValue fieldDeserializer.ValueDeserializer maxRepLevel maxDefLevel)
         RecordAssembler(recordDeserializer, maxDefLevel, fieldAssemblers)

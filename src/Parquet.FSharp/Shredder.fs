@@ -193,7 +193,7 @@ type private RecordShredder(recordSerializer: RecordSerializer, fieldShredders: 
     inherit ValueShredder()
 
     let shredFieldLambdas =
-        Array.zip recordSerializer.Fields fieldShredders
+        Array.zip recordSerializer.FieldSerializers fieldShredders
         |> Array.map (fun (fieldSerializer, fieldShredder) ->
             let recordRepLevel = Expression.Parameter(typeof<int>, "recordRepLevel")
             let recordDefLevel = Expression.Parameter(typeof<int>, "recordDefLevel")
@@ -282,7 +282,7 @@ module private rec ValueShredder =
         let maxRepLevel = parentMaxRepLevel
         let maxDefLevel = parentMaxDefLevel
         let fieldShredders =
-            Seq.zip recordSerializer.Fields fields
+            Seq.zip recordSerializer.FieldSerializers fields
             |> Seq.map (fun (fieldSerializer, field) ->
                 ValueShredder.forValue fieldSerializer.ValueSerializer maxRepLevel maxDefLevel field)
             |> Array.ofSeq

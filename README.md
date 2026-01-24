@@ -168,7 +168,13 @@ One of the advantages of Parquet being a columnar data format is that it's possi
 
 Applies to: `'Value option`, `Nullable<'Value>`
 
-TODO: Add docs
+Parquet supports both optional and required values. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types `'Value option`, or in some cases the `Nullable<'Value>` type. This makes optional values much more explicit and discoverable.
+
+Due to the above, the default approach for serialization of other supported types is to treat the values as required, even if they are implicitly nullable through being a reference type. This helps prevent null values from appearing when they aren't expected. Values can instead be serialized as optional values by wrapping them in one of the supported optional types.
+
+Optional types can be deserialized from both optional and required values. When deserailzied from required values, they are guaranteed to have an associated value and will therefore never be 'null'.
+
+Note that Parquet does not support multiple levels of optionality, so nested optional types such as `'Value option option` are not supported. Attempting to serialize nested optional values will result in a `SerializationException`. Instead, the recommended approach for handling nested optional values is to add another level of nesting using an optional record containing a single optional field.
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 

@@ -35,6 +35,7 @@
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Array1d.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.ResizeArray.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Record.fs" />
+    <Compile Include="test.defaultconverter\Test.DefaultConverter.Record.Struct.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Option.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Nullable.fs" />
   </ItemGroup>

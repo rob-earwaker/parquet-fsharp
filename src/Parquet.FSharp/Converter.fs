@@ -1470,6 +1470,9 @@ type internal DefaultRecordConverter() =
                     else tryCreateRequiredDeserializer recordSchema targetType
                 | _ -> Option.None
 
+// TODO: Should we have separate converters for the different union types? Seems
+// like they are fairly independent, particularly as common functionality lives in
+// the {UnionInfo} type(s).
 type internal DefaultUnionConverter() =
     let isUnionType = FSharpType.IsUnion
 

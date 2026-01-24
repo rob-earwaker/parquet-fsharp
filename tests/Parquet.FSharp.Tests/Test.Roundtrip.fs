@@ -39,7 +39,6 @@ type ComplexUnionWithFSharpListCase = Case1 of field1:list<int>
 type ComplexUnionWithFSharpRecordCase = Case1 of field1:{| Field1: int |}
 type ComplexUnionWithSimpleUnionCase = Case1 of field1:SimpleUnion
 type ComplexUnionWithComplexUnionCase = Case1 of field1:ComplexUnion
-type ComplexUnionWithClassCase = Case1 of field1:Class
 type ComplexUnionWithNullableBoolCase = Case1 of field1:Nullable<bool>
 type ComplexUnionWithNullableInt8Case = Case1 of field1:Nullable<int8>
 type ComplexUnionWithNullableInt16Case = Case1 of field1:Nullable<int16>
@@ -79,204 +78,6 @@ type ComplexUnionWithOptionFSharpListCase = Case1 of field1:option<list<int>>
 type ComplexUnionWithOptionFSharpRecordCase = Case1 of field1:option<{| Field1: int |}>
 type ComplexUnionWithOptionSimpleUnionCase = Case1 of field1:option<SimpleUnion>
 type ComplexUnionWithOptionComplexUnionCase = Case1 of field1:option<ComplexUnion>
-type ComplexUnionWithOptionClassCase = Case1 of field1:option<Class>
-
-type Class() =
-    member val Field1 = Unchecked.defaultof<bool> with get, set
-    member val Field2 = Unchecked.defaultof<int> with get, set
-    member val Field3 = Unchecked.defaultof<float> with get, set
-
-type ClassWithBoolField() =
-    member val Field1 = Unchecked.defaultof<bool> with get, set
-
-type ClassWithInt8Field() =
-    member val Field1 = Unchecked.defaultof<int8> with get, set
-
-type ClassWithInt16Field() =
-    member val Field1 = Unchecked.defaultof<int16> with get, set
-
-type ClassWithInt32Field() =
-    member val Field1 = Unchecked.defaultof<int> with get, set
-
-type ClassWithInt64Field() =
-    member val Field1 = Unchecked.defaultof<int64> with get, set
-
-type ClassWithUInt8Field() =
-    member val Field1 = Unchecked.defaultof<uint8> with get, set
-
-type ClassWithUInt16Field() =
-    member val Field1 = Unchecked.defaultof<uint16> with get, set
-
-type ClassWithUInt32Field() =
-    member val Field1 = Unchecked.defaultof<uint> with get, set
-
-type ClassWithUInt64Field() =
-    member val Field1 = Unchecked.defaultof<uint64> with get, set
-
-type ClassWithFloat32Field() =
-    member val Field1 = Unchecked.defaultof<float32> with get, set
-
-type ClassWithFloat64Field() =
-    member val Field1 = Unchecked.defaultof<float> with get, set
-
-type ClassWithDecimalField() =
-    member val Field1 = Unchecked.defaultof<decimal> with get, set
-
-type ClassWithDateTimeField() =
-    member val Field1 = Unchecked.defaultof<DateTime> with get, set
-
-type ClassWithDateTimeOffsetField() =
-    member val Field1 = Unchecked.defaultof<DateTimeOffset> with get, set
-
-type ClassWithStringField() =
-    member val Field1 = Unchecked.defaultof<string> with get, set
-
-type ClassWithByteArrayField() =
-    member val Field1 = Unchecked.defaultof<byte[]> with get, set
-
-type ClassWithGuidField() =
-    member val Field1 = Unchecked.defaultof<Guid> with get, set
-
-type ClassWithArrayField() =
-    member val Field1 = Unchecked.defaultof<array<int>> with get, set
-
-type ClassWithGenericListField() =
-    member val Field1 = Unchecked.defaultof<ResizeArray<int>> with get, set
-
-type ClassWithFSharpListField() =
-    member val Field1 = Unchecked.defaultof<list<int>> with get, set
-
-type ClassWithFSharpRecordField() =
-    member val Field1 = Unchecked.defaultof<{| Field1: int |}> with get, set
-
-type ClassWithSimpleUnionField() =
-    member val Field1 = Unchecked.defaultof<SimpleUnion> with get, set
-
-type ClassWithComplexUnionField() =
-    member val Field1 = Unchecked.defaultof<ComplexUnion> with get, set
-
-type ClassWithClassField() =
-    member val Field1 = Unchecked.defaultof<Class> with get, set
-
-type ClassWithNullableBoolField() =
-    member val Field1 = Unchecked.defaultof<Nullable<bool>> with get, set
-
-type ClassWithNullableInt8Field() =
-    member val Field1 = Unchecked.defaultof<Nullable<int8>> with get, set
-
-type ClassWithNullableInt16Field() =
-    member val Field1 = Unchecked.defaultof<Nullable<int16>> with get, set
-
-type ClassWithNullableInt32Field() =
-    member val Field1 = Unchecked.defaultof<Nullable<int>> with get, set
-
-type ClassWithNullableInt64Field() =
-    member val Field1 = Unchecked.defaultof<Nullable<int64>> with get, set
-
-type ClassWithNullableUInt8Field() =
-    member val Field1 = Unchecked.defaultof<Nullable<uint8>> with get, set
-
-type ClassWithNullableUInt16Field() =
-    member val Field1 = Unchecked.defaultof<Nullable<uint16>> with get, set
-
-type ClassWithNullableUInt32Field() =
-    member val Field1 = Unchecked.defaultof<Nullable<uint>> with get, set
-
-type ClassWithNullableUInt64Field() =
-    member val Field1 = Unchecked.defaultof<Nullable<uint64>> with get, set
-
-type ClassWithNullableFloat32Field() =
-    member val Field1 = Unchecked.defaultof<Nullable<float32>> with get, set
-
-type ClassWithNullableFloat64Field() =
-    member val Field1 = Unchecked.defaultof<Nullable<float>> with get, set
-
-type ClassWithNullableDecimalField() =
-    member val Field1 = Unchecked.defaultof<Nullable<decimal>> with get, set
-
-type ClassWithNullableDateTimeField() =
-    member val Field1 = Unchecked.defaultof<Nullable<DateTime>> with get, set
-
-type ClassWithNullableDateTimeOffsetField() =
-    member val Field1 = Unchecked.defaultof<Nullable<DateTimeOffset>> with get, set
-
-type ClassWithNullableGuidField() =
-    member val Field1 = Unchecked.defaultof<Nullable<Guid>> with get, set
-
-type ClassWithNullableFSharpRecordField() =
-    member val Field1 = Unchecked.defaultof<Nullable<struct {| Field1: int |}>> with get, set
-
-type ClassWithOptionBoolField() =
-    member val Field1 = Unchecked.defaultof<option<bool>> with get, set
-
-type ClassWithOptionInt8Field() =
-    member val Field1 = Unchecked.defaultof<option<int8>> with get, set
-
-type ClassWithOptionInt16Field() =
-    member val Field1 = Unchecked.defaultof<option<int16>> with get, set
-
-type ClassWithOptionInt32Field() =
-    member val Field1 = Unchecked.defaultof<option<int>> with get, set
-
-type ClassWithOptionInt64Field() =
-    member val Field1 = Unchecked.defaultof<option<int64>> with get, set
-
-type ClassWithOptionUInt8Field() =
-    member val Field1 = Unchecked.defaultof<option<uint8>> with get, set
-
-type ClassWithOptionUInt16Field() =
-    member val Field1 = Unchecked.defaultof<option<uint16>> with get, set
-
-type ClassWithOptionUInt32Field() =
-    member val Field1 = Unchecked.defaultof<option<uint>> with get, set
-
-type ClassWithOptionUInt64Field() =
-    member val Field1 = Unchecked.defaultof<option<uint64>> with get, set
-
-type ClassWithOptionFloat32Field() =
-    member val Field1 = Unchecked.defaultof<option<float32>> with get, set
-
-type ClassWithOptionFloat64Field() =
-    member val Field1 = Unchecked.defaultof<option<float>> with get, set
-
-type ClassWithOptionDecimalField() =
-    member val Field1 = Unchecked.defaultof<option<decimal>> with get, set
-
-type ClassWithOptionDateTimeField() =
-    member val Field1 = Unchecked.defaultof<option<DateTime>> with get, set
-
-type ClassWithOptionDateTimeOffsetField() =
-    member val Field1 = Unchecked.defaultof<option<DateTimeOffset>> with get, set
-
-type ClassWithOptionStringField() =
-    member val Field1 = Unchecked.defaultof<option<string>> with get, set
-
-type ClassWithOptionByteArrayField() =
-    member val Field1 = Unchecked.defaultof<option<byte[]>> with get, set
-
-type ClassWithOptionGuidField() =
-    member val Field1 = Unchecked.defaultof<option<Guid>> with get, set
-
-type ClassWithOptionArrayField() =
-    member val Field1 = Unchecked.defaultof<option<array<int>>> with get, set
-
-type ClassWithOptionGenericListField() =
-    member val Field1 = Unchecked.defaultof<option<ResizeArray<int>>> with get, set
-
-type ClassWithOptionFSharpListField() =
-    member val Field1 = Unchecked.defaultof<option<list<int>>> with get, set
-
-type ClassWithOptionFSharpRecordField() =
-    member val Field1 = Unchecked.defaultof<option<{| Field1: int |}>> with get, set
-
-type ClassWithOptionSimpleUnionField() =
-    member val Field1 = Unchecked.defaultof<option<SimpleUnion>> with get, set
-
-type ClassWithOptionComplexUnionField() =
-    member val Field1 = Unchecked.defaultof<option<ComplexUnion>> with get, set
-
-type ClassWithOptionClassField() =
-    member val Field1 = Unchecked.defaultof<option<Class>> with get, set
 
 let testRoundtrip<'FSharpRecord> (records: 'FSharpRecord[]) =
     let bytes = ParquetSerializer.Serialize(records)
@@ -525,12 +326,6 @@ let ``array field with complex union elements`` records =
         records
 
 [<Property>]
-let ``array field with class elements`` records =
-    testRoundtrip<{|
-        Field1: array<Class> |}>
-        records
-
-[<Property>]
 let ``array field with nullable bool elements`` records =
     testRoundtrip<{|
         Field1: array<Nullable<bool>> |}>
@@ -767,12 +562,6 @@ let ``array field with option complex union elements`` records =
         records
 
 [<Property>]
-let ``array field with option class elements`` records =
-    testRoundtrip<{|
-        Field1: array<option<Class>> |}>
-        records
-
-[<Property>]
 let ``resize array field with bool elements`` records =
     testRoundtrip<{|
         Field1: ResizeArray<bool> |}>
@@ -909,12 +698,6 @@ let ``resize array field with simple union elements`` records =
 let ``resize array field with complex union elements`` records =
     testRoundtrip<{|
         Field1: ResizeArray<ComplexUnion> |}>
-        records
-
-[<Property>]
-let ``resize array field with class elements`` records =
-    testRoundtrip<{|
-        Field1: ResizeArray<Class> |}>
         records
 
 [<Property>]
@@ -1154,12 +937,6 @@ let ``resize array field with option complex union elements`` records =
         records
 
 [<Property>]
-let ``resize array field with option class elements`` records =
-    testRoundtrip<{|
-        Field1: ResizeArray<option<Class>> |}>
-        records
-
-[<Property>]
 let ``list field with bool elements`` records =
     testRoundtrip<{|
         Field1: list<bool> |}>
@@ -1296,12 +1073,6 @@ let ``list field with simple union elements`` records =
 let ``list field with complex union elements`` records =
     testRoundtrip<{|
         Field1: list<ComplexUnion> |}>
-        records
-
-[<Property>]
-let ``list field with class elements`` records =
-    testRoundtrip<{|
-        Field1: list<Class> |}>
         records
 
 [<Property>]
@@ -1541,12 +1312,6 @@ let ``list field with option complex union elements`` records =
         records
 
 [<Property>]
-let ``list field with option class elements`` records =
-    testRoundtrip<{|
-        Field1: list<option<Class>> |}>
-        records
-
-[<Property>]
 let ``record field with bool field`` records =
     testRoundtrip<{|
         Field1: {|
@@ -1706,13 +1471,6 @@ let ``record field with complex union field`` records =
     testRoundtrip<{|
         Field1: {|
             Field2: ComplexUnion |} |}>
-        records
-
-[<Property>]
-let ``record field with class field`` records =
-    testRoundtrip<{|
-        Field1: {|
-            Field2: Class |} |}>
         records
 
 [<Property>]
@@ -1991,13 +1749,6 @@ let ``record field with option complex union field`` records =
         records
 
 [<Property>]
-let ``record field with option class field`` records =
-    testRoundtrip<{|
-        Field1: {|
-            Field2: option<Class> |} |}>
-        records
-
-[<Property>]
 let ``simple union field`` records =
     testRoundtrip<{|
         Field1: SimpleUnion |}>
@@ -2145,12 +1896,6 @@ let ``complex union field with simple union case`` records =
 let ``complex union field with complex union case`` records =
     testRoundtrip<{|
         Field1: ComplexUnionWithComplexUnionCase |}>
-        records
-
-[<Property>]
-let ``complex union field with class case`` records =
-    testRoundtrip<{|
-        Field1: ComplexUnionWithClassCase |}>
         records
 
 [<Property>]
@@ -2385,402 +2130,6 @@ let ``complex union field with option simple union case`` records =
 let ``complex union field with option complex union case`` records =
     testRoundtrip<{|
         Field1: ComplexUnionWithOptionComplexUnionCase |}>
-        records
-
-[<Property>]
-let ``complex union field with option class case`` records =
-    testRoundtrip<{|
-        Field1: ComplexUnionWithOptionClassCase |}>
-        records
-
-[<Property>]
-let ``class field`` records =
-    testRoundtrip<{|
-        Field1: Class |}>
-        records
-
-[<Property>]
-let ``class field with bool field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithBoolField |}>
-        records
-
-[<Property>]
-let ``class field with int8 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithInt8Field |}>
-        records
-
-[<Property>]
-let ``class field with int16 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithInt16Field |}>
-        records
-
-[<Property>]
-let ``class field with int32 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithInt32Field |}>
-        records
-
-[<Property>]
-let ``class field with int64 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithInt64Field |}>
-        records
-
-[<Property>]
-let ``class field with uint8 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithUInt8Field |}>
-        records
-
-[<Property>]
-let ``class field with uint16 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithUInt16Field |}>
-        records
-
-[<Property>]
-let ``class field with uint32 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithUInt32Field |}>
-        records
-
-[<Property>]
-let ``class field with uint64 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithUInt64Field |}>
-        records
-
-[<Property>]
-let ``class field with float32 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithFloat32Field |}>
-        records
-
-[<Property>]
-let ``class field with float64 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithFloat64Field |}>
-        records
-
-[<Property>]
-let ``class field with decimal field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithDecimalField |}>
-        records
-
-[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``class field with date time field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithDateTimeField |}>
-        records
-
-[<Property>]
-let ``class field with date time offset field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithDateTimeOffsetField |}>
-        records
-
-[<Property>]
-let ``class field with string field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithStringField |}>
-        records
-
-[<Property>]
-let ``class field with byte array field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithByteArrayField |}>
-        records
-
-[<Property>]
-let ``class field with guid field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithGuidField |}>
-        records
-
-[<Property>]
-let ``class field with array field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithArrayField |}>
-        records
-
-[<Property>]
-let ``class field with resize array field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithGenericListField |}>
-        records
-
-[<Property>]
-let ``class field with list field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithFSharpListField |}>
-        records
-
-[<Property>]
-let ``class field with record field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithFSharpRecordField |}>
-        records
-
-[<Property>]
-let ``class field with simple union field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithSimpleUnionField |}>
-        records
-
-[<Property>]
-let ``class field with complex union field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithComplexUnionField |}>
-        records
-
-[<Property>]
-let ``class field with class field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithClassField |}>
-        records
-
-[<Property>]
-let ``class field with nullable bool field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableBoolField |}>
-        records
-
-[<Property>]
-let ``class field with nullable int8 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableInt8Field |}>
-        records
-
-[<Property>]
-let ``class field with nullable int16 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableInt16Field |}>
-        records
-
-[<Property>]
-let ``class field with nullable int32 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableInt32Field |}>
-        records
-
-[<Property>]
-let ``class field with nullable int64 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableInt64Field |}>
-        records
-
-[<Property>]
-let ``class field with nullable uint8 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableUInt8Field |}>
-        records
-
-[<Property>]
-let ``class field with nullable uint16 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableUInt16Field |}>
-        records
-
-[<Property>]
-let ``class field with nullable uint32 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableUInt32Field |}>
-        records
-
-[<Property>]
-let ``class field with nullable uint64 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableUInt64Field |}>
-        records
-
-[<Property>]
-let ``class field with nullable float32 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableFloat32Field |}>
-        records
-
-[<Property>]
-let ``class field with nullable float64 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableFloat64Field |}>
-        records
-
-[<Property>]
-let ``class field with nullable decimal field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableDecimalField |}>
-        records
-
-[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``class field with nullable date time field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableDateTimeField |}>
-        records
-
-[<Property>]
-let ``class field with nullable date time offset field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableDateTimeOffsetField |}>
-        records
-
-[<Property>]
-let ``class field with nullable guid field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableGuidField |}>
-        records
-
-[<Property>]
-let ``class field with nullable record field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithNullableFSharpRecordField |}>
-        records
-
-[<Property>]
-let ``class field with option bool field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionBoolField |}>
-        records
-
-[<Property>]
-let ``class field with option int8 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionInt8Field |}>
-        records
-
-[<Property>]
-let ``class field with option int16 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionInt16Field |}>
-        records
-
-[<Property>]
-let ``class field with option int32 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionInt32Field |}>
-        records
-
-[<Property>]
-let ``class field with option int64 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionInt64Field |}>
-        records
-
-[<Property>]
-let ``class field with option uint8 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionUInt8Field |}>
-        records
-
-[<Property>]
-let ``class field with option uint16 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionUInt16Field |}>
-        records
-
-[<Property>]
-let ``class field with option uint32 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionUInt32Field |}>
-        records
-
-[<Property>]
-let ``class field with option uint64 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionUInt64Field |}>
-        records
-
-[<Property>]
-let ``class field with option float32 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionFloat32Field |}>
-        records
-
-[<Property>]
-let ``class field with option float64 field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionFloat64Field |}>
-        records
-
-[<Property>]
-let ``class field with option decimal field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionDecimalField |}>
-        records
-
-[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``class field with option date time field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionDateTimeField |}>
-        records
-
-[<Property>]
-let ``class field with option date time offset field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionDateTimeOffsetField |}>
-        records
-
-[<Property>]
-let ``class field with option string field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionStringField |}>
-        records
-
-[<Property>]
-let ``class field with option byte array field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionByteArrayField |}>
-        records
-
-[<Property>]
-let ``class field with option guid field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionGuidField |}>
-        records
-
-[<Property>]
-let ``class field with option array field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionArrayField |}>
-        records
-
-[<Property>]
-let ``class field with option resize array field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionGenericListField |}>
-        records
-
-[<Property>]
-let ``class field with option list field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionFSharpListField |}>
-        records
-
-[<Property>]
-let ``class field with option record field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionFSharpRecordField |}>
-        records
-
-[<Property>]
-let ``class field with option simple union field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionSimpleUnionField |}>
-        records
-
-[<Property>]
-let ``class field with option complex union field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionComplexUnionField |}>
-        records
-
-[<Property>]
-let ``class field with option class field`` records =
-    testRoundtrip<{|
-        Field1: ClassWithOptionClassField |}>
         records
 
 [<Property>]
@@ -3369,12 +2718,6 @@ let ``option array field with complex union elements`` records =
         records
 
 [<Property>]
-let ``option array field with class elements`` records =
-    testRoundtrip<{|
-        Field1: option<array<Class>> |}>
-        records
-
-[<Property>]
 let ``option array field with nullable bool elements`` records =
     testRoundtrip<{|
         Field1: option<array<Nullable<bool>>> |}>
@@ -3611,12 +2954,6 @@ let ``option array field with option complex union elements`` records =
         records
 
 [<Property>]
-let ``option array field with option class elements`` records =
-    testRoundtrip<{|
-        Field1: option<array<option<Class>>> |}>
-        records
-
-[<Property>]
 let ``option resize array field with bool elements`` records =
     testRoundtrip<{|
         Field1: option<ResizeArray<bool>> |}>
@@ -3753,12 +3090,6 @@ let ``option resize array field with simple union elements`` records =
 let ``option resize array field with complex union elements`` records =
     testRoundtrip<{|
         Field1: option<ResizeArray<ComplexUnion>> |}>
-        records
-
-[<Property>]
-let ``option resize array field with class elements`` records =
-    testRoundtrip<{|
-        Field1: option<ResizeArray<Class>> |}>
         records
 
 [<Property>]
@@ -3998,12 +3329,6 @@ let ``option resize array field with option complex union elements`` records =
         records
 
 [<Property>]
-let ``option resize array field with option class elements`` records =
-    testRoundtrip<{|
-        Field1: option<ResizeArray<option<Class>>> |}>
-        records
-
-[<Property>]
 let ``option list field with bool elements`` records =
     testRoundtrip<{|
         Field1: option<list<bool>> |}>
@@ -4140,12 +3465,6 @@ let ``option list field with simple union elements`` records =
 let ``option list field with complex union elements`` records =
     testRoundtrip<{|
         Field1: option<list<ComplexUnion>> |}>
-        records
-
-[<Property>]
-let ``option list field with class elements`` records =
-    testRoundtrip<{|
-        Field1: option<list<Class>> |}>
         records
 
 [<Property>]
@@ -4385,12 +3704,6 @@ let ``option list field with option complex union elements`` records =
         records
 
 [<Property>]
-let ``option list field with option class elements`` records =
-    testRoundtrip<{|
-        Field1: option<list<option<Class>>> |}>
-        records
-
-[<Property>]
 let ``option record field with bool field`` records =
     testRoundtrip<{|
         Field1: option<{|
@@ -4550,13 +3863,6 @@ let ``option record field with complex union field`` records =
     testRoundtrip<{|
         Field1: option<{|
             Field2: ComplexUnion |}> |}>
-        records
-
-[<Property>]
-let ``option record field with class field`` records =
-    testRoundtrip<{|
-        Field1: option<{|
-            Field2: Class |}> |}>
         records
 
 [<Property>]
@@ -4835,13 +4141,6 @@ let ``option record field with option complex union field`` records =
         records
 
 [<Property>]
-let ``option record field with option class field`` records =
-    testRoundtrip<{|
-        Field1: option<{|
-            Field2: option<Class> |}> |}>
-        records
-
-[<Property>]
 let ``option simple union field`` records =
     testRoundtrip<{|
         Field1: option<SimpleUnion> |}>
@@ -4989,12 +4288,6 @@ let ``option complex union field with simple union case`` records =
 let ``option complex union field with complex union case`` records =
     testRoundtrip<{|
         Field1: option<ComplexUnionWithComplexUnionCase> |}>
-        records
-
-[<Property>]
-let ``option complex union field with class case`` records =
-    testRoundtrip<{|
-        Field1: option<ComplexUnionWithClassCase> |}>
         records
 
 [<Property>]
@@ -5229,400 +4522,4 @@ let ``option complex union field with option simple union case`` records =
 let ``option complex union field with option complex union case`` records =
     testRoundtrip<{|
         Field1: option<ComplexUnionWithOptionComplexUnionCase> |}>
-        records
-
-[<Property>]
-let ``option complex union field with option class case`` records =
-    testRoundtrip<{|
-        Field1: option<ComplexUnionWithOptionClassCase> |}>
-        records
-
-[<Property>]
-let ``option class field`` records =
-    testRoundtrip<{|
-        Field1: option<Class> |}>
-        records
-
-[<Property>]
-let ``option class field with bool field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithBoolField> |}>
-        records
-
-[<Property>]
-let ``option class field with int8 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithInt8Field> |}>
-        records
-
-[<Property>]
-let ``option class field with int16 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithInt16Field> |}>
-        records
-
-[<Property>]
-let ``option class field with int32 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithInt32Field> |}>
-        records
-
-[<Property>]
-let ``option class field with int64 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithInt64Field> |}>
-        records
-
-[<Property>]
-let ``option class field with uint8 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithUInt8Field> |}>
-        records
-
-[<Property>]
-let ``option class field with uint16 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithUInt16Field> |}>
-        records
-
-[<Property>]
-let ``option class field with uint32 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithUInt32Field> |}>
-        records
-
-[<Property>]
-let ``option class field with uint64 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithUInt64Field> |}>
-        records
-
-[<Property>]
-let ``option class field with float32 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithFloat32Field> |}>
-        records
-
-[<Property>]
-let ``option class field with float64 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithFloat64Field> |}>
-        records
-
-[<Property>]
-let ``option class field with decimal field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithDecimalField> |}>
-        records
-
-[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``option class field with date time field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithDateTimeField> |}>
-        records
-
-[<Property>]
-let ``option class field with date time offset field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithDateTimeOffsetField> |}>
-        records
-
-[<Property>]
-let ``option class field with string field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithStringField> |}>
-        records
-
-[<Property>]
-let ``option class field with byte array field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithByteArrayField> |}>
-        records
-
-[<Property>]
-let ``option class field with guid field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithGuidField> |}>
-        records
-
-[<Property>]
-let ``option class field with array field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithArrayField> |}>
-        records
-
-[<Property>]
-let ``option class field with resize array field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithGenericListField> |}>
-        records
-
-[<Property>]
-let ``option class field with list field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithFSharpListField> |}>
-        records
-
-[<Property>]
-let ``option class field with record field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithFSharpRecordField> |}>
-        records
-
-[<Property>]
-let ``option class field with simple union field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithSimpleUnionField> |}>
-        records
-
-[<Property>]
-let ``option class field with complex union field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithComplexUnionField> |}>
-        records
-
-[<Property>]
-let ``option class field with class field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithClassField> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable bool field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableBoolField> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable int8 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableInt8Field> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable int16 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableInt16Field> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable int32 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableInt32Field> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable int64 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableInt64Field> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable uint8 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableUInt8Field> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable uint16 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableUInt16Field> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable uint32 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableUInt32Field> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable uint64 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableUInt64Field> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable float32 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableFloat32Field> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable float64 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableFloat64Field> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable decimal field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableDecimalField> |}>
-        records
-
-[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``option class field with nullable date time field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableDateTimeField> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable date time offset field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableDateTimeOffsetField> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable guid field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableGuidField> |}>
-        records
-
-[<Property>]
-let ``option class field with nullable record field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithNullableFSharpRecordField> |}>
-        records
-
-[<Property>]
-let ``option class field with option bool field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionBoolField> |}>
-        records
-
-[<Property>]
-let ``option class field with option int8 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionInt8Field> |}>
-        records
-
-[<Property>]
-let ``option class field with option int16 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionInt16Field> |}>
-        records
-
-[<Property>]
-let ``option class field with option int32 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionInt32Field> |}>
-        records
-
-[<Property>]
-let ``option class field with option int64 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionInt64Field> |}>
-        records
-
-[<Property>]
-let ``option class field with option uint8 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionUInt8Field> |}>
-        records
-
-[<Property>]
-let ``option class field with option uint16 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionUInt16Field> |}>
-        records
-
-[<Property>]
-let ``option class field with option uint32 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionUInt32Field> |}>
-        records
-
-[<Property>]
-let ``option class field with option uint64 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionUInt64Field> |}>
-        records
-
-[<Property>]
-let ``option class field with option float32 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionFloat32Field> |}>
-        records
-
-[<Property>]
-let ``option class field with option float64 field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionFloat64Field> |}>
-        records
-
-[<Property>]
-let ``option class field with option decimal field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionDecimalField> |}>
-        records
-
-[<Property(Arbitrary = [| typeof<UtcDateTime> |])>]
-let ``option class field with option date time field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionDateTimeField> |}>
-        records
-
-[<Property>]
-let ``option class field with option date time offset field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionDateTimeOffsetField> |}>
-        records
-
-[<Property>]
-let ``option class field with option string field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionStringField> |}>
-        records
-
-[<Property>]
-let ``option class field with option byte array field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionByteArrayField> |}>
-        records
-
-[<Property>]
-let ``option class field with option guid field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionGuidField> |}>
-        records
-
-[<Property>]
-let ``option class field with option array field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionArrayField> |}>
-        records
-
-[<Property>]
-let ``option class field with option resize array field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionGenericListField> |}>
-        records
-
-[<Property>]
-let ``option class field with option list field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionFSharpListField> |}>
-        records
-
-[<Property>]
-let ``option class field with option record field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionFSharpRecordField> |}>
-        records
-
-[<Property>]
-let ``option class field with option simple union field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionSimpleUnionField> |}>
-        records
-
-[<Property>]
-let ``option class field with option complex union field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionComplexUnionField> |}>
-        records
-
-[<Property>]
-let ``option class field with option class field`` records =
-    testRoundtrip<{|
-        Field1: option<ClassWithOptionClassField> |}>
         records

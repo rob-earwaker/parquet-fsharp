@@ -5,7 +5,7 @@
 
 An F# serailization library for the [Apache Parquet](https://parquet.apache.org/) file format, built on top of the fantastic [Parquet.Net](https://github.com/aloneguid/parquet-dotnet) library. **Parquet.FSharp** adds first-class support for F# types such as records, options, lists and discriminated unions, whilst maintaining the performance of **Parquet.Net**.
 
->:warning: **Parquet.FSharp** is in its initial development phase - the behaviour and public API may change between minor version increments. Feedback, ideas and feature requests are all welcome!
+>NOTE: **Parquet.FSharp** is in its initial development phase - the behaviour and public API may change between minor version increments. Feedback, ideas and feature requests are all welcome!
 
 - [Quickstart](#quickstart)
 - [Supported Types](#supported-types)
@@ -209,6 +209,7 @@ The following types are not currently supported but will likely be added in the 
 - `'Value voption`
 - `Map<'Key, 'Value>`
 - `Dictionary<'Key, 'Value>`
+- Classes
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 

@@ -462,7 +462,6 @@ module internal ValueConverter =
         DefaultOptionConverter()
         DefaultNullableConverter()
         DefaultUnionConverter()
-        DefaultClassConverter()
     |]
 
 type internal DefaultBoolConverter() =
@@ -1952,64 +1951,3 @@ type internal DefaultNullableConverter() =
                 if sourceSchema.IsOptional
                 then Option.Some (createOptionalDeserializer sourceSchema targetType)
                 else Option.Some (createRequiredDeserializer sourceSchema targetType)
-
-type internal DefaultClassConverter() =
-    let isClassWithDefaultConstructor (dotnetType: Type) =
-        dotnetType.IsClass
-        && not (isNull (dotnetType.GetConstructor([||])))
-
-    let getProperties (dotnetType: Type) =
-        dotnetType.GetProperties(BindingFlags.Instance ||| BindingFlags.Public)
-
-    let createSerializer (dotnetType: Type) =
-        let fieldSerializers =
-            getProperties dotnetType
-            |> Array.map FieldSerializer.ofProperty
-        Serializer.record dotnetType fieldSerializers
-
-    let tryCreateDeserializer (dotnetType: Type) (recordSchema: RecordTypeSchema) =
-        let properties = getProperties dotnetType
-        let fieldDeserializers =
-            properties
-            |> Array.choose (fun field ->
-                recordSchema.Fields
-                |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = field.Name)
-                |> Option.map (fun fieldSchema ->
-                    FieldDeserializer.ofProperty fieldSchema.Value field))
-        if fieldDeserializers.Length < properties.Length
-        then Option.None
-        else
-            let createFromFieldValues =
-                let defaultConstructor = dotnetType.GetConstructor([||])
-                fun (fieldValues: Expression[]) ->
-                    let record = Expression.Variable(dotnetType, "record")
-                    Expression.Block(
-                        [ record ],
-                        seq<Expression> {
-                            yield Expression.Assign(record, Expression.New(defaultConstructor))
-                            yield! Array.zip properties fieldValues
-                                |> Array.map (fun (field, fieldValue) ->
-                                    Expression.Assign(
-                                        Expression.Property(record, field.Name),
-                                        fieldValue)
-                                    :> Expression)
-                            yield record
-                        })
-                    :> Expression
-            Deserializer.record dotnetType fieldDeserializers createFromFieldValues
-            |> Option.Some
-
-    interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
-            if isClassWithDefaultConstructor sourceType
-            then Option.Some (createSerializer sourceType)
-            else Option.None
-
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
-            if not (isClassWithDefaultConstructor targetType)
-            then Option.None
-            else
-                match sourceSchema.Type with
-                | ValueTypeSchema.Record recordSchema ->
-                    tryCreateDeserializer targetType recordSchema
-                | _ -> Option.None

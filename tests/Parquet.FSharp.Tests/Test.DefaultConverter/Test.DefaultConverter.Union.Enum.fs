@@ -140,3 +140,56 @@ module ``deserialize enum union with multiple cases from optional string`` =
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
+
+module ``deserialize enum union from required string with unknown case name`` =
+    type Union = Case1 | Case2 | Case3
+    type Input = { Field1: string }
+    type Output = { Field1: Union }
+
+    [<Theory>]
+    [<InlineData("Unknown")>]
+    [<InlineData("case1")>]
+    [<InlineData("case_2")>]
+    [<InlineData("Case4")>]
+    let ``value`` caseName =
+        let inputRecords = [| { Input.Field1 = caseName } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Deserialize<Output>(bytes) @>
+            (fun exn ->
+                <@ exn.Message =
+                    $"encountered invalid case name '{caseName}' during"
+                    + " deserialization of enum union type"
+                    + $" '{typeof<Union>.FullName}'" @>)
+
+module ``deserialize enum union from optional string with unknown case name`` =
+    type Union = Case1 | Case2 | Case3
+    type Input = { Field1: string option }
+    type Output = { Field1: Union }
+
+    [<Fact>]
+    let ``null value`` () =
+        let inputRecords = [| { Input.Field1 = Option.None } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Deserialize<Output>(bytes) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "null value encountered during deserialization for"
+                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+
+    [<Theory>]
+    [<InlineData("Unknown")>]
+    [<InlineData("case1")>]
+    [<InlineData("case_2")>]
+    [<InlineData("Case4")>]
+    let ``value`` caseName =
+        let inputRecords = [| { Input.Field1 = Option.Some caseName } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Deserialize<Output>(bytes) @>
+            (fun exn ->
+                <@ exn.Message =
+                    $"encountered invalid case name '{caseName}' during"
+                    + " deserialization of enum union type"
+                    + $" '{typeof<Union>.FullName}'" @>)

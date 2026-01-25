@@ -43,6 +43,8 @@ type SerializationException(message) =
 //     - TimeSpan, Interval
 //     - Enums?
 
+// TODO: Replace 'failwith' with 'SerializationException'.
+
 // TODO: Can we cache anything, e.g. reflected info?
 
 // TODO: Attribute to select specific serializer type to use? Alternatively could
@@ -1579,8 +1581,12 @@ type internal DefaultUnionConverter() =
                                 Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
                                 Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||]))
                             :> Expression)
-                    yield Expression.FailWith(
-                        $"encountered invalid case name for enum union of type '{dotnetType.FullName}'")
+                    yield Expression.FailWith<SerializationException>(
+                        Expression.Constant("encountered invalid case name '"),
+                        caseName,
+                        Expression.Constant(
+                            "' during deserialization of enum union type"
+                            + $" '{dotnetType.FullName}'"))
                     yield Expression.Label(returnLabel, Expression.Default(dotnetType))
                 })
             :> Expression

@@ -8,7 +8,7 @@ open Xunit
 module ``serialize enum union with single case`` =
     type Union = Case1
     type Input = { Field1: Union }
-    type Output = { Field1: Union }
+    type Output = { Field1: string }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -27,12 +27,12 @@ module ``serialize enum union with single case`` =
         let schema = ParquetFile.readSchema bytes
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = Union.Case1 } |] @>
+        test <@ outputRecords = [| { Output.Field1 = "Case1" } |] @>
 
 module ``serialize enum union with multiple cases`` =
     type Union = Case1 | Case2 | Case3
     type Input = { Field1: Union }
-    type Output = { Field1: Union }
+    type Output = { Field1: string }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -45,19 +45,19 @@ module ``serialize enum union with multiple cases`` =
                 Assert.Field.hasNoChildren ] ]
 
     let Value = [|
-        [| box Union.Case1 |]
-        [| box Union.Case2 |]
-        [| box Union.Case3 |] |]
+        [| (* inputValue *) box Union.Case1; (* outputValue *) box "Case1" |]
+        [| (* inputValue *) box Union.Case2; (* outputValue *) box "Case2" |]
+        [| (* inputValue *) box Union.Case3; (* outputValue *) box "Case3" |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
-    let ``value`` value =
-        let inputRecords = [| { Input.Field1 = value } |]
+    let ``value`` inputValue outputValue =
+        let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
 module ``deserialize enum union with single case from required string`` =
     type Union = Case1

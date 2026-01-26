@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.DefaultConverter.UInt32
+namespace Parquet.FSharp.Tests.Int16
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests
@@ -6,9 +6,9 @@ open Swensen.Unquote
 open System
 open Xunit
 
-module ``serialize uint32`` =
-    type Input = { Field1: uint32 }
-    type Output = { Field1: uint32 }
+module ``serialize int16`` =
+    type Input = { Field1: int16 }
+    type Output = { Field1: int16 }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -16,14 +16,16 @@ module ``serialize uint32`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isRequired
                 Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInteger 32 false
-                Assert.Field.ConvertedType.isUInt32
+                Assert.Field.LogicalType.isInteger 16 true
+                Assert.Field.ConvertedType.isInt16
                 Assert.Field.hasNoChildren ] ]
 
     [<Theory>]
-    [<InlineData(UInt32.MinValue)>]
-    [<InlineData(             1u)>]
-    [<InlineData(UInt32.MaxValue)>]
+    [<InlineData(Int16.MinValue)>]
+    [<InlineData(           -1s)>]
+    [<InlineData(            0s)>]
+    [<InlineData(            1s)>]
+    [<InlineData(Int16.MaxValue)>]
     let ``value`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -32,23 +34,25 @@ module ``serialize uint32`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize uint32 from required uint32`` =
-    type Input = { Field1: uint32 }
-    type Output = { Field1: uint32 }
+module ``deserialize int16 from required int16`` =
+    type Input = { Field1: int16 }
+    type Output = { Field1: int16 }
 
     [<Theory>]
-    [<InlineData(UInt32.MinValue)>]
-    [<InlineData(             1u)>]
-    [<InlineData(UInt32.MaxValue)>]
+    [<InlineData(Int16.MinValue)>]
+    [<InlineData(           -1s)>]
+    [<InlineData(            0s)>]
+    [<InlineData(            1s)>]
+    [<InlineData(Int16.MaxValue)>]
     let ``value`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize uint32 from optional uint32`` =
-    type Input = { Field1: uint32 option }
-    type Output = { Field1: uint32 }
+module ``deserialize int16 from optional int16`` =
+    type Input = { Field1: int16 option }
+    type Output = { Field1: int16 }
 
     [<Fact>]
     let ``null value`` () =
@@ -59,35 +63,39 @@ module ``deserialize uint32 from optional uint32`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<uint32>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int16>.FullName}'" @>)
 
     [<Theory>]
-    [<InlineData(UInt32.MinValue)>]
-    [<InlineData(             1u)>]
-    [<InlineData(UInt32.MaxValue)>]
+    [<InlineData(Int16.MinValue)>]
+    [<InlineData(           -1s)>]
+    [<InlineData(            0s)>]
+    [<InlineData(            1s)>]
+    [<InlineData(Int16.MaxValue)>]
     let ``non-null value`` value =
         let inputRecords = [| { Input.Field1 = Option.Some value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize uint32 from required uint16`` =
-    type Input = { Field1: uint16 }
-    type Output = { Field1: uint32 }
+module ``deserialize int16 from required int8`` =
+    type Input = { Field1: int8 }
+    type Output = { Field1: int16 }
 
     [<Theory>]
-    [<InlineData((* inputValue *) UInt16.MinValue, (* outputValue *)     0u)>]
-    [<InlineData((* inputValue *)             1us, (* outputValue *)     1u)>]
-    [<InlineData((* inputValue *) UInt16.MaxValue, (* outputValue *) 65535u)>]
+    [<InlineData((* inputValue *) SByte.MinValue, (* outputValue *) -128s)>]
+    [<InlineData((* inputValue *)            -1y, (* outputValue *)   -1s)>]
+    [<InlineData((* inputValue *)             0y, (* outputValue *)    0s)>]
+    [<InlineData((* inputValue *)             1y, (* outputValue *)    1s)>]
+    [<InlineData((* inputValue *) SByte.MaxValue, (* outputValue *)  127s)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
-module ``deserialize uint32 from optional uint16`` =
-    type Input = { Field1: uint16 option }
-    type Output = { Field1: uint32 }
+module ``deserialize int16 from optional int8`` =
+    type Input = { Field1: int8 option }
+    type Output = { Field1: int16 }
 
     [<Fact>]
     let ``null value`` () =
@@ -98,35 +106,37 @@ module ``deserialize uint32 from optional uint16`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<uint32>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int16>.FullName}'" @>)
 
     [<Theory>]
-    [<InlineData((* inputValue *) UInt16.MinValue, (* outputValue *)     0u)>]
-    [<InlineData((* inputValue *)             1us, (* outputValue *)     1u)>]
-    [<InlineData((* inputValue *) UInt16.MaxValue, (* outputValue *) 65535u)>]
+    [<InlineData((* inputValue *) SByte.MinValue, (* outputValue *) -128s)>]
+    [<InlineData((* inputValue *)            -1y, (* outputValue *)   -1s)>]
+    [<InlineData((* inputValue *)             0y, (* outputValue *)    0s)>]
+    [<InlineData((* inputValue *)             1y, (* outputValue *)    1s)>]
+    [<InlineData((* inputValue *) SByte.MaxValue, (* outputValue *)  127s)>]
     let ``non-null value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
-module ``deserialize uint32 from required uint8`` =
+module ``deserialize int16 from required uint8`` =
     type Input = { Field1: uint8 }
-    type Output = { Field1: uint32 }
+    type Output = { Field1: int16 }
 
     [<Theory>]
-    [<InlineData((* inputValue *) Byte.MinValue, (* outputValue *)   0u)>]
-    [<InlineData((* inputValue *)           1uy, (* outputValue *)   1u)>]
-    [<InlineData((* inputValue *) Byte.MaxValue, (* outputValue *) 255u)>]
+    [<InlineData((* inputValue *) Byte.MinValue, (* outputValue *)   0s)>]
+    [<InlineData((* inputValue *)           1uy, (* outputValue *)   1s)>]
+    [<InlineData((* inputValue *) Byte.MaxValue, (* outputValue *) 255s)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
-module ``deserialize uint32 from optional uint8`` =
+module ``deserialize int16 from optional uint8`` =
     type Input = { Field1: uint8 option }
-    type Output = { Field1: uint32 }
+    type Output = { Field1: int16 }
 
     [<Fact>]
     let ``null value`` () =
@@ -137,12 +147,12 @@ module ``deserialize uint32 from optional uint8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<uint32>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int16>.FullName}'" @>)
 
     [<Theory>]
-    [<InlineData((* inputValue *) Byte.MinValue, (* outputValue *)   0u)>]
-    [<InlineData((* inputValue *)           1uy, (* outputValue *)   1u)>]
-    [<InlineData((* inputValue *) Byte.MaxValue, (* outputValue *) 255u)>]
+    [<InlineData((* inputValue *) Byte.MinValue, (* outputValue *)   0s)>]
+    [<InlineData((* inputValue *)           1uy, (* outputValue *)   1s)>]
+    [<InlineData((* inputValue *) Byte.MaxValue, (* outputValue *) 255s)>]
     let ``non-null value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)

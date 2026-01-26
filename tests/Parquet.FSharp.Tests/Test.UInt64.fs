@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.DefaultConverter.UInt64
+namespace Parquet.FSharp.Tests.UInt64
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests

@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.DefaultConverter.ResizeArray
+namespace Parquet.FSharp.Tests.ResizeArray
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests

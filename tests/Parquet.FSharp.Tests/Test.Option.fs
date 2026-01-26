@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.DefaultConverter.Option
+namespace Parquet.FSharp.Tests.Option
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests

@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.DefaultConverter.Union
+namespace Parquet.FSharp.Tests.Union
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests

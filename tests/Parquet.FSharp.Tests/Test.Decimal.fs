@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.DefaultConverter.Decimal
+namespace Parquet.FSharp.Tests.Decimal
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests

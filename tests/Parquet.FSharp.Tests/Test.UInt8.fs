@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.DefaultConverter.Guid
+namespace Parquet.FSharp.Tests.UInt8
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests
@@ -6,25 +6,25 @@ open Swensen.Unquote
 open System
 open Xunit
 
-module ``serialize guid`` =
-    type Input = { Field1: Guid }
-    type Output = { Field1: Guid }
+module ``serialize uint8`` =
+    type Input = { Field1: uint8 }
+    type Output = { Field1: uint8 }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
             Assert.field [
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isRequired
-                Assert.Field.Type.isFixedLengthByteArray 16
-                Assert.Field.LogicalType.isUuid
-                Assert.Field.ConvertedType.hasNoValue
+                Assert.Field.Type.isInt32
+                Assert.Field.LogicalType.isInteger 8 false
+                Assert.Field.ConvertedType.isUInt8
                 Assert.Field.hasNoChildren ] ]
 
     [<Theory>]
-    [<InlineData("00000000-0000-0000-0000-000000000000")>]
-    [<InlineData("fe611b97-e924-47d0-8f2a-270c564b5df6")>]
-    let ``value`` (value: string) =
-        let value = Guid.Parse(value)
+    [<InlineData(Byte.MinValue)>]
+    [<InlineData(          1uy)>]
+    [<InlineData(Byte.MaxValue)>]
+    let ``value`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
@@ -32,23 +32,23 @@ module ``serialize guid`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize guid from required uuid`` =
-    type Input = { Field1: Guid }
-    type Output = { Field1: Guid }
+module ``deserialize uint8 from required uint8`` =
+    type Input = { Field1: uint8 }
+    type Output = { Field1: uint8 }
 
     [<Theory>]
-    [<InlineData("00000000-0000-0000-0000-000000000000")>]
-    [<InlineData("fe611b97-e924-47d0-8f2a-270c564b5df6")>]
-    let ``value`` (value: string) =
-        let value = Guid.Parse(value)
+    [<InlineData(Byte.MinValue)>]
+    [<InlineData(          1uy)>]
+    [<InlineData(Byte.MaxValue)>]
+    let ``value`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize guid from optional uuid`` =
-    type Input = { Field1: Guid option }
-    type Output = { Field1: Guid }
+module ``deserialize uint8 from optional uint8`` =
+    type Input = { Field1: uint8 option }
+    type Output = { Field1: uint8 }
 
     [<Fact>]
     let ``null value`` () =
@@ -59,13 +59,13 @@ module ``deserialize guid from optional uuid`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Guid>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<uint8>.FullName}'" @>)
 
     [<Theory>]
-    [<InlineData("00000000-0000-0000-0000-000000000000")>]
-    [<InlineData("fe611b97-e924-47d0-8f2a-270c564b5df6")>]
-    let ``non-null value`` (value: string) =
-        let value = Guid.Parse(value)
+    [<InlineData(Byte.MinValue)>]
+    [<InlineData(          1uy)>]
+    [<InlineData(Byte.MaxValue)>]
+    let ``non-null value`` value =
         let inputRecords = [| { Input.Field1 = Option.Some value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)

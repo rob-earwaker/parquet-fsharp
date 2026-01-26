@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.DefaultConverter.Array1d
+namespace Parquet.FSharp.Tests.Array1d
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests

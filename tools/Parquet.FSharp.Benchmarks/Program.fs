@@ -30,11 +30,11 @@ module ParquetFSharp =
     let deserialize<'Record> (bytes: byte[]) =
         use stream = new MemoryStream(bytes)
         Parquet.FSharp.ParquetSerializer.Deserialize<'Record>(stream)
-
-[<AllowNullLiteral>]
-type Inner() =
-    member val Field1 = false with get, set
-    member val Field2 = 0 with get, set
+        
+[<CLIMutable>]
+type Inner = {
+    Field1: bool
+    Field2: int }
 
 [<CLIMutable>]
 type Record = {
@@ -86,7 +86,8 @@ module Random =
         else Nullable()
 
     let inner () =
-        Inner(Field1 = bool (), Field2 = int ())
+        { Inner.Field1 = bool ()
+          Inner.Field2 = int () }
 
 let RowCount = 100_000
 

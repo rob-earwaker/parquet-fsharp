@@ -170,7 +170,8 @@ type private UnionInfo = {
 
 type UnionType =
     | Enum
-    | Complex
+    | SingleCase
+    | MultiCase
 
 type private UnionCaseInfo = {
     DotnetType: Type
@@ -201,7 +202,9 @@ module private UnionInfo =
         let unionType =
             if unionCases |> Array.forall (fun case -> Array.isEmpty case.Fields)
             then UnionType.Enum
-            else UnionType.Complex
+            elif unionCases.Length = 1
+            then UnionType.SingleCase
+            else UnionType.MultiCase
         let getTag =
             match FSharpValue.PreComputeUnionTagMemberInfo(dotnetType) with
             | :? MethodInfo as methodInfo ->
@@ -281,6 +284,45 @@ module internal Serializer =
             IsNull = isNull
             GetValue = getValue }
 
+    let wrapAs dotnetType (serializer: Serializer) unwrapValue =
+        // Modify an existing serializer such that it instead serializes a
+        // wrapper type, providing an expression builder that converts from the
+        // wrapper type into the wrapped type.
+        match serializer with
+        | Serializer.Atomic atomicSerializer ->
+            let schema = atomicSerializer.Schema.Type
+            let dataDotnetType = atomicSerializer.DataDotnetType
+            let getDataValue (value: Expression) =
+                let unwrappedValue = unwrapValue value
+                atomicSerializer.GetDataValue unwrappedValue
+            Serializer.atomic schema dotnetType dataDotnetType getDataValue
+        | Serializer.List listSerializer ->
+            let elementSerializer = listSerializer.ElementSerializer
+            let getEnumerator (list: Expression) =
+                let unwrappedList = unwrapValue list
+                listSerializer.GetEnumerator unwrappedList
+            Serializer.list dotnetType elementSerializer getEnumerator
+        | Serializer.Record recordSerializer ->
+            let fieldSerializers =
+                recordSerializer.FieldSerializers
+                |> Array.map (fun fieldSerializer ->
+                    let name = fieldSerializer.Name
+                    let valueSerializer = fieldSerializer.ValueSerializer
+                    let getValue (record: Expression) =
+                        let unwrappedRecord = unwrapValue record
+                        fieldSerializer.GetValue unwrappedRecord
+                    FieldSerializer.create name valueSerializer getValue)
+            Serializer.record dotnetType fieldSerializers
+        | Serializer.Optional optionalSerializer ->
+            let valueSerializer = optionalSerializer.ValueSerializer
+            let isNull (optional: Expression) =
+                let unwrappedOptional = unwrapValue optional
+                optionalSerializer.IsNull unwrappedOptional
+            let getValue (optional: Expression) =
+                let unwrappedOptional = unwrapValue optional
+                optionalSerializer.GetValue unwrappedOptional
+            Serializer.optional dotnetType valueSerializer isNull getValue
+
     let throwIfNull (value: Expression) =
         // if isNull value then
         //     raise SerializationException(...)
@@ -358,6 +400,41 @@ module internal Deserializer =
             ValueDeserializer = valueDeserializer
             CreateNull = createNull
             CreateFromValue = createFromValue }
+
+    let wrapAs dotnetType (deserializer: Deserializer) wrapValue =
+        // Modify an existing deserializer such that it instead deserializes
+        // into a wrapper type, providing an expression builder that converts
+        // a value from the original type into the wrapper type.
+        match deserializer with
+        | Deserializer.Atomic atomicDeserializer ->
+            let schema = atomicDeserializer.Schema.Type
+            let dataDotnetType = atomicDeserializer.DataDotnetType
+            let createFromDataValue dataValue =
+                let value = atomicDeserializer.CreateFromDataValue dataValue
+                wrapValue value
+            Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
+        | Deserializer.List listDeserializer ->
+            let elementDeserializer = listDeserializer.ElementDeserializer
+            let createEmpty = wrapValue listDeserializer.CreateEmpty
+            let createFromElementValues elementValues =
+                let list = listDeserializer.CreateFromElementValues elementValues
+                wrapValue list
+            Deserializer.list
+                dotnetType elementDeserializer createEmpty createFromElementValues
+        | Deserializer.Record recordDeserializer ->
+            let fieldDeserializers = recordDeserializer.FieldDeserializers
+            let createFromFieldValues fieldValues =
+                let record = recordDeserializer.CreateFromFieldValues fieldValues
+                wrapValue record
+            Deserializer.record dotnetType fieldDeserializers createFromFieldValues
+        | Deserializer.Optional optionalDeserializer ->
+            let valueDeserializer = optionalDeserializer.ValueDeserializer
+            let createNull = wrapValue optionalDeserializer.CreateNull
+            let createFromValue value =
+                let optional = optionalDeserializer.CreateFromValue value
+                wrapValue optional
+            Deserializer.optional
+                dotnetType valueDeserializer createNull createFromValue
 
     let referenceTypeWrapper (valueDeserializer: Deserializer) =
         let dotnetType = valueDeserializer.DotnetType
@@ -1489,6 +1566,18 @@ type internal DefaultUnionConverter() =
         let getDataValue = unionInfo.GetCaseName
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
+    let createSingleCaseUnionSerializer (unionInfo: UnionInfo) =
+        // Unions with a single case are most likely being used to enable
+        // stricter type checking and to allow encapsulation of any associated
+        // field values. We serialize single case unions as a record using the
+        // case field names and types.
+        let dotnetType = unionInfo.DotnetType
+        let unionCase = unionInfo.UnionCases[0]
+        let fieldSerializers =
+            unionCase.Fields
+            |> Array.map (FieldSerializer.ofUnionCaseField unionCase)
+        Serializer.record dotnetType fieldSerializers
+
     let createUnionCaseSerializer (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
         // Union case data is represented as an optional record containing the
         // field values for that case. The record needs to be optional since
@@ -1508,7 +1597,7 @@ type internal DefaultUnionConverter() =
         let getValue = id
         Serializer.optional dotnetType valueSerializer isNull getValue
 
-    let createComplexUnionSerializer (unionInfo: UnionInfo) =
+    let createMultiCaseUnionSerializer (unionInfo: UnionInfo) =
         // Unions that have one or more cases with one or more fields can not be
         // represented as a simple string value. Instead, we have to model the
         // union as a record with a field to capture the case name and
@@ -1563,7 +1652,8 @@ type internal DefaultUnionConverter() =
         let unionInfo = UnionInfo.ofUnion dotnetType
         match unionInfo.UnionType with
         | UnionType.Enum -> createEnumUnionSerializer unionInfo
-        | UnionType.Complex -> createComplexUnionSerializer unionInfo
+        | UnionType.SingleCase -> createSingleCaseUnionSerializer unionInfo
+        | UnionType.MultiCase -> createMultiCaseUnionSerializer unionInfo
 
     let tryCreateEnumUnionDeserializer (sourceSchema: ValueSchema) (unionInfo: UnionInfo) =
         // Unions in which all cases have no fields are be represented as a
@@ -1630,6 +1720,32 @@ type internal DefaultUnionConverter() =
             |> Option.Some
         | _ -> Option.None
 
+    let tryCreateSingleCaseUnionDeserializer
+        (sourceSchema: ValueSchema) (unionInfo: UnionInfo) =
+        match sourceSchema.Type with
+        | ValueTypeSchema.Record recordSchema ->
+            let dotnetType = unionInfo.DotnetType
+            let unionCase = unionInfo.UnionCases[0]
+            let fieldDeserializers =
+                unionCase.Fields
+                |> Array.choose (fun field ->
+                    recordSchema.Fields
+                    |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = field.Name)
+                    |> Option.map (fun fieldSchema ->
+                        FieldDeserializer.ofProperty fieldSchema.Value field))
+            let createFromFieldValues = unionCase.CreateFromFieldValues
+            if fieldDeserializers.Length < unionCase.Fields.Length
+            then Option.None
+            else
+                let requiredValueDeserializer =
+                    Deserializer.record dotnetType fieldDeserializers createFromFieldValues
+                let deserializer =
+                    if sourceSchema.IsOptional
+                    then requiredValueDeserializer |> Deserializer.optionalNonNullableTypeWrapper
+                    else requiredValueDeserializer
+                Option.Some deserializer
+        | _ -> Option.None
+
     let tryCreateUnionCaseDeserializer
         (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) (schema: RecordTypeSchema) =
         // Union case data is represented as an optional record containing the
@@ -1661,7 +1777,7 @@ type internal DefaultUnionConverter() =
                 dotnetType deserializer createNull createFromValue
             |> Option.Some
 
-    let tryCreateComplexUnionDeserializer (unionInfo: UnionInfo) (schema: RecordTypeSchema) =
+    let tryCreateMultiCaseUnionDeserializer (unionInfo: UnionInfo) (schema: RecordTypeSchema) =
         // Unions that have one or more cases with one or more fields can not be
         // represented as a simple string value. Instead, we have to model the
         // union as a record with a field to capture the case name and
@@ -1764,15 +1880,16 @@ type internal DefaultUnionConverter() =
             if not (isUnionType targetType)
             then Option.None
             else
-                // Unions are represented in one of two ways depending on
-                // whether any of the cases have associated data fields.
                 let unionInfo = UnionInfo.ofUnion targetType
                 match unionInfo.UnionType with
-                | UnionType.Enum -> tryCreateEnumUnionDeserializer sourceSchema unionInfo
-                | UnionType.Complex ->
+                | UnionType.Enum ->
+                    tryCreateEnumUnionDeserializer sourceSchema unionInfo
+                | UnionType.SingleCase ->
+                    tryCreateSingleCaseUnionDeserializer sourceSchema unionInfo
+                | UnionType.MultiCase ->
                     match sourceSchema.Type with
                     | ValueTypeSchema.Record recordSchema ->
-                        tryCreateComplexUnionDeserializer unionInfo recordSchema
+                        tryCreateMultiCaseUnionDeserializer unionInfo recordSchema
                     | _ -> Option.None
 
 type internal DefaultOptionConverter() =
@@ -1895,6 +2012,8 @@ type internal DefaultOptionConverter() =
             then Option.None
             else
                 if sourceSchema.IsOptional
+                // TODO: These will actually continue to work fine even with
+                // nested options. Should we do something about this?
                 then Option.Some (createOptionalDeserializer sourceSchema targetType)
                 else Option.Some (createRequiredDeserializer sourceSchema targetType)
 

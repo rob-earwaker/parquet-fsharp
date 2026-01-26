@@ -1,14 +1,15 @@
-namespace Parquet.FSharp.Tests.DefaultConverter.Record
+namespace Parquet.FSharp.Tests.DefaultConverter.Union
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
-module ``serialize record with atomic field`` =
-    type Record = { Field2: int }
-    type Input = { Field1: Record }
-    type Output = { Field1: Record }
+module ``serialize single case union with atomic field`` =
+    type Union = Case1 of field2:int
+    type UnionRecord = { field2: int }
+    type Input = { Field1: Union }
+    type Output = { Field1: UnionRecord }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -19,7 +20,7 @@ module ``serialize record with atomic field`` =
                 Assert.Field.LogicalType.hasNoValue
                 Assert.Field.ConvertedType.hasNoValue
                 Assert.Field.child [
-                    Assert.Field.nameEquals "Field2"
+                    Assert.Field.nameEquals "field2"
                     Assert.Field.isRequired
                     Assert.Field.Type.isInt32
                     Assert.Field.LogicalType.isInteger 32 true
@@ -28,18 +29,19 @@ module ``serialize record with atomic field`` =
 
     [<Fact>]
     let ``value`` () =
-        let value = { Record.Field2 = 1 }
-        let inputRecords = [| { Input.Field1 = value } |]
+        let inputRecords = [| { Input.Field1 = Union.Case1 1 } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        let expectedValue = { UnionRecord.field2 = 1 }
+        test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
 
-module ``serialize record with list field`` =
-    type Record = { Field2: int list }
-    type Input = { Field1: Record }
-    type Output = { Field1: Record }
+module ``serialize single case union with list field`` =
+    type Union = Case1 of field2:int list
+    type UnionRecord = { field2: int list }
+    type Input = { Field1: Union }
+    type Output = { Field1: UnionRecord }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -50,7 +52,7 @@ module ``serialize record with list field`` =
                 Assert.Field.LogicalType.hasNoValue
                 Assert.Field.ConvertedType.hasNoValue
                 Assert.Field.child [
-                    Assert.Field.nameEquals "Field2"
+                    Assert.Field.nameEquals "field2"
                     Assert.Field.isRequired
                     Assert.Field.Type.hasNoValue
                     Assert.Field.LogicalType.isList
@@ -70,25 +72,27 @@ module ``serialize record with list field`` =
                             Assert.Field.hasNoChildren ] ] ] ] ]
 
     let Value = [|
-        [| box<Record> (**) { Field2 = [] } (**) |]
-        [| box<Record> (**) { Field2 = [ 1 ] } (**) |]
-        [| box<Record> (**) { Field2 = [ 1; 2; 3 ] } (**) |] |]
+        [| box<int list> (**) [] (**) |]
+        [| box<int list> (**) [ 1 ] (**) |]
+        [| box<int list> (**) [ 1; 2; 3 ] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
     let ``value`` value =
-        let inputRecords = [| { Input.Field1 = value } |]
+        let inputRecords = [| { Input.Field1 = Union.Case1 value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        let expectedValue = { UnionRecord.field2 = value }
+        test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
 
-module ``serialize record with record field`` =
-    type Inner = { Field3: int }
-    type Record = { Field2: Inner }
-    type Input = { Field1: Record }
-    type Output = { Field1: Record }
+module ``serialize single case union with record field`` =
+    type Record = { Field3: int }
+    type Union = Case1 of field2:Record
+    type UnionRecord = { field2: Record }
+    type Input = { Field1: Union }
+    type Output = { Field1: UnionRecord }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -99,7 +103,7 @@ module ``serialize record with record field`` =
                 Assert.Field.LogicalType.hasNoValue
                 Assert.Field.ConvertedType.hasNoValue
                 Assert.Field.child [
-                    Assert.Field.nameEquals "Field2"
+                    Assert.Field.nameEquals "field2"
                     Assert.Field.isRequired
                     Assert.Field.Type.hasNoValue
                     Assert.Field.LogicalType.hasNoValue
@@ -114,18 +118,20 @@ module ``serialize record with record field`` =
 
     [<Fact>]
     let ``value`` () =
-        let value = { Record.Field2 = { Inner.Field3 = 1 } }
-        let inputRecords = [| { Input.Field1 = value } |]
+        let value = { Record.Field3 = 1 }
+        let inputRecords = [| { Input.Field1 = Union.Case1 value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        let expectedValue = { UnionRecord.field2 = value }
+        test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
 
-module ``serialize record with optional field`` =
-    type Record = { Field2: int option }
-    type Input = { Field1: Record }
-    type Output = { Field1: Record }
+module ``serialize single case union with optional field`` =
+    type Union = Case1 of field2:int option
+    type UnionRecord = { field2: int option }
+    type Input = { Field1: Union }
+    type Output = { Field1: UnionRecord }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -136,31 +142,29 @@ module ``serialize record with optional field`` =
                 Assert.Field.LogicalType.hasNoValue
                 Assert.Field.ConvertedType.hasNoValue
                 Assert.Field.child [
-                    Assert.Field.nameEquals "Field2"
+                    Assert.Field.nameEquals "field2"
                     Assert.Field.isOptional
                     Assert.Field.Type.isInt32
                     Assert.Field.LogicalType.isInteger 32 true
                     Assert.Field.ConvertedType.isInt32
                     Assert.Field.hasNoChildren ] ] ]
 
-    let Value = [|
-        [| box<Record> (**) { Field2 = Option.None } (**) |]
-        [| box<Record> (**) { Field2 = Option.Some 1 } (**) |] |]
-
-    [<Theory>]
-    [<MemberData(nameof Value)>]
-    let ``value`` value =
-        let inputRecords = [| { Input.Field1 = value } |]
+    [<Fact>]
+    let ``value`` () =
+        let value = Option.Some 1
+        let inputRecords = [| { Input.Field1 = Union.Case1 value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        let expectedValue = { UnionRecord.field2 = value }
+        test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
 
-module ``serialize record with multiple fields`` =
-    type Record = { Field2: int; Field3: bool; Field4: float }
-    type Input = { Field1: Record }
-    type Output = { Field1: Record }
+module ``serialize single case union with multiple fields`` =
+    type Union = Case1 of field2:int * field3:int * field4:int
+    type UnionRecord = { field2: int; field3: int; field4: int }
+    type Input = { Field1: Union }
+    type Output = { Field1: UnionRecord }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -172,54 +176,56 @@ module ``serialize record with multiple fields`` =
                 Assert.Field.ConvertedType.hasNoValue
                 Assert.Field.children [
                     Assert.field [
-                        Assert.Field.nameEquals "Field2"
+                        Assert.Field.nameEquals "field2"
                         Assert.Field.isRequired
                         Assert.Field.Type.isInt32
                         Assert.Field.LogicalType.isInteger 32 true
                         Assert.Field.ConvertedType.isInt32
                         Assert.Field.hasNoChildren ]
                     Assert.field [
-                        Assert.Field.nameEquals "Field3"
+                        Assert.Field.nameEquals "field3"
                         Assert.Field.isRequired
-                        Assert.Field.Type.isBool
-                        Assert.Field.LogicalType.hasNoValue
-                        Assert.Field.ConvertedType.hasNoValue
+                        Assert.Field.Type.isInt32
+                        Assert.Field.LogicalType.isInteger 32 true
+                        Assert.Field.ConvertedType.isInt32
                         Assert.Field.hasNoChildren ]
                     Assert.field [
-                        Assert.Field.nameEquals "Field4"
+                        Assert.Field.nameEquals "field4"
                         Assert.Field.isRequired
-                        Assert.Field.Type.isFloat64
-                        Assert.Field.LogicalType.hasNoValue
-                        Assert.Field.ConvertedType.hasNoValue
+                        Assert.Field.Type.isInt32
+                        Assert.Field.LogicalType.isInteger 32 true
+                        Assert.Field.ConvertedType.isInt32
                         Assert.Field.hasNoChildren ] ] ] ]
 
     [<Fact>]
     let ``value`` () =
-        let value = { Record.Field2 = 1; Field3 = true; Field4 = 2.34 }
-        let inputRecords = [| { Input.Field1 = value } |]
+        let inputRecords = [| { Input.Field1 = Union.Case1 (1, 2, 3) } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        let expectedValue = { UnionRecord.field2 = 1; field3 = 2; field4 = 3 }
+        test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
 
-module ``deserialize record with atomic field from required record`` =
-    type Record = { Field2: int }
-    type Input = { Field1: Record }
-    type Output = { Field1: Record }
+module ``deserialize single case union with atomic field from required record`` =
+    type UnionRecord = { field2: int }
+    type Union = Case1 of field2:int
+    type Input = { Field1: UnionRecord }
+    type Output = { Field1: Union }
 
     [<Fact>]
     let ``value`` () =
-        let value = { Record.Field2 = 1 }
-        let inputRecords = [| { Input.Field1 = value } |]
+        let unionRecord = { UnionRecord.field2 = 1 }
+        let inputRecords = [| { Input.Field1 = unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 1 } |] @>
 
-module ``deserialize record with atomic field from optional record`` =
-    type Record = { Field2: int }
-    type Input = { Field1: Record option }
-    type Output = { Field1: Record }
+module ``deserialize single case union with atomic field from optional record`` =
+    type UnionRecord = { field2: int }
+    type Union = Case1 of field2:int
+    type Input = { Field1: UnionRecord option }
+    type Output = { Field1: Union }
 
     [<Fact>]
     let ``null value`` () =
@@ -230,38 +236,41 @@ module ``deserialize record with atomic field from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Record>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =
-        let value = { Record.Field2 = 1 }
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
+        let unionRecord = { UnionRecord.field2 = 1 }
+        let inputRecords = [| { Input.Field1 = Option.Some unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 1 } |] @>
 
-module ``deserialize record with list field from required record`` =
-    type Record = { Field2: int list }
-    type Input = { Field1: Record }
-    type Output = { Field1: Record }
+module ``deserialize single case union with list field from required record`` =
+    type UnionRecord = { field2: int list }
+    type Union = Case1 of field2:int list
+    type Input = { Field1: UnionRecord }
+    type Output = { Field1: Union }
 
     let Value = [|
-        [| box<Record> (**) { Field2 = [] } (**) |]
-        [| box<Record> (**) { Field2 = [ 1 ] } (**) |]
-        [| box<Record> (**) { Field2 = [ 1; 2; 3 ] } (**) |] |]
+        [| box<int list> (**) [] (**) |]
+        [| box<int list> (**) [ 1 ] (**) |]
+        [| box<int list> (**) [ 1; 2; 3 ] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
     let ``value`` value =
-        let inputRecords = [| { Input.Field1 = value } |]
+        let unionRecord = { UnionRecord.field2 = value }
+        let inputRecords = [| { Input.Field1 = unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 value } |] @>
 
-module ``deserialize record with list field from optional record`` =
-    type Record = { Field2: int list }
-    type Input = { Field1: Record option }
-    type Output = { Field1: Record }
+module ``deserialize single case union with list field from optional record`` =
+    type UnionRecord = { field2: int list }
+    type Union = Case1 of field2:int list
+    type Input = { Field1: UnionRecord option }
+    type Output = { Field1: Union }
 
     [<Fact>]
     let ``null value`` () =
@@ -272,40 +281,44 @@ module ``deserialize record with list field from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Record>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
 
     let NonNullValue = [|
-        [| box<Record> (**) { Field2 = [] } (**) |]
-        [| box<Record> (**) { Field2 = [ 1 ] } (**) |]
-        [| box<Record> (**) { Field2 = [ 1; 2; 3 ] } (**) |] |]
+        [| box<int list> (**) [] (**) |]
+        [| box<int list> (**) [ 1 ] (**) |]
+        [| box<int list> (**) [ 1; 2; 3 ] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNullValue)>]
     let ``non-null value`` value =
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
+        let unionRecord = { UnionRecord.field2 = value }
+        let inputRecords = [| { Input.Field1 = Option.Some unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 value } |] @>
 
-module ``deserialize record with record field from required record`` =
-    type Inner = { Field3: int }
-    type Record = { Field2: Inner }
-    type Input = { Field1: Record }
-    type Output = { Field1: Record }
+module ``deserialize single case union with record field from required record`` =
+    type Record = { Field3: int }
+    type UnionRecord = { field2: Record }
+    type Union = Case1 of field2:Record
+    type Input = { Field1: UnionRecord }
+    type Output = { Field1: Union }
 
     [<Fact>]
     let ``value`` () =
-        let value = { Record.Field2 = { Inner.Field3 = 1 } }
-        let inputRecords = [| { Input.Field1 = value } |]
+        let value = { Record.Field3 = 1 }
+        let unionRecord = { UnionRecord.field2 = value }
+        let inputRecords = [| { Input.Field1 = unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 value } |] @>
 
-module ``deserialize record with record field from optional record`` =
-    type Inner = { Field3: int }
-    type Record = { Field2: Inner }
-    type Input = { Field1: Record option }
-    type Output = { Field1: Record }
+module ``deserialize single case union with record field from optional record`` =
+    type Record = { Field3: int }
+    type UnionRecord = { field2: Record }
+    type Union = Case1 of field2:Record
+    type Input = { Field1: UnionRecord option }
+    type Output = { Field1: Union }
 
     [<Fact>]
     let ``null value`` () =
@@ -316,37 +329,41 @@ module ``deserialize record with record field from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Record>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =
-        let value = { Record.Field2 = { Inner.Field3 = 1 } }
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
+        let value = { Record.Field3 = 1 }
+        let unionRecord = { UnionRecord.field2 = value }
+        let inputRecords = [| { Input.Field1 = Option.Some unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 value } |] @>
 
-module ``deserialize record with optional field from required record`` =
-    type Record = { Field2: int option }
-    type Input = { Field1: Record }
-    type Output = { Field1: Record }
+module ``deserialize single case union with optional field from required record`` =
+    type UnionRecord = { field2: int option }
+    type Union = Case1 of field2:int option
+    type Input = { Field1: UnionRecord }
+    type Output = { Field1: Union }
 
     let Value = [|
-        [| box<Record> (**) { Field2 = Option.None } (**) |]
-        [| box<Record> (**) { Field2 = Option.Some 1 } (**) |] |]
+        [| box<int option> <| (**) Option.None (**) |]
+        [| box<int option> <| (**) Option.Some 1 (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]
     let ``value`` value =
-        let inputRecords = [| { Input.Field1 = value } |]
+        let unionRecord = { UnionRecord.field2 = value }
+        let inputRecords = [| { Input.Field1 = unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 value } |] @>
 
-module ``deserialize record with optional field from optional record`` =
-    type Record = { Field2: int option }
-    type Input = { Field1: Record option }
-    type Output = { Field1: Record }
+module ``deserialize single case union with optional field from optional record`` =
+    type UnionRecord = { field2: int option }
+    type Union = Case1 of field2:int option
+    type Input = { Field1: UnionRecord option }
+    type Output = { Field1: Union }
 
     [<Fact>]
     let ``null value`` () =
@@ -357,37 +374,40 @@ module ``deserialize record with optional field from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Record>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
 
     let NonNullValue = [|
-        [| box<Record> (**) { Field2 = Option.None } (**) |]
-        [| box<Record> (**) { Field2 = Option.Some 1 } (**) |] |]
+        [| box<int option> <| (**) Option.None (**) |]
+        [| box<int option> <| (**) Option.Some 1 (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNullValue)>]
     let ``non-null value`` value =
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
+        let unionRecord = { UnionRecord.field2 = value }
+        let inputRecords = [| { Input.Field1 = Option.Some unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 value } |] @>
 
-module ``deserialize record with multiple fields from required record`` =
-    type Record = { Field2: int; Field3: bool; Field4: float }
-    type Input = { Field1: Record }
-    type Output = { Field1: Record }
+module ``deserialize single case union with multiple fields from required record`` =
+    type UnionRecord = { field2: int; field3: bool; field4: float }
+    type Union = Case1 of field2:int * field3:bool * field4:float
+    type Input = { Field1: UnionRecord }
+    type Output = { Field1: Union }
 
     [<Fact>]
     let ``value`` () =
-        let value = { Record.Field2 = 1; Field3 = true; Field4 = 2.34 }
-        let inputRecords = [| { Input.Field1 = value } |]
+        let unionRecord = { UnionRecord.field2 = 1; field3 = true; field4 = 2.34 }
+        let inputRecords = [| { Input.Field1 = unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 (1, true, 2.34) } |] @>
 
-module ``deserialize record with multiple fields from optional record`` =
-    type Record = { Field2: int; Field3: bool; Field4: float }
-    type Input = { Field1: Record option }
-    type Output = { Field1: Record }
+module ``deserialize single case union with multiple fields from optional record`` =
+    type UnionRecord = { field2: int; field3: bool; field4: float }
+    type Union = Case1 of field2:int * field3:bool * field4:float
+    type Input = { Field1: UnionRecord option }
+    type Output = { Field1: Union }
 
     [<Fact>]
     let ``null value`` () =
@@ -398,36 +418,35 @@ module ``deserialize record with multiple fields from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Record>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =
-        let value = { Record.Field2 = 1; Field3 = true; Field4 = 2.34 }
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
+        let unionRecord = { UnionRecord.field2 = 1; field3 = true; field4 = 2.34 }
+        let inputRecords = [| { Input.Field1 = Option.Some unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 (1, true, 2.34) } |] @>
 
-module ``deserialize record with out-of-order fields from required record`` =
-    type InputRecord = { Field2: int; Field3: bool; Field4: float }
-    type OutputRecord = { Field3: bool; Field4: float; Field2: int }
-    type Input = { Field1: InputRecord }
-    type Output = { Field1: OutputRecord }
+module ``deserialize single case union with out-of-order fields from required record`` =
+    type UnionRecord = { field2: int; field3: bool; field4: float }
+    type Union = Case1 of field3:bool * field4:float * field2:int
+    type Input = { Field1: UnionRecord }
+    type Output = { Field1: Union }
 
     [<Fact>]
     let ``value`` () =
-        let inputRecord = { InputRecord.Field2 = 1; Field3 = true; Field4 = 2.34 }
-        let inputRecords = [| { Input.Field1 = inputRecord } |]
+        let unionRecord = { UnionRecord.field2 = 1; field3 = true; field4 = 2.34 }
+        let inputRecords = [| { Input.Field1 = unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        let expectedValue = { OutputRecord.Field3 = true; Field4 = 2.34; Field2 = 1 }
-        test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 (true, 2.34, 1) } |] @>
 
-module ``deserialize record with out-of-order fields from optional record`` =
-    type InputRecord = { Field2: int; Field3: bool; Field4: float }
-    type OutputRecord = { Field3: bool; Field4: float; Field2: int }
-    type Input = { Field1: InputRecord option }
-    type Output = { Field1: OutputRecord }
+module ``deserialize single case union with out-of-order fields from optional record`` =
+    type UnionRecord = { field2: int; field3: bool; field4: float }
+    type Union = Case1 of field3:bool * field4:float * field2:int
+    type Input = { Field1: UnionRecord option }
+    type Output = { Field1: Union }
 
     [<Fact>]
     let ``null value`` () =
@@ -438,37 +457,35 @@ module ``deserialize record with out-of-order fields from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<OutputRecord>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =
-        let inputRecord = { InputRecord.Field2 = 1; Field3 = true; Field4 = 2.34 }
-        let inputRecords = [| { Input.Field1 = Option.Some inputRecord } |]
+        let unionRecord = { UnionRecord.field2 = 1; field3 = true; field4 = 2.34 }
+        let inputRecords = [| { Input.Field1 = Option.Some unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        let expectedValue = { OutputRecord.Field3 = true; Field4 = 2.34; Field2 = 1 }
-        test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 (true, 2.34, 1) } |] @>
 
-module ``deserialize record with subset of fields from required record`` =
-    type InputRecord = { Field2: int; Field3: bool; Field4: float }
-    type OutputRecord = { Field2: int; Field4: float }
-    type Input = { Field1: InputRecord }
-    type Output = { Field1: OutputRecord }
+module ``deserialize single case union with subset of fields from required record`` =
+    type UnionRecord = { field2: int; field3: bool; field4: float }
+    type Union = Case1 of field2:int * field4:float
+    type Input = { Field1: UnionRecord }
+    type Output = { Field1: Union }
 
     [<Fact>]
     let ``value`` () =
-        let value = { InputRecord.Field2 = 1; Field3 = true; Field4 = 2.34 }
-        let inputRecords = [| { Input.Field1 = value } |]
+        let unionRecord = { UnionRecord.field2 = 1; field3 = true; field4 = 2.34 }
+        let inputRecords = [| { Input.Field1 = unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        let expectedValue = { OutputRecord.Field2 = 1; Field4 = 2.34 }
-        test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 (1, 2.34) } |] @>
 
-module ``deserialize record with subset of fields from optional record`` =
-    type InputRecord = { Field2: int; Field3: bool; Field4: float }
-    type OutputRecord = { Field2: int; Field4: float }
-    type Input = { Field1: InputRecord option }
-    type Output = { Field1: OutputRecord }
+module ``deserialize single case union with subset of fields from optional record`` =
+    type UnionRecord = { field2: int; field3: bool; field4: float }
+    type Union = Case1 of field2:int * field4:float
+    type Input = { Field1: UnionRecord option }
+    type Output = { Field1: Union }
 
     [<Fact>]
     let ``null value`` () =
@@ -479,14 +496,12 @@ module ``deserialize record with subset of fields from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + " non-nullable type"
-                    + $" '{typeof<OutputRecord>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =
-        let value = { InputRecord.Field2 = 1; Field3 = true; Field4 = 2.34 }
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
+        let unionRecord = { UnionRecord.field2 = 1; field3 = true; field4 = 2.34 }
+        let inputRecords = [| { Input.Field1 = Option.Some unionRecord } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        let expectedValue = { OutputRecord.Field2 = 1; Field4 = 2.34 }
-        test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Union.Case1 (1, 2.34) } |] @>

@@ -39,6 +39,7 @@
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Option.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Nullable.fs" />
     <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Union.Enum.fs" />
+    <Compile Include="Test.DefaultConverter\Test.DefaultConverter.Union.SingleCase.fs" />
   </ItemGroup>
 
   <ItemGroup>

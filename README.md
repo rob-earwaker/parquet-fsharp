@@ -19,6 +19,9 @@ An F# serailization library for the [Apache Parquet](https://parquet.apache.org/
   - [Records](#records)
   - [Optional Types](#optional-types)
   - [Discriminated Unions](#discriminated-unions)
+    - [Enumeration Unions](#enumeration-unions)
+    - [Single-Case Unions](#single-case-unions)
+    - [Multi-Case Unions](#multi-case-unions)
 - [Roadmap](#roadmap)
   - [Extend Supported Types](#extend-supported-types)
   - [Serialization Options](#serialization-options)
@@ -176,7 +179,17 @@ Due to the above, the default approach for serialization of other supported type
 
 Optional types can be deserialized from both optional and required values. When deserailzied from required values, they are guaranteed to have an associated value and will therefore never be 'null'.
 
-Note that Parquet does not support multiple levels of optionality, so nested optional types such as `'Value option option` are not supported. Attempting to serialize nested optional values will result in a `SerializationException`. Instead, the recommended approach for handling nested optional values is to add another level of nesting using an optional record containing a single optional field.
+Note that Parquet does not support multiple levels of optionality, so nested optional types such as `'Value option option` are not supported. Attempting to serialize nested optional values will result in a `SerializationException`. Instead, the recommended approach for handling nested optional values is to add another level of nesting using an optional record containing a single optional field, for example:
+
+```fsharp
+// Nested options are not allowed by the Parquet format.
+type IntOptionOption = int option option
+
+// Instead, they can be represented using an optional
+// record with an optional field value.
+type IntOption = { Value: int option }
+type IntOptionOption = IntOption option
+```
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -184,7 +197,85 @@ Note that Parquet does not support multiple levels of optionality, so nested opt
 
 Applies to: `'FSharpUnion`
 
-TODO: Add docs
+Discriminated unions can be used to represent a range of different types with varying complexity. Complex unions require a more flexible - and therefore more complex - serialization approach. Even though all unions _could_ be serialized using this same flexible approach, it becomes fairly cumbersome and verbose for simpler unions. For this reason, we define several different categories of union, each of which has a distinct use-case and is serialized in a different way.
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
+#### Enumeration Unions
+
+The simplest type of union is one in which there are no associated data fields for any of the cases. This gives an enum-like type, but without an explicit backing value. An example is as follows:
+
+```fsharp
+type Shape =
+    | Circle
+    | Triangle
+    | Square
+    | Rectangle
+```
+
+Since none of the cases has any associated data fields, there is no additional nesting required to represent these union values. Enumeration unions are serialized as required string values. They can be deserialized from either required or optional string values, but because unions are treated as non-nullable in F#, any null values encountered during deserialization will result in a `SerializationException`.
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
+#### Single-Case Unions
+
+Unions with a single case are treated separately from unions with multiple cases because they don't distinguish between two equivalent types. They are often used to wrap primitive data values to create a richer set of domain types and to provide encapsulation - see [F# For Fun and Profit - Designing with types: Single case union types](https://fsharpforfunandprofit.com/posts/designing-with-types-single-case-dus/). Some examples are shown below:
+
+```fsharp
+type Age = Age of age:int
+type Name = Name of firstName:string * lastName:string
+type EmailAddress = EmailAddress of string
+```
+
+Since there is only a single case, there is no need to store the case name so only the fields are serailized. Single-case unions are serialized as required records, with one field for each associated data field. For example, the types above are serialized as if they were the following equivalent record types:
+
+```fsharp
+type Age = { age: int }
+type Name = { firstName: string; lastName: string }
+
+// Default field name assigned by F# compiler used, as none specified in type definition.
+type EmailAddress = { Item1: string }
+```
+
+Single-case unions can be deserialized from record values containing the correct field definitions. These records can be either required or optional values, but because unions are treated as non-nullable in F#, any null values encountered during deserialization will result in a `SerializationException`.
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
+#### Multi-Case Unions
+
+Unions with multiple cases where at least one case as one or more associated data fields are the most complex category of union and therefore require the most flexible approach. Some examples are shown below, taken from [Microsoft Learn - F# Discriminated Unions](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/discriminated-unions):
+
+```fsharp
+type Shape =
+    | Rectangle of width:float * length:float
+    | Circle of radius:float
+    | Prism of width:float * height:float * length:float
+
+type BinaryTree =
+    | Leaf
+    | Node of value:int * left:BinaryTree * right:BinaryTree
+```
+
+Since there are multiple cases, the case name is serailized alongside the data fields as a string value. Like single-case unions, the case data fields are serialized as a record. However since each case contains its own distinct set of fields, each is serialized into its own independent record structure. The complete schema for a multi-case union consists of an outer record containing a required string field `Type` for the case name and one or more case data fields. Each case data field is itself a record, containing any associated data fields. Since only one case will have data for any given union value, the case data fields are optional. The following demonstrates the equivalent serialization structure for the union types above:
+
+```fsharp
+type Rectangle = { width: float; length: float }
+type Circle = { radius: float }
+type Prism = { width: float; height: float; length: float }
+type Shape = {
+    Type: string
+    Rectangle: Rectangle option
+    Circle: Circle option
+    Prism: Prism option }
+
+// The 'Leaf' case has no data fields so no inner record is required.
+type Node = { value: int; left: BinaryTree; right: BinaryTree }
+type BinaryTree = {
+    Type: string
+    Node: Node option }
+```
+
+Multi-case unions can be deserialized from record values containing the correct structure. These records can be either required or optional values, but because unions are treated as non-nullable in F#, any null values encountered during deserialization will result in a `SerializationException`.
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 

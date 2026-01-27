@@ -197,7 +197,7 @@ type IntOptionOption = IntOption option
 
 Applies to: `'FSharpUnion`
 
-Discriminated unions can be used to represent a range of different types with varying complexity. Complex unions require a more flexible - and therefore more complex - serialization approach. Even though all unions _could_ be serialized using this same flexible approach, it becomes fairly cumbersome and verbose for simpler unions. For this reason, we define several different categories of union, each of which has a distinct use-case and is serialized in a different way.
+Discriminated unions can be used to represent a range of different types with varying complexity. Complex unions require a more flexible - and therefore more complex - serialization approach. Even though all unions _could_ be serialized using this same flexible approach, it becomes fairly cumbersome and verbose for simpler unions. For this reason, **Parquet.FSharp** defines several different categories of union, each of which has a distinct use-case and is serialized in a different way.
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 

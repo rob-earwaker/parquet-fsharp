@@ -9,36 +9,35 @@ open System.IO
 type ParquetSerializer =
     static member private DefaultSettings = {
         ValueConverters = [|
-            // TODO: These should probably be singletons.
-            DefaultBoolConverter()
-            DefaultInt8Converter()
-            DefaultInt16Converter()
-            DefaultInt32Converter()
-            DefaultInt64Converter()
-            DefaultUInt8Converter()
-            DefaultUInt16Converter()
-            DefaultUInt32Converter()
-            DefaultUInt64Converter()
-            DefaultFloat32Converter()
-            DefaultFloat64Converter()
-            DefaultDecimalConverter()
-            DefaultGuidConverter()
-            DefaultDateTimeConverter()
-            DefaultDateTimeOffsetConverter()
-            DefaultStringConverter()
+            DefaultBoolConverter.Instance
+            DefaultInt8Converter.Instance
+            DefaultInt16Converter.Instance
+            DefaultInt32Converter.Instance
+            DefaultInt64Converter.Instance
+            DefaultUInt8Converter.Instance
+            DefaultUInt16Converter.Instance
+            DefaultUInt32Converter.Instance
+            DefaultUInt64Converter.Instance
+            DefaultFloat32Converter.Instance
+            DefaultFloat64Converter.Instance
+            DefaultDecimalConverter.Instance
+            DefaultGuidConverter.Instance
+            DefaultDateTimeConverter.Instance
+            DefaultDateTimeOffsetConverter.Instance
+            DefaultStringConverter.Instance
             // This must come before the generic array type since byte arrays are
             // supported as a primitive type in Parquet and are therefore handled as
             // atomic values rather than lists.
-            DefaultByteArrayConverter()
-            DefaultListConverter()
-            DefaultArray1dConverter()
-            DefaultResizeArrayConverter()
-            DefaultRecordConverter()
+            DefaultByteArrayConverter.Instance
+            DefaultListConverter.Instance
+            DefaultArray1dConverter.Instance
+            DefaultResizeArrayConverter.Instance
+            DefaultRecordConverter.Instance
             // This must come before the generic union type since option types are
             // handled in a special way.
-            DefaultOptionConverter()
-            DefaultNullableConverter()
-            DefaultUnionConverter() |] }
+            DefaultOptionConverter.Instance
+            DefaultNullableConverter.Instance
+            DefaultUnionConverter.Instance |] }
 
     /// Asynchronously serialize a sequence of records to a stream.
     static member AsyncSerialize<'Record>(records: 'Record seq, stream: Stream) =

@@ -524,9 +524,9 @@ type internal Assembler<'Record>(sourceSchema: RootSchema, settings) =
             ValueSchema.create isOptional valueType
         match Deserializer.resolve sourceSchema typeof<'Record> settings with
         | Deserializer.Record recordDeserializer -> recordDeserializer
-        // TODO: F# records are currently treated as optional for compatability
-        // with Parquet.Net, but the root record should never be optional.
-        // Unwrap the record info to remove this optionality.
+        // The root record should never be optional. If it is an optional
+        // record, unwrap it to remove this optionality. This ensures that the
+        // root defnition level is always zero.
         | Deserializer.Optional optionalDeserializer ->
             match optionalDeserializer.ValueDeserializer with
             | Deserializer.Record recordDeserializer -> recordDeserializer
@@ -597,7 +597,7 @@ type internal Assembler<'Record>(sourceSchema: RootSchema, settings) =
         assemble.Invoke(columns)
 
 module private Assembler =
-    // TODO: We probably won;t be able to cache at this level eventually when
+    // TODO: We probably won't be able to cache at this level eventually when
     // we introduce settings that control deserialization, since the behaviour
     // will depend on the settings, e.g. which deserializers are registered.
     let private Cache = Dictionary<Type * RootSchema, obj>()
@@ -617,7 +617,6 @@ module private Assembler =
         match tryGetCached<'Record> sourceSchema with
         | Option.Some assembler -> assembler
         | Option.None ->
-            // TODO: Check schema compatability.
             let assembler = Assembler<'Record>(sourceSchema, settings)
             addToCache sourceSchema assembler
             assembler

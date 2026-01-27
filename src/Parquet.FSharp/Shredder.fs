@@ -315,9 +315,9 @@ type private Shredder<'Record>(settings) =
     let recordSerializer =
         match Serializer.resolve typeof<'Record> settings with
         | Serializer.Record recordSerializer -> recordSerializer
-        // TODO: F# records are currently treated as optional for compatability
-        // with Parquet.Net, but the root record should never be optional.
-        // Unwrap the record info to remove this optionality.
+        // The root record should never be optional. If it is an optional
+        // record, unwrap it to remove this optionality. This ensures that the
+        // root defnition level is always zero.
         | Serializer.Optional optionalSerializer ->
             match optionalSerializer.ValueSerializer with
             | Serializer.Record recordSerializer -> recordSerializer
@@ -398,7 +398,7 @@ type private Shredder<'Record>(settings) =
         shred.Invoke(records)
 
 module private Shredder =
-    // TODO: We probably won;t be able to cache at this level eventually when
+    // TODO: We probably won't be able to cache at this level eventually when
     // we introduce settings that control deserialization, since the behaviour
     // will depend on the settings, e.g. which serializers are registered.
     let private Cache = Dictionary<Type, obj>()

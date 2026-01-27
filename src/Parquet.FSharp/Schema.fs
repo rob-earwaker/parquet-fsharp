@@ -114,9 +114,13 @@ module internal ValueSchema =
     // behaviour is to derive from the {ListField} and {StructField} types and
     // override the {IsNullable} property.
 
+    type private OptionalListField = ListField
+
     type private RequiredListField(name, item: Field) =
         inherit ListField(name, item)
         override this.IsNullable = false
+
+    type private OptionalStructField = StructField
 
     type private RequiredStructField(name, fields) =
         inherit StructField(name, fields)
@@ -136,12 +140,12 @@ module internal ValueSchema =
         | ValueTypeSchema.List list ->
             let element = toParquetNet ListField.ElementName list.Element
             if valueSchema.IsOptional
-            then ListField(fieldName, element)
+            then OptionalListField(fieldName, element)
             else RequiredListField(fieldName, element)
         | ValueTypeSchema.Record record ->
             let fields = record.Fields |> Array.map FieldSchema.toParquetNet
             if valueSchema.IsOptional
-            then StructField(fieldName, fields)
+            then OptionalStructField(fieldName, fields)
             else RequiredStructField(fieldName, fields)
 
 module internal FieldSchema =

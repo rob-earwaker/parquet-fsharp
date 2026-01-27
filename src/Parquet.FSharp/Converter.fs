@@ -1626,15 +1626,7 @@ type internal DefaultUnionConverter private () =
         let typeFieldSerializer =
             // TODO: The name of this field could be configurable via an attribute.
             let name = "Type"
-            let valueSerializer =
-                // TODO: We should really delegate this to Serializer.ofType,
-                // but this would require having a string converter that
-                // can treat strings as required.
-                let dotnetType = typeof<string>
-                let dataDotnetType = dotnetType
-                let schema = ValueTypeSchema.primitive dataDotnetType
-                let getDataValue = id
-                Serializer.atomic schema dotnetType dataDotnetType getDataValue
+            let valueSerializer = Serializer.resolve typeof<string> settings
             let getValue = unionInfo.GetCaseName
             FieldSerializer.create name valueSerializer getValue
         // Each union case with one or more fields is assigned an additional
@@ -1793,27 +1785,15 @@ type internal DefaultUnionConverter private () =
             let unionCasesWithFields =
                 unionInfo.UnionCases
                 |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
-            // The 'Type' field holds the case name. Since unions are not nullable
-            // there must always be a case name present. We therefore model this
-            // as a non-optional string value.
+            // The 'Type' field holds the case name as a string.
             let typeFieldDeserializer =
                 // TODO: The name of this field could be configurable via an attribute.
                 let name = "Type"
                 recordSchema.Fields
                 |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = name)
                 |> Option.map (fun fieldSchema ->
-                    // TODO: We should really delegate this to Deserializer.ofType
-                    // and pass in the field value schema to confirm that it's actually
-                    // a string, but this would require having a string converter that
-                    // can treat strings as required.
-                    let deserializer =
-                        let dotnetType = typeof<string>
-                        let dataDotnetType = dotnetType
-                        let schema = ValueTypeSchema.primitive dataDotnetType
-                        let createFromDataValue = id
-                        Deserializer.atomic
-                            schema dotnetType dataDotnetType createFromDataValue
-                    FieldDeserializer.create name deserializer)
+                    Deserializer.resolve fieldSchema.Value typeof<string> settings
+                    |> FieldDeserializer.create name)
             // Each union case with one or more fields is assigned an additional
             // field within the record to hold its associated data. The name of this
             // field matches the case name and the value is a record that contains

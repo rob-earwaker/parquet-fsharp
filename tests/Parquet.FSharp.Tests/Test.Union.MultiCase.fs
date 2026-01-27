@@ -833,3 +833,5 @@ module ``deserialize multi case union with subset of fields from optional record
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
+
+// TODO: Test for when 'Type' field is optional.

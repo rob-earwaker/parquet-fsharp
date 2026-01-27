@@ -516,13 +516,13 @@ module private rec ValueAssembler =
         | Deserializer.Optional optionalDeserializer ->
             ValueAssembler.forOptional optionalDeserializer parentMaxRepLevel parentMaxDefLevel
 
-type internal Assembler<'Record>(sourceSchema: RootSchema) =
+type internal Assembler<'Record>(sourceSchema: RootSchema, settings) =
     let recordDeserializer =
         let sourceSchema =
             let isOptional = false
             let valueType = ValueTypeSchema.record sourceSchema.Fields
             ValueSchema.create isOptional valueType
-        match Deserializer.resolve sourceSchema typeof<'Record> with
+        match Deserializer.resolve sourceSchema typeof<'Record> settings with
         | Deserializer.Record recordDeserializer -> recordDeserializer
         // TODO: F# records are currently treated as optional for compatability
         // with Parquet.Net, but the root record should never be optional.
@@ -613,11 +613,11 @@ module private Assembler =
         lock Cache (fun () ->
             Cache[(typeof<'Record>, sourceSchema)] <- assembler)
 
-    let createFor<'Record> sourceSchema =
+    let createFor<'Record> sourceSchema settings =
         match tryGetCached<'Record> sourceSchema with
         | Option.Some assembler -> assembler
         | Option.None ->
             // TODO: Check schema compatability.
-            let assembler = Assembler<'Record>(sourceSchema)
+            let assembler = Assembler<'Record>(sourceSchema, settings)
             addToCache sourceSchema assembler
             assembler

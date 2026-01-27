@@ -311,9 +311,9 @@ module private rec ValueShredder =
         | Serializer.Optional optionalSerializer ->
             ValueShredder.forOptional optionalSerializer parentMaxRepLevel parentMaxDefLevel field
 
-type private Shredder<'Record>() =
+type private Shredder<'Record>(settings) =
     let recordSerializer =
-        match Serializer.resolve typeof<'Record> with
+        match Serializer.resolve typeof<'Record> settings with
         | Serializer.Record recordSerializer -> recordSerializer
         // TODO: F# records are currently treated as optional for compatability
         // with Parquet.Net, but the root record should never be optional.
@@ -414,10 +414,10 @@ module private Shredder =
         lock Cache (fun () ->
             Cache[typeof<'Record>] <- shredder)
 
-    let createFor<'Record> =
+    let createFor<'Record> settings =
         match tryGetCached<'Record> with
         | Option.Some shredder -> shredder
         | Option.None ->
-            let shredder = Shredder<'Record>()
+            let shredder = Shredder<'Record>(settings)
             addToCache shredder
             shredder

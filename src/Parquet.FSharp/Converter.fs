@@ -50,15 +50,18 @@ type SerializationException(message) =
 // TODO: Attribute to select specific serializer type to use? Alternatively could
 // be part of the serializer configuration?
 
-// TODO: Add converter type to serializer/deserializer to we can catch exceptions
+// TODO: Add converter type to serializer/deserializer so we can catch exceptions
 // that occur when calling the compiled lambda functions and enrich with info about
 // which converter they originated from and which lambda function they originated from.
 
+type internal Settings = {
+    ValueConverters: IValueConverter[] }
+
 type internal IValueConverter =
     abstract member TryCreateSerializer
-        : sourceType:Type -> Serializer option
+        : sourceType:Type * settings:Settings -> Serializer option
     abstract member TryCreateDeserializer
-        : sourceSchema:ValueSchema * targetType:Type -> Deserializer option
+        : sourceSchema:ValueSchema * targetType:Type * settings:Settings -> Deserializer option
 
 type internal Serializer =
     | Atomic of AtomicSerializer
@@ -346,9 +349,9 @@ module internal Serializer =
         let getValue = id
         Serializer.optional dotnetType valueSerializer isNull getValue
 
-    let resolve (sourceType: Type) : Serializer =
-        ValueConverter.All
-        |> Array.tryPick _.TryCreateSerializer(sourceType)
+    let resolve (sourceType: Type) (settings: Settings) =
+        settings.ValueConverters
+        |> Array.tryPick _.TryCreateSerializer(sourceType, settings)
         |> Option.defaultWith (fun () ->
             // TODO: This will likely end up depending on attributes as well,
             // so probably will want to make the exception more generic to
@@ -470,9 +473,9 @@ module internal Deserializer =
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
-    let resolve sourceSchema targetType : Deserializer =
-        ValueConverter.All
-        |> Array.tryPick _.TryCreateDeserializer(sourceSchema, targetType)
+    let resolve sourceSchema targetType (settings: Settings) =
+        settings.ValueConverters
+        |> Array.tryPick _.TryCreateDeserializer(sourceSchema, targetType, settings)
         |> Option.defaultWith (fun () ->
             // TODO: This will likely end up depending on attributes as well,
             // so probably will want to make the exception more generic to
@@ -490,17 +493,17 @@ module private FieldSerializer =
           FieldSerializer.ValueSerializer = valueSerializer
           FieldSerializer.GetValue = getValue }
 
-    let ofProperty (field: PropertyInfo) : FieldSerializer =
+    let ofProperty (field: PropertyInfo) settings : FieldSerializer =
         let name = field.Name
-        let valueSerializer = Serializer.resolve field.PropertyType
+        let valueSerializer = Serializer.resolve field.PropertyType settings
         let getValue (record: Expression) =
             Expression.Property(record, field)
             :> Expression
         create name valueSerializer getValue
 
-    let ofUnionCaseField (unionCase: UnionCaseInfo) (field: PropertyInfo) =
+    let ofUnionCaseField (unionCase: UnionCaseInfo) (field: PropertyInfo) settings =
         let name = field.Name
-        let valueSerializer = Serializer.resolve field.PropertyType
+        let valueSerializer = Serializer.resolve field.PropertyType settings
         let getValue (union: Expression) =
             Expression.Property(
                 Expression.Convert(union, unionCase.DotnetType), field)
@@ -514,44 +517,10 @@ module private FieldDeserializer =
           FieldDeserializer.Name = name
           FieldDeserializer.ValueDeserializer = valueDeserializer }
 
-    let ofProperty schema (field: PropertyInfo) : FieldDeserializer =
+    let ofProperty schema (field: PropertyInfo) settings =
         let name = field.Name
-        let deserializer = Deserializer.resolve schema field.PropertyType
+        let deserializer = Deserializer.resolve schema field.PropertyType settings
         create name deserializer
-
-module internal ValueConverter =
-    let All : IValueConverter[] = [|
-        // TODO: These should probably be singletons.
-        DefaultBoolConverter()
-        DefaultInt8Converter()
-        DefaultInt16Converter()
-        DefaultInt32Converter()
-        DefaultInt64Converter()
-        DefaultUInt8Converter()
-        DefaultUInt16Converter()
-        DefaultUInt32Converter()
-        DefaultUInt64Converter()
-        DefaultFloat32Converter()
-        DefaultFloat64Converter()
-        DefaultDecimalConverter()
-        DefaultGuidConverter()
-        DefaultDateTimeConverter()
-        DefaultDateTimeOffsetConverter()
-        DefaultStringConverter()
-        // This must come before the generic array type since byte arrays are
-        // supported as a primitive type in Parquet and are therefore handled as
-        // atomic values rather than lists.
-        DefaultByteArrayConverter()
-        DefaultListConverter()
-        DefaultArray1dConverter()
-        DefaultResizeArrayConverter()
-        DefaultRecordConverter()
-        // This must come before the generic union type since option types are
-        // handled in a special way.
-        DefaultOptionConverter()
-        DefaultNullableConverter()
-        DefaultUnionConverter()
-    |]
 
 type internal DefaultBoolConverter() =
     let dotnetType = typeof<bool>
@@ -572,12 +541,12 @@ type internal DefaultBoolConverter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -608,12 +577,12 @@ type internal DefaultInt8Converter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -648,12 +617,12 @@ type internal DefaultInt16Converter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -689,12 +658,12 @@ type internal DefaultInt32Converter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -732,12 +701,12 @@ type internal DefaultInt64Converter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -774,12 +743,12 @@ type internal DefaultUInt8Converter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -813,12 +782,12 @@ type internal DefaultUInt16Converter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -853,12 +822,12 @@ type internal DefaultUInt32Converter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -894,12 +863,12 @@ type internal DefaultUInt64Converter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -936,12 +905,12 @@ type internal DefaultFloat32Converter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -979,12 +948,12 @@ type internal DefaultFloat64Converter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -1025,12 +994,12 @@ type internal DefaultDecimalConverter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -1069,12 +1038,12 @@ type internal DefaultGuidConverter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -1151,12 +1120,12 @@ type internal DefaultDateTimeConverter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -1198,12 +1167,12 @@ type internal DefaultDateTimeOffsetConverter() =
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -1244,12 +1213,12 @@ type internal DefaultStringConverter() =
         |> Deserializer.optionalNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -1293,12 +1262,12 @@ type internal DefaultByteArrayConverter() =
         |> Deserializer.optionalNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
             then Option.None
             else
@@ -1317,9 +1286,9 @@ type internal DefaultByteArrayConverter() =
 type internal DefaultListConverter() =
     let isListType = DotnetType.isGenericType<list<_>>
 
-    let createSerializer (dotnetType: Type) =
+    let createSerializer (dotnetType: Type) settings =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
-        let elementSerializer = Serializer.resolve elementDotnetType
+        let elementSerializer = Serializer.resolve elementDotnetType settings
         let getEnumerator (list: Expression) =
             // let enumerable = list :> IEnumerable<'Element>
             // enumerable.GetEnumerator()
@@ -1336,10 +1305,10 @@ type internal DefaultListConverter() =
 
     // Deserializer for required values, i.e. those that will never have null
     // values according to the source schema.
-    let createRequiredDeserializer (schema: ListTypeSchema) (dotnetType: Type) =
+    let createRequiredDeserializer (schema: ListTypeSchema) (dotnetType: Type) settings =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementDeserializer =
-            Deserializer.resolve schema.Element elementDotnetType
+            Deserializer.resolve schema.Element elementDotnetType settings
         let createEmpty =
             Expression.Property(null, dotnetType.GetProperty("Empty"))
         let createFromElementValues (elementValues: Expression) =
@@ -1356,25 +1325,25 @@ type internal DefaultListConverter() =
     // according to the source schema. Since we usually don't want null values
     // in F#, we just wrap as a non-nullable type. This means an exception will
     // be thrown if a null value is encountered in the data.
-    let createOptionalDeserializer schema dotnetType =
-        createRequiredDeserializer schema dotnetType
+    let createOptionalDeserializer schema dotnetType settings =
+        createRequiredDeserializer schema dotnetType settings
         |> Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if isListType sourceType
-            then Option.Some (createSerializer sourceType)
+            then Option.Some (createSerializer sourceType settings)
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if not (isListType targetType)
             then Option.None
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.List listSchema ->
                     if sourceSchema.IsOptional
-                    then Option.Some (createOptionalDeserializer listSchema targetType)
-                    else Option.Some (createRequiredDeserializer listSchema targetType)
+                    then Option.Some (createOptionalDeserializer listSchema targetType settings)
+                    else Option.Some (createRequiredDeserializer listSchema targetType settings)
                 | _ -> Option.None
 
 type internal DefaultArray1dConverter() =
@@ -1382,9 +1351,9 @@ type internal DefaultArray1dConverter() =
         dotnetType.IsArray
         && dotnetType.GetArrayRank() = 1
 
-    let createSerializer (dotnetType: Type) =
+    let createSerializer (dotnetType: Type) settings =
         let elementDotnetType = dotnetType.GetElementType()
-        let elementSerializer = Serializer.resolve elementDotnetType
+        let elementSerializer = Serializer.resolve elementDotnetType settings
         let getEnumerator (array: Expression) =
             // if isNull array then
             //     raise SerializationException(...)
@@ -1404,10 +1373,10 @@ type internal DefaultArray1dConverter() =
 
     // Deserializer for required values, i.e. those that will never have null
     // values according to the source schema.
-    let createRequiredDeserializer (schema: ListTypeSchema) (dotnetType: Type) =
+    let createRequiredDeserializer (schema: ListTypeSchema) (dotnetType: Type) settings =
         let elementDotnetType = dotnetType.GetElementType()
         let elementDeserializer =
-            Deserializer.resolve schema.Element elementDotnetType
+            Deserializer.resolve schema.Element elementDotnetType settings
         let createEmpty =
             Expression.NewArrayBounds(elementDotnetType, Expression.Constant(0))
         let createFromElementValues (elementValues: Expression) =
@@ -1419,33 +1388,33 @@ type internal DefaultArray1dConverter() =
     // according to the source schema. Since we usually don't want null values
     // in F#, we just wrap as a non-nullable type. This means an exception will
     // be thrown if a null value is encountered in the data.
-    let createOptionalDeserializer schema dotnetType =
-        createRequiredDeserializer schema dotnetType
+    let createOptionalDeserializer schema dotnetType settings =
+        createRequiredDeserializer schema dotnetType settings
         |> Deserializer.optionalNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if isArray1dType sourceType
-            then Option.Some (createSerializer sourceType)
+            then Option.Some (createSerializer sourceType settings)
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if not (isArray1dType targetType)
             then Option.None
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.List listSchema ->
                     if sourceSchema.IsOptional
-                    then Option.Some (createOptionalDeserializer listSchema targetType)
-                    else Option.Some (createRequiredDeserializer listSchema targetType)
+                    then Option.Some (createOptionalDeserializer listSchema targetType settings)
+                    else Option.Some (createRequiredDeserializer listSchema targetType settings)
                 | _ -> Option.None
 
 type internal DefaultResizeArrayConverter() =
     let isResizeArrayType = DotnetType.isGenericType<ResizeArray<_>>
 
-    let createSerializer (dotnetType: Type) =
+    let createSerializer (dotnetType: Type) settings =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
-        let elementSerializer = Serializer.resolve elementDotnetType
+        let elementSerializer = Serializer.resolve elementDotnetType settings
         let getEnumerator (list: Expression) =
             // if isNull list then
             //     raise SerializationException(...)
@@ -1465,10 +1434,10 @@ type internal DefaultResizeArrayConverter() =
 
     // Deserializer for required values, i.e. those that will never have null
     // values according to the source schema.
-    let createRequiredDeserializer (schema: ListTypeSchema) (dotnetType: Type) =
+    let createRequiredDeserializer (schema: ListTypeSchema) (dotnetType: Type) settings =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementDeserializer =
-            Deserializer.resolve schema.Element elementDotnetType
+            Deserializer.resolve schema.Element elementDotnetType settings
         let createEmpty = Expression.New(dotnetType)
         let createFromElementValues = id
         Deserializer.list
@@ -1478,45 +1447,46 @@ type internal DefaultResizeArrayConverter() =
     // according to the source schema. Since we usually don't want null values
     // in F#, we just wrap as a non-nullable type. This means an exception will
     // be thrown if a null value is encountered in the data.
-    let createOptionalDeserializer schema dotnetType =
-        createRequiredDeserializer schema dotnetType
+    let createOptionalDeserializer schema dotnetType settings =
+        createRequiredDeserializer schema dotnetType settings
         |> Deserializer.optionalNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if isResizeArrayType sourceType
-            then Option.Some (createSerializer sourceType)
+            then Option.Some (createSerializer sourceType settings)
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if not (isResizeArrayType targetType)
             then Option.None
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.List listSchema ->
                     if sourceSchema.IsOptional
-                    then Option.Some (createOptionalDeserializer listSchema targetType)
-                    else Option.Some (createRequiredDeserializer listSchema targetType)
+                    then Option.Some (createOptionalDeserializer listSchema targetType settings)
+                    else Option.Some (createRequiredDeserializer listSchema targetType settings)
                 | _ -> Option.None
 
 type internal DefaultRecordConverter() =
     let isRecordType = FSharpType.IsRecord
 
-    let createSerializer (dotnetType: Type) =
+    let createSerializer (dotnetType: Type) settings =
         let fieldSerializers =
             FSharpType.GetRecordFields(dotnetType)
-            |> Array.map FieldSerializer.ofProperty
+            |> Array.map (fun fieldInfo ->
+                FieldSerializer.ofProperty fieldInfo settings)
         Serializer.record dotnetType fieldSerializers
 
-    let tryCreateRequiredDeserializer (recordSchema: RecordTypeSchema) (dotnetType: Type) =
+    let tryCreateRequiredDeserializer (recordSchema: RecordTypeSchema) (dotnetType: Type) settings =
         let fields = FSharpType.GetRecordFields(dotnetType)
         let fieldDeserializers =
             fields
-            |> Array.choose (fun field ->
+            |> Array.choose (fun fieldInfo ->
                 recordSchema.Fields
-                |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = field.Name)
+                |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = fieldInfo.Name)
                 |> Option.map (fun fieldSchema ->
-                    FieldDeserializer.ofProperty fieldSchema.Value field))
+                    FieldDeserializer.ofProperty fieldSchema.Value fieldInfo settings))
         if fieldDeserializers.Length < fields.Length
         then Option.None
         else
@@ -1528,25 +1498,25 @@ type internal DefaultRecordConverter() =
             Deserializer.record dotnetType fieldDeserializers createFromFieldValues
             |> Option.Some
 
-    let tryCreateOptionalDeserializer recordSchema dotnetType =
-        tryCreateRequiredDeserializer recordSchema dotnetType
+    let tryCreateOptionalDeserializer recordSchema dotnetType settings =
+        tryCreateRequiredDeserializer recordSchema dotnetType settings
         |> Option.map Deserializer.optionalNonNullableTypeWrapper
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if isRecordType sourceType
-            then Option.Some (createSerializer sourceType)
+            then Option.Some (createSerializer sourceType settings)
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if not (isRecordType targetType)
             then Option.None
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.Record recordSchema ->
                     if sourceSchema.IsOptional
-                    then tryCreateOptionalDeserializer recordSchema targetType
-                    else tryCreateRequiredDeserializer recordSchema targetType
+                    then tryCreateOptionalDeserializer recordSchema targetType settings
+                    else tryCreateRequiredDeserializer recordSchema targetType settings
                 | _ -> Option.None
 
 // TODO: Should we have separate converters for the different union types? Seems
@@ -1566,7 +1536,7 @@ type internal DefaultUnionConverter() =
         let getDataValue = unionInfo.GetCaseName
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
-    let createSingleCaseUnionSerializer (unionInfo: UnionInfo) =
+    let createSingleCaseUnionSerializer (unionInfo: UnionInfo) settings =
         // Unions with a single case are most likely being used to enable
         // stricter type checking and to allow encapsulation of any associated
         // field values. We serialize single case unions as a record using the
@@ -1575,10 +1545,11 @@ type internal DefaultUnionConverter() =
         let unionCase = unionInfo.UnionCases[0]
         let fieldSerializers =
             unionCase.Fields
-            |> Array.map (FieldSerializer.ofUnionCaseField unionCase)
+            |> Array.map (fun fieldInfo ->
+                FieldSerializer.ofUnionCaseField unionCase fieldInfo settings)
         Serializer.record dotnetType fieldSerializers
 
-    let createUnionCaseSerializer (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) =
+    let createUnionCaseSerializer (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) settings =
         // Union case data is represented as an optional record containing the
         // field values for that case. The record needs to be optional since
         // only one case from the union can be set and the others will be NULL.
@@ -1587,7 +1558,8 @@ type internal DefaultUnionConverter() =
             let dotnetType = unionInfo.DotnetType
             let fieldSerializers =
                 unionCase.Fields
-                |> Array.map (FieldSerializer.ofUnionCaseField unionCase)
+                |> Array.map (fun fieldInfo ->
+                    FieldSerializer.ofUnionCaseField unionCase fieldInfo settings)
             Serializer.record dotnetType fieldSerializers
         // The data for this case is NULL if the union tag does not match the
         // tag for this case.
@@ -1597,7 +1569,7 @@ type internal DefaultUnionConverter() =
         let getValue = id
         Serializer.optional dotnetType valueSerializer isNull getValue
 
-    let createMultiCaseUnionSerializer (unionInfo: UnionInfo) =
+    let createMultiCaseUnionSerializer (unionInfo: UnionInfo) settings =
         // Unions that have one or more cases with one or more fields can not be
         // represented as a simple string value. Instead, we have to model the
         // union as a record with a field to capture the case name and
@@ -1640,13 +1612,13 @@ type internal DefaultUnionConverter() =
                     failwith <|
                         $"case name '{typeFieldSerializer.Name}' is not supported"
                         + $" for union type '{dotnetType.FullName}'"
-                let valueSerializer = createUnionCaseSerializer unionInfo unionCase
+                let valueSerializer = createUnionCaseSerializer unionInfo unionCase settings
                 let getValue = id
                 FieldSerializer.create name valueSerializer getValue)
         let fieldSerializers = Array.append [| typeFieldSerializer |] caseFieldSerializers
         Serializer.record dotnetType fieldSerializers
 
-    let tryCreateEnumUnionDeserializer (sourceSchema: ValueSchema) (unionInfo: UnionInfo) =
+    let tryCreateEnumUnionDeserializer (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
         // Unions in which all cases have no fields are be represented as a
         // simple string value containing the case name. Since a union value
         // can't be null and must be one of the possible cases, this value is
@@ -1675,7 +1647,7 @@ type internal DefaultUnionConverter() =
         // pattern to what's used in the optional types where we're essentially
         // injecting an extra expression into the {Create*} functions. Is this
         // worth extracting out?
-        match Deserializer.resolve sourceSchema typeof<string> with
+        match Deserializer.resolve sourceSchema typeof<string> settings with
         | Deserializer.Atomic atomicDeserializer ->
             let dataDotnetType = atomicDeserializer.DataDotnetType
             // TODO: This assumes that the data type is primitive.
@@ -1712,18 +1684,18 @@ type internal DefaultUnionConverter() =
         | _ -> Option.None
 
     let tryCreateSingleCaseUnionDeserializer
-        (sourceSchema: ValueSchema) (unionInfo: UnionInfo) =
+        (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
         match sourceSchema.Type with
         | ValueTypeSchema.Record recordSchema ->
             let dotnetType = unionInfo.DotnetType
             let unionCase = unionInfo.UnionCases[0]
             let fieldDeserializers =
                 unionCase.Fields
-                |> Array.choose (fun field ->
+                |> Array.choose (fun fieldInfo ->
                     recordSchema.Fields
-                    |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = field.Name)
+                    |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = fieldInfo.Name)
                     |> Option.map (fun fieldSchema ->
-                        FieldDeserializer.ofProperty fieldSchema.Value field))
+                        FieldDeserializer.ofProperty fieldSchema.Value fieldInfo settings))
             let createFromFieldValues = unionCase.CreateFromFieldValues
             if fieldDeserializers.Length < unionCase.Fields.Length
             then Option.None
@@ -1738,7 +1710,7 @@ type internal DefaultUnionConverter() =
         | _ -> Option.None
 
     let tryCreateUnionCaseDeserializer
-        (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) (schema: RecordTypeSchema) =
+        (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) (schema: RecordTypeSchema) settings =
         // Union case data is represented as an optional record containing the
         // field values for that case. The record needs to be optional since
         // only one case from the union can be set and the others will be NULL.
@@ -1747,11 +1719,11 @@ type internal DefaultUnionConverter() =
             let dotnetType = unionInfo.DotnetType
             let fieldDeserializers =
                 unionCase.Fields
-                |> Array.choose (fun field ->
+                |> Array.choose (fun fieldInfo ->
                     schema.Fields
-                    |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = field.Name)
+                    |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = fieldInfo.Name)
                     |> Option.map (fun fieldSchema ->
-                        FieldDeserializer.ofProperty fieldSchema.Value field))
+                        FieldDeserializer.ofProperty fieldSchema.Value fieldInfo settings))
             let createFromFieldValues = unionCase.CreateFromFieldValues
             if fieldDeserializers.Length < unionCase.Fields.Length
             then Option.None
@@ -1768,7 +1740,8 @@ type internal DefaultUnionConverter() =
                 dotnetType deserializer createNull createFromValue
             |> Option.Some
 
-    let tryCreateMultiCaseUnionDeserializer (sourceSchema: ValueSchema) (unionInfo: UnionInfo) =
+    let tryCreateMultiCaseUnionDeserializer
+        (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
         // For unions that have one or more cases with one or more fields, we
         // model as a record, with a field to capture the case name and
         // additional fields to hold any associated case data.
@@ -1820,7 +1793,7 @@ type internal DefaultUnionConverter() =
                         |> Option.bind (fun fieldSchema ->
                             match fieldSchema.Value.Type with
                             | ValueTypeSchema.Record recordSchema ->
-                                tryCreateUnionCaseDeserializer unionInfo unionCase recordSchema
+                                tryCreateUnionCaseDeserializer unionInfo unionCase recordSchema settings
                                 |> Option.map (FieldDeserializer.create name)
                             | _ -> Option.None))
             if typeFieldDeserializer.IsNone
@@ -1869,37 +1842,37 @@ type internal DefaultUnionConverter() =
         | _ -> Option.None
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if not (isUnionType sourceType)
             then Option.None
             else
                 let unionInfo = UnionInfo.ofUnion sourceType
                 match unionInfo.UnionType with
                 | UnionType.Enum -> Option.Some (createEnumUnionSerializer unionInfo)
-                | UnionType.SingleCase -> Option.Some (createSingleCaseUnionSerializer unionInfo)
-                | UnionType.MultiCase -> Option.Some (createMultiCaseUnionSerializer unionInfo)
+                | UnionType.SingleCase -> Option.Some (createSingleCaseUnionSerializer unionInfo settings)
+                | UnionType.MultiCase -> Option.Some (createMultiCaseUnionSerializer unionInfo settings)
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if not (isUnionType targetType)
             then Option.None
             else
                 let unionInfo = UnionInfo.ofUnion targetType
                 match unionInfo.UnionType with
                 | UnionType.Enum ->
-                    tryCreateEnumUnionDeserializer sourceSchema unionInfo
+                    tryCreateEnumUnionDeserializer sourceSchema unionInfo settings
                 | UnionType.SingleCase ->
-                    tryCreateSingleCaseUnionDeserializer sourceSchema unionInfo
+                    tryCreateSingleCaseUnionDeserializer sourceSchema unionInfo settings
                 | UnionType.MultiCase ->
-                    tryCreateMultiCaseUnionDeserializer sourceSchema unionInfo
+                    tryCreateMultiCaseUnionDeserializer sourceSchema unionInfo settings
 
 type internal DefaultOptionConverter() =
     let isOptionType = DotnetType.isGenericType<option<_>>
     
     // TODO: Quite a lot of duplicated reflection going on in here!
 
-    let tryCreateSerializer (sourceType: Type) =
+    let tryCreateSerializer (sourceType: Type) settings =
         let valueDotnetType = sourceType.GetGenericArguments()[0]
-        let valueSerializer = Serializer.resolve valueDotnetType
+        let valueSerializer = Serializer.resolve valueDotnetType settings
         // Parquet doesn't support nested optional values, so if the value is
         // optional then we can't serialize it.
         if valueSerializer.IsOptional
@@ -1926,7 +1899,7 @@ type internal DefaultOptionConverter() =
     // there will never be any NULL values, but we do need to wrap any values we
     // deserialize in {Option.Some} cases so that they can be assigned to the
     // target option field.
-    let createRequiredDeserializer (sourceSchema: ValueSchema) (targetType: Type) =
+    let createRequiredDeserializer (sourceSchema: ValueSchema) (targetType: Type) settings =
         // TODO: Can we just use UnionInfo for this?
         let unionCases = FSharpType.GetUnionCases(targetType)
         // Create an expression builder that will take a value and wrap it in an
@@ -1939,7 +1912,7 @@ type internal DefaultOptionConverter() =
         // Resolve the value deserializer. The value schema is just the same as
         // the source schema since we're dealing with a required field value.
         let valueDotnetType = targetType.GetGenericArguments()[0]
-        match Deserializer.resolve sourceSchema valueDotnetType with
+        match Deserializer.resolve sourceSchema valueDotnetType settings with
         | Deserializer.Atomic atomicDeserializer ->
             let dotnetType = targetType
             let dataDotnetType = atomicDeserializer.DataDotnetType
@@ -1975,7 +1948,7 @@ type internal DefaultOptionConverter() =
     // handle NULL values. When we read a NULL value we convert it to the
     // {Option.None} case. When we read a NOTNULL value we wrap it in the
     // {Option.Some} case.
-    let createOptionalDeserializer (sourceSchema: ValueSchema) targetType =
+    let createOptionalDeserializer (sourceSchema: ValueSchema) targetType settings =
         // TODO: Can we just use UnionInfo for this?
         let unionCases = FSharpType.GetUnionCases(targetType)
         // Resolve the value deserializer. Since we're dealing with an optional
@@ -1984,7 +1957,7 @@ type internal DefaultOptionConverter() =
         // down an equivalent non-optional value schema.
         let valueDotnetType = targetType.GetGenericArguments()[0]
         let valueSchema = sourceSchema.MakeRequired()
-        let valueDeserializer = Deserializer.resolve valueSchema valueDotnetType
+        let valueDeserializer = Deserializer.resolve valueSchema valueDotnetType settings
         // Build the {OptionalDeserializer} wrapper.
         let dotnetType = targetType
         let createNull =
@@ -2002,29 +1975,29 @@ type internal DefaultOptionConverter() =
             dotnetType valueDeserializer createNull createFromValue
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if isOptionType sourceType
-            then tryCreateSerializer sourceType
+            then tryCreateSerializer sourceType settings
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if not (isOptionType targetType)
             then Option.None
             else
                 if sourceSchema.IsOptional
                 // TODO: These will actually continue to work fine even with
                 // nested options. Should we do something about this?
-                then Option.Some (createOptionalDeserializer sourceSchema targetType)
-                else Option.Some (createRequiredDeserializer sourceSchema targetType)
+                then Option.Some (createOptionalDeserializer sourceSchema targetType settings)
+                else Option.Some (createRequiredDeserializer sourceSchema targetType settings)
 
 type internal DefaultNullableConverter() =
     let isNullableType = DotnetType.isGenericType<Nullable<_>>
     
     // TODO: Quite a lot of duplicated reflection going on in here!
 
-    let tryCreateSerializer (sourceType: Type) =
+    let tryCreateSerializer (sourceType: Type) settings =
         let valueDotnetType = Nullable.GetUnderlyingType(sourceType)
-        let valueSerializer = Serializer.resolve valueDotnetType
+        let valueSerializer = Serializer.resolve valueDotnetType settings
         // Parquet doesn't support nested optional values, so if the value is
         // optional then we can't serialize it.
         if valueSerializer.IsOptional
@@ -2045,7 +2018,7 @@ type internal DefaultNullableConverter() =
     // there will never be any NULL values, but we do need to wrap any values we
     // deserialize as {Nullable} values so that they can be assigned to the
     // target field.
-    let createRequiredDeserializer (sourceSchema: ValueSchema) (targetType: Type) =
+    let createRequiredDeserializer (sourceSchema: ValueSchema) (targetType: Type) settings =
         let valueDotnetType = Nullable.GetUnderlyingType(targetType)
         // Create an expression builder that will take a value and create a
         // {Nullable} value from it.
@@ -2056,7 +2029,7 @@ type internal DefaultNullableConverter() =
                 :> Expression
         // Resolve the value deserializer. The value schema is just the same as
         // the source schema since we're dealing with a required field value.
-        match Deserializer.resolve sourceSchema valueDotnetType with
+        match Deserializer.resolve sourceSchema valueDotnetType settings with
         | Deserializer.Atomic atomicDeserializer ->
             let dotnetType = targetType
             let dataDotnetType = atomicDeserializer.DataDotnetType
@@ -2091,14 +2064,14 @@ type internal DefaultNullableConverter() =
     // need to wrap the value deserializer in an {OptionalDeserializer} to
     // handle NULL values. When we read a NULL value we create a NULL valued
     // {Nullable}. When we read a NOTNULL value we wrap it as a {Nullable}.
-    let createOptionalDeserializer (sourceSchema: ValueSchema) targetType =
+    let createOptionalDeserializer (sourceSchema: ValueSchema) targetType settings =
         // Resolve the value deserializer. Since we're dealing with an optional
         // field value and we're going to deal with this optionality by wrapping
         // the value deserializer in an {OptionalDeserializer}, we want to pass
         // down an equivalent non-optional value schema.
         let valueDotnetType = Nullable.GetUnderlyingType(targetType)
         let valueSchema = sourceSchema.MakeRequired()
-        let valueDeserializer = Deserializer.resolve valueSchema valueDotnetType
+        let valueDeserializer = Deserializer.resolve valueSchema valueDotnetType settings
         // Build the {OptionalDeserializer} wrapper.
         let dotnetType = targetType
         let createNull = Expression.Null(dotnetType)
@@ -2111,15 +2084,15 @@ type internal DefaultNullableConverter() =
             dotnetType valueDeserializer createNull createFromValue
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType) =
+        member this.TryCreateSerializer(sourceType, settings) =
             if isNullableType sourceType
-            then tryCreateSerializer sourceType
+            then tryCreateSerializer sourceType settings
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if not (isNullableType targetType)
             then Option.None
             else
                 if sourceSchema.IsOptional
-                then Option.Some (createOptionalDeserializer sourceSchema targetType)
-                else Option.Some (createRequiredDeserializer sourceSchema targetType)
+                then Option.Some (createOptionalDeserializer sourceSchema targetType settings)
+                else Option.Some (createRequiredDeserializer sourceSchema targetType settings)

@@ -1892,43 +1892,16 @@ type internal DefaultOptionConverter private () =
         let unionCases = FSharpType.GetUnionCases(targetType)
         // Create an expression builder that will take a value and wrap it in an
         // {Option.Some} case.
-        let createSome (value: Expression) =
+        let wrapValue (value: Expression) =
             let someCase = unionCases |> Array.find _.Name.Equals("Some")
             let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(someCase)
             Expression.Call(constructorMethod, value) :> Expression
         // Resolve the value deserializer. The value schema is just the same as
         // the source schema since we're dealing with a required field value.
         let valueDotnetType = targetType.GetGenericArguments()[0]
-        match Deserializer.resolve sourceSchema valueDotnetType settings with
-        | Deserializer.Atomic atomicDeserializer ->
-            let dotnetType = targetType
-            let dataDotnetType = atomicDeserializer.DataDotnetType
-            // TODO: This probably isn't right for DateTime values.
-            let schema = ValueTypeSchema.primitive dataDotnetType
-            let createFromDataValue dataValue =
-                let value = atomicDeserializer.CreateFromDataValue dataValue
-                createSome value
-            Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
-        | Deserializer.List listDeserializer ->
-            let dotnetType = targetType
-            let elementDeserializer = listDeserializer.ElementDeserializer
-            let createEmpty = createSome listDeserializer.CreateEmpty
-            let createFromElementValues elementValues =
-                let list = listDeserializer.CreateFromElementValues elementValues
-                createSome list
-            Deserializer.list
-                dotnetType elementDeserializer createEmpty createFromElementValues
-        | Deserializer.Record recordDeserializer ->
-            let dotnetType = targetType
-            let fieldDeserializers = recordDeserializer.FieldDeserializers
-            let createFromFieldValues fieldValues =
-                let record = recordDeserializer.CreateFromFieldValues fieldValues
-                createSome record
-            Deserializer.record dotnetType fieldDeserializers createFromFieldValues
-        | Deserializer.Optional _ ->
-            failwith <|
-                "expected non-optional deserializer to be resolved for required"
-                + $" schema '{sourceSchema}'"
+        let valueDeserializer =
+            Deserializer.resolve sourceSchema valueDotnetType settings
+        Deserializer.wrapAs targetType valueDeserializer wrapValue
 
     // Create a deserializer for an optional field value. In this situation we
     // need to wrap the value deserializer in an {OptionalDeserializer} to
@@ -2011,43 +1984,16 @@ type internal DefaultNullableConverter private () =
         let valueDotnetType = Nullable.GetUnderlyingType(targetType)
         // Create an expression builder that will take a value and create a
         // {Nullable} value from it.
-        let createFromValue =
+        let wrapValue =
             let constructor = targetType.GetConstructor([| valueDotnetType |])
             fun (value: Expression) ->
                 Expression.New(constructor, value)
                 :> Expression
         // Resolve the value deserializer. The value schema is just the same as
         // the source schema since we're dealing with a required field value.
-        match Deserializer.resolve sourceSchema valueDotnetType settings with
-        | Deserializer.Atomic atomicDeserializer ->
-            let dotnetType = targetType
-            let dataDotnetType = atomicDeserializer.DataDotnetType
-            // TODO: This probably isn't right for DateTime values.
-            let schema = ValueTypeSchema.primitive dataDotnetType
-            let createFromDataValue dataValue =
-                let value = atomicDeserializer.CreateFromDataValue dataValue
-                createFromValue value
-            Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
-        | Deserializer.List listDeserializer ->
-            let dotnetType = targetType
-            let elementDeserializer = listDeserializer.ElementDeserializer
-            let createEmpty = createFromValue listDeserializer.CreateEmpty
-            let createFromElementValues elementValues =
-                let list = listDeserializer.CreateFromElementValues elementValues
-                createFromValue list
-            Deserializer.list
-                dotnetType elementDeserializer createEmpty createFromElementValues
-        | Deserializer.Record recordDeserializer ->
-            let dotnetType = targetType
-            let fieldDeserializers = recordDeserializer.FieldDeserializers
-            let createFromFieldValues fieldValues =
-                let record = recordDeserializer.CreateFromFieldValues fieldValues
-                createFromValue record
-            Deserializer.record dotnetType fieldDeserializers createFromFieldValues
-        | Deserializer.Optional _ ->
-            failwith <|
-                "expected non-optional deserializer to be resolved for required"
-                + $" schema '{sourceSchema}'"
+        let valueDeserializer =
+            Deserializer.resolve sourceSchema valueDotnetType settings
+        Deserializer.wrapAs targetType valueDeserializer wrapValue
 
     // Create a deserializer for an optional field value. In this situation we
     // need to wrap the value deserializer in an {OptionalDeserializer} to

@@ -1647,13 +1647,20 @@ type internal DefaultUnionConverter private () =
         let fieldSerializers = Array.append [| typeFieldSerializer |] caseFieldSerializers
         Serializer.record dotnetType fieldSerializers
 
-    let tryCreateEnumUnionDeserializer (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
+    let createEnumUnionDeserializer (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
         // Unions in which all cases have no fields are be represented as a
         // simple string value containing the case name. Since a union value
         // can't be null and must be one of the possible cases, this value is
         // not optional.
         let dotnetType = unionInfo.DotnetType
-        let createFromCaseName caseName =
+        // TODO: Could catch exception that occurs if this isn't resolved and
+        // raise a more descriptive exception, or event add a tryResolve function.
+        // Also applies to other places where we use 'resolve' for both serializers
+        // and deserializers. Or maybe these should just return None when it can't
+        // be resolved?
+        let caseNameDeserializer =
+            Deserializer.resolve sourceSchema typeof<string> settings
+        let wrapValue caseName =
             let returnLabel = Expression.Label(dotnetType, "union")
             Expression.Block(
                 seq<Expression> {
@@ -1665,6 +1672,7 @@ type internal DefaultUnionConverter private () =
                             :> Expression)
                     yield Expression.FailWith<SerializationException>(
                         Expression.Constant("encountered invalid case name '"),
+                        // TODO: Could detect null values here and print '<null>' instead of ''
                         caseName,
                         Expression.Constant(
                             "' during deserialization of enum union type"
@@ -1672,45 +1680,7 @@ type internal DefaultUnionConverter private () =
                     yield Expression.Label(returnLabel, Expression.Default(dotnetType))
                 })
             :> Expression
-        // TODO: Feels like there must be a better way to do this. It's a similar
-        // pattern to what's used in the optional types where we're essentially
-        // injecting an extra expression into the {Create*} functions. Is this
-        // worth extracting out?
-        match Deserializer.resolve sourceSchema typeof<string> settings with
-        | Deserializer.Atomic atomicDeserializer ->
-            let dataDotnetType = atomicDeserializer.DataDotnetType
-            // TODO: This assumes that the data type is primitive.
-            let schema = ValueTypeSchema.primitive dataDotnetType
-            let createFromDataValue dataValue =
-                let caseName = Expression.Variable(typeof<string>, "caseName")
-                Expression.Block(
-                    [ caseName ],
-                    Expression.Assign(caseName, atomicDeserializer.CreateFromDataValue dataValue),
-                    createFromCaseName caseName)
-                :> Expression
-            Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
-            |> Option.Some
-        | Deserializer.Optional optionalDeserializer ->
-            let valueDeserializer = optionalDeserializer.ValueDeserializer
-            // TODO: This is a duplicate of the exception defined in the
-            // Deserializer module for the non-nullable type wrapper.
-            let createNull =
-                Expression.Block(
-                    Expression.FailWith<SerializationException>(
-                        "null value encountered during deserialization for"
-                        + $" non-nullable type '{dotnetType.FullName}'"),
-                    Expression.Default(dotnetType))
-                :> Expression
-            let createFromValue value =
-                let caseName = Expression.Variable(typeof<string>, "caseName")
-                Expression.Block(
-                    [ caseName ],
-                    Expression.Assign(caseName, optionalDeserializer.CreateFromValue value),
-                    createFromCaseName caseName)
-                :> Expression
-            Deserializer.optional dotnetType valueDeserializer createNull createFromValue
-            |> Option.Some
-        | _ -> Option.None
+        Deserializer.wrapAs dotnetType caseNameDeserializer wrapValue
 
     let tryCreateSingleCaseUnionDeserializer
         (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
@@ -1878,7 +1848,7 @@ type internal DefaultUnionConverter private () =
                 let unionInfo = UnionInfo.ofUnion targetType
                 match unionInfo.UnionType with
                 | UnionType.Enum ->
-                    tryCreateEnumUnionDeserializer sourceSchema unionInfo settings
+                    Option.Some (createEnumUnionDeserializer sourceSchema unionInfo settings)
                 | UnionType.SingleCase ->
                     tryCreateSingleCaseUnionDeserializer sourceSchema unionInfo settings
                 | UnionType.MultiCase ->
@@ -1898,15 +1868,14 @@ type internal DefaultOptionConverter private () =
         then Option.None
         else
             let dotnetType = sourceType
-            let isNull =
+            let isNull (option: Expression) =
                 let optionModuleType =
                     Assembly.Load("FSharp.Core").GetTypes()
                     |> Array.filter (fun type' -> type'.Name = "OptionModule")
                     |> Array.exactlyOne
-                fun (option: Expression) ->
-                    Expression.Call(
-                        optionModuleType, "IsNone", [| valueSerializer.DotnetType |], option)
-                    :> Expression
+                Expression.Call(
+                    optionModuleType, "IsNone", [| valueSerializer.DotnetType |], option)
+                :> Expression
             let getValue (option: Expression) =
                 Expression.Property(option, "Value")
                 :> Expression
@@ -1923,11 +1892,10 @@ type internal DefaultOptionConverter private () =
         let unionCases = FSharpType.GetUnionCases(targetType)
         // Create an expression builder that will take a value and wrap it in an
         // {Option.Some} case.
-        let createSome =
+        let createSome (value: Expression) =
             let someCase = unionCases |> Array.find _.Name.Equals("Some")
             let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(someCase)
-            fun (value: Expression) ->
-                Expression.Call(constructorMethod, value) :> Expression
+            Expression.Call(constructorMethod, value) :> Expression
         // Resolve the value deserializer. The value schema is just the same as
         // the source schema since we're dealing with a required field value.
         let valueDotnetType = targetType.GetGenericArguments()[0]

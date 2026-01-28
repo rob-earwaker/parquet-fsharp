@@ -84,8 +84,13 @@ module ``deserialize enum union with single case from optional string`` =
             <@ ParquetSerializer.Deserialize<Output>(bytes) @>
             (fun exn ->
                 <@ exn.Message =
-                    "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    // TODO: In the future we could resolve the case name
+                    // deserializer with 'AllowNulls' and detect null when
+                    // mapping from string to case name for a better exception
+                    // message.
+                    "null value encountered during deserialization for type"
+                    + $" '{typeof<string>.FullName}' which is not treated as"
+                    + " nullable by default" @>)
 
     [<Fact>]
     let ``non-null value`` () =
@@ -125,8 +130,13 @@ module ``deserialize enum union with multiple cases from optional string`` =
             <@ ParquetSerializer.Deserialize<Output>(bytes) @>
             (fun exn ->
                 <@ exn.Message =
-                    "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    // TODO: In the future we could resolve the case name
+                    // deserializer with 'AllowNulls' and detect null when
+                    // mapping from string to case name for a better exception
+                    // message.
+                    "null value encountered during deserialization for type"
+                    + $" '{typeof<string>.FullName}' which is not treated as"
+                    + " nullable by default" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box "Case1"; (* outputValue *) box Union.Case1 |]
@@ -175,8 +185,13 @@ module ``deserialize enum union from optional string with unknown case name`` =
             <@ ParquetSerializer.Deserialize<Output>(bytes) @>
             (fun exn ->
                 <@ exn.Message =
-                    "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    // TODO: In the future we could resolve the case name
+                    // deserializer with 'AllowNulls' and detect null when
+                    // mapping from string to case name for a better exception
+                    // message.
+                    "null value encountered during deserialization for type"
+                    + $" '{typeof<string>.FullName}' which is not treated as"
+                    + " nullable by default" @>)
 
     [<Theory>]
     [<InlineData("Unknown")>]

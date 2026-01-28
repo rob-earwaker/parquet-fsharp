@@ -1567,16 +1567,11 @@ type internal DefaultRecordConverter private () =
 type internal DefaultUnionConverter private () =
     let isUnionType = FSharpType.IsUnion
 
-    let createEnumUnionSerializer (unionInfo: UnionInfo) =
+    let createEnumUnionSerializer (unionInfo: UnionInfo) settings =
         let dotnetType = unionInfo.DotnetType
-        // Unions in which all cases have no fields can be represented as a
-        // simple string value containing the case name. Since a union value
-        // can't be null and must be one of the possible cases, this value is
-        // not optional.
-        let dataDotnetType = typeof<string>
-        let schema = ValueTypeSchema.primitive dataDotnetType
-        let getDataValue = unionInfo.GetCaseName
-        Serializer.atomic schema dotnetType dataDotnetType getDataValue
+        let caseNameSerializer = Serializer.resolve typeof<string> settings
+        let unwrapValue = unionInfo.GetCaseName
+        Serializer.wrapAs dotnetType caseNameSerializer unwrapValue
 
     let createSingleCaseUnionSerializer (unionInfo: UnionInfo) settings =
         // Unions with a single case are most likely being used to enable
@@ -1872,7 +1867,7 @@ type internal DefaultUnionConverter private () =
             else
                 let unionInfo = UnionInfo.ofUnion sourceType
                 match unionInfo.UnionType with
-                | UnionType.Enum -> Option.Some (createEnumUnionSerializer unionInfo)
+                | UnionType.Enum -> Option.Some (createEnumUnionSerializer unionInfo settings)
                 | UnionType.SingleCase -> Option.Some (createSingleCaseUnionSerializer unionInfo settings)
                 | UnionType.MultiCase -> Option.Some (createMultiCaseUnionSerializer unionInfo settings)
 

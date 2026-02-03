@@ -171,7 +171,7 @@ type private UnionInfo = {
     GetCaseName: Expression -> Expression
     UnionCases: UnionCaseInfo[] }
 
-type UnionType =
+type private UnionType =
     | Enum
     | SingleCase
     | MultiCase
@@ -1953,25 +1953,16 @@ type internal DefaultOptionConverter private () =
                 else Option.Some (createRequiredDeserializer sourceSchema targetType settings)
 
 type internal DefaultNullableConverter private () =
-    let isNullableType = DotnetType.isGenericType<Nullable<_>>
-    
-    // TODO: Quite a lot of duplicated reflection going on in here!
-
-    let tryCreateSerializer (sourceType: Type) settings =
-        let valueDotnetType = Nullable.GetUnderlyingType(sourceType)
-        let valueSerializer = Serializer.resolve valueDotnetType settings
+    let tryCreateSerializer (nullableInfo: NullableInfo) settings =
+        let valueSerializer = Serializer.resolve nullableInfo.ValueType settings
         // Parquet doesn't support nested optional values, so if the value is
         // optional then we can't serialize it.
         if valueSerializer.IsOptional
         then Option.None
         else
-            let dotnetType = sourceType
-            let isNull (nullable: Expression) =
-                Expression.Not(Expression.Property(nullable, "HasValue"))
-                :> Expression
-            let getValue (nullable: Expression) =
-                Expression.Property(nullable, "Value")
-                :> Expression
+            let dotnetType = nullableInfo.Type
+            let isNull = nullableInfo.IsNull
+            let getValue = nullableInfo.GetValue
             Serializer.optional dotnetType valueSerializer isNull getValue
             |> Option.Some
 
@@ -1980,41 +1971,32 @@ type internal DefaultNullableConverter private () =
     // there will never be any NULL values, but we do need to wrap any values we
     // deserialize as {Nullable} values so that they can be assigned to the
     // target field.
-    let createRequiredDeserializer (sourceSchema: ValueSchema) (targetType: Type) settings =
-        let valueDotnetType = Nullable.GetUnderlyingType(targetType)
-        // Create an expression builder that will take a value and create a
-        // {Nullable} value from it.
-        let wrapValue =
-            let constructor = targetType.GetConstructor([| valueDotnetType |])
-            fun (value: Expression) ->
-                Expression.New(constructor, value)
-                :> Expression
+    let createRequiredDeserializer
+        sourceSchema (nullableInfo: NullableInfo) settings =
+        let wrapValue = nullableInfo.CreateFromValue
         // Resolve the value deserializer. The value schema is just the same as
         // the source schema since we're dealing with a required field value.
         let valueDeserializer =
-            Deserializer.resolve sourceSchema valueDotnetType settings
-        Deserializer.wrapAs targetType valueDeserializer wrapValue
+            Deserializer.resolve sourceSchema nullableInfo.ValueType settings
+        Deserializer.wrapAs nullableInfo.Type valueDeserializer wrapValue
 
     // Create a deserializer for an optional field value. In this situation we
     // need to wrap the value deserializer in an {OptionalDeserializer} to
     // handle NULL values. When we read a NULL value we create a NULL valued
     // {Nullable}. When we read a NOTNULL value we wrap it as a {Nullable}.
-    let createOptionalDeserializer (sourceSchema: ValueSchema) targetType settings =
+    let createOptionalDeserializer
+        (sourceSchema: ValueSchema) (nullableInfo: NullableInfo) settings =
         // Resolve the value deserializer. Since we're dealing with an optional
         // field value and we're going to deal with this optionality by wrapping
         // the value deserializer in an {OptionalDeserializer}, we want to pass
         // down an equivalent non-optional value schema.
-        let valueDotnetType = Nullable.GetUnderlyingType(targetType)
         let valueSchema = sourceSchema.MakeRequired()
-        let valueDeserializer = Deserializer.resolve valueSchema valueDotnetType settings
+        let valueDeserializer =
+            Deserializer.resolve valueSchema nullableInfo.ValueType settings
         // Build the {OptionalDeserializer} wrapper.
-        let dotnetType = targetType
-        let createNull = Expression.Null(dotnetType)
-        let createFromValue =
-            let constructor = dotnetType.GetConstructor([| valueDotnetType |])
-            fun (value: Expression) ->
-                Expression.New(constructor, value)
-                :> Expression
+        let dotnetType = nullableInfo.Type
+        let createNull = nullableInfo.CreateNull
+        let createFromValue = nullableInfo.CreateFromValue
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
@@ -2022,14 +2004,17 @@ type internal DefaultNullableConverter private () =
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =
-            if isNullableType sourceType
-            then tryCreateSerializer sourceType settings
-            else Option.None
+            match sourceType with
+            | DotnetType.Nullable nullableInfo ->
+                tryCreateSerializer nullableInfo settings
+            | _ -> Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
-            if not (isNullableType targetType)
-            then Option.None
-            else
-                if sourceSchema.IsOptional
-                then Option.Some (createOptionalDeserializer sourceSchema targetType settings)
-                else Option.Some (createRequiredDeserializer sourceSchema targetType settings)
+            match targetType with
+            | DotnetType.Nullable nullableInfo ->
+                let deserializer =
+                    if sourceSchema.IsOptional
+                    then createOptionalDeserializer sourceSchema nullableInfo settings
+                    else createRequiredDeserializer sourceSchema nullableInfo settings
+                Option.Some deserializer
+            | _ -> Option.None

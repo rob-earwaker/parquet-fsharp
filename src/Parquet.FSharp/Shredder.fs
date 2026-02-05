@@ -396,3 +396,28 @@ type private Shredder<'Record>(settings) =
 
     member this.Shred(records) =
         shred.Invoke(records)
+
+module private Shredder =
+    // TODO: We probably won't be able to cache at this level eventually when
+    // we introduce settings that control deserialization, since the behaviour
+    // will depend on the settings, e.g. which serializers are registered.
+    let private Cache = Dictionary<Type, obj>()
+
+    let private tryGetCached<'Record> =
+        lock Cache (fun () ->
+            match Cache.TryGetValue(typeof<'Record>) with
+            | false, _ -> Option.None
+            | true, shredder ->
+                Option.Some (shredder :?> Shredder<'Record>))
+
+    let private addToCache<'Record> (shredder: Shredder<'Record>) =
+        lock Cache (fun () ->
+            Cache[typeof<'Record>] <- shredder)
+
+    let createFor<'Record> settings =
+        match tryGetCached<'Record> with
+        | Option.Some shredder -> shredder
+        | Option.None ->
+            let shredder = Shredder<'Record>(settings)
+            addToCache shredder
+            shredder

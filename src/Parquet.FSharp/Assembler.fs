@@ -595,28 +595,3 @@ type internal Assembler<'Record>(sourceSchema: RootSchema, settings) =
 
     member this.Assemble(columns) =
         assemble.Invoke(columns)
-
-module private Assembler =
-    // TODO: We probably won't be able to cache at this level eventually when
-    // we introduce settings that control deserialization, since the behaviour
-    // will depend on the settings, e.g. which deserializers are registered.
-    let private Cache = Dictionary<Type * RootSchema, obj>()
-
-    let private tryGetCached<'Record> sourceSchema =
-        lock Cache (fun () ->
-            match Cache.TryGetValue((typeof<'Record>, sourceSchema)) with
-            | false, _ -> Option.None
-            | true, assembler ->
-                Option.Some (assembler :?> Assembler<'Record>))
-
-    let private addToCache<'Record> sourceSchema (assembler: Assembler<'Record>) =
-        lock Cache (fun () ->
-            Cache[(typeof<'Record>, sourceSchema)] <- assembler)
-
-    let createFor<'Record> sourceSchema settings =
-        match tryGetCached<'Record> sourceSchema with
-        | Option.Some assembler -> assembler
-        | Option.None ->
-            let assembler = Assembler<'Record>(sourceSchema, settings)
-            addToCache sourceSchema assembler
-            assembler

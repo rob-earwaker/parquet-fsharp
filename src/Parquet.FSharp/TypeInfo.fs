@@ -39,12 +39,16 @@ module internal NullableInfo =
 
     let private ofType (nullableType: Type) =
         let valueType = Nullable.GetUnderlyingType(nullableType)
-        let isNull (nullable: Expression) =
-            Expression.Not(Expression.Property(nullable, "HasValue"))
-            :> Expression
-        let getValue (nullable: Expression) =
-            Expression.Property(nullable, "Value")
-            :> Expression
+        let isNull =
+            let hasValueProperty = nullableType.GetProperty("HasValue")
+            fun nullable ->
+                let hasValue = Expression.Property(nullable, hasValueProperty)
+                Expression.Not(hasValue) :> Expression
+        let getValue =
+            let valueProperty = nullableType.GetProperty("Value")
+            fun nullable ->
+                Expression.Property(nullable, valueProperty)
+                :> Expression
         let createNull = Expression.Null(nullableType)
         let createFromValue =
             let constructor = nullableType.GetConstructor([| valueType |])

@@ -10,7 +10,7 @@
   <PropertyGroup>
     <Version>0.2.0</Version>
     <Description>F# serialization library for the Apache Parquet file format. Built on top of Parquet.Net, and with first-class support for F# types such as records, options, lists and discriminated unions.</Description>
-    <Authors>rob.earwaker</Authors>
+    <Authors>Rob Earwaker</Authors>
     <Company />
     <RepositoryUrl>https://github.com/rob-earwaker/parquet-fsharp</RepositoryUrl>
     <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
@@ -33,11 +33,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Parquet.Net" Version="5.4.0" />
+    <PackageReference Include="Parquet.Net" Version="5.5.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Update="FSharp.Core" Version="10.0.101" />
+    <PackageReference Update="FSharp.Core" Version="10.0.102" />
   </ItemGroup>
 
 </Project>

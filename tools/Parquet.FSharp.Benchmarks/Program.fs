@@ -15,7 +15,8 @@ module ParquetNet =
         |> Async.RunSynchronously
         stream.ToArray()
 
-    let deserialize<'Record when 'Record : (new: unit -> 'Record)> (bytes: byte[]) =
+    let deserialize<'Record when 'Record : (new: unit -> 'Record) and 'Record : not struct>
+        (bytes: byte[]) =
         use stream = new MemoryStream(bytes)
         Parquet.Serialization.ParquetSerializer.DeserializeAsync<'Record>(stream)
         |> Async.AwaitTask

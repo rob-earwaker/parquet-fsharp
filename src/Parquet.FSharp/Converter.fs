@@ -1772,30 +1772,16 @@ type internal DefaultUnionConverter private () =
             | _ -> Option.None
 
 type internal DefaultOptionConverter private () =
-    let isOptionType = DotnetType.isGenericType<option<_>>
-    
-    // TODO: Quite a lot of duplicated reflection going on in here!
-
-    let tryCreateSerializer (sourceType: Type) settings =
-        let valueDotnetType = sourceType.GetGenericArguments()[0]
-        let valueSerializer = Serializer.resolve valueDotnetType settings
+    let tryCreateSerializer (optionInfo: OptionInfo) settings =
+        let valueSerializer = Serializer.resolve optionInfo.ValueType settings
         // Parquet doesn't support nested optional values, so if the value is
         // optional then we can't serialize it.
         if valueSerializer.IsOptional
         then Option.None
         else
-            let dotnetType = sourceType
-            let isNull (option: Expression) =
-                let optionModuleType =
-                    Assembly.Load("FSharp.Core").GetTypes()
-                    |> Array.filter (fun type' -> type'.Name = "OptionModule")
-                    |> Array.exactlyOne
-                Expression.Call(
-                    optionModuleType, "IsNone", [| valueSerializer.DotnetType |], option)
-                :> Expression
-            let getValue (option: Expression) =
-                Expression.Property(option, "Value")
-                :> Expression
+            let dotnetType = optionInfo.Type
+            let isNull = optionInfo.IsNull
+            let getValue = optionInfo.GetValue
             Serializer.optional dotnetType valueSerializer isNull getValue
             |> Option.Some
 
@@ -1804,50 +1790,33 @@ type internal DefaultOptionConverter private () =
     // there will never be any NULL values, but we do need to wrap any values we
     // deserialize in {Option.Some} cases so that they can be assigned to the
     // target option field.
-    let createRequiredDeserializer (sourceSchema: ValueSchema) (targetType: Type) settings =
-        // TODO: Can we just use UnionInfo for this?
-        let unionCases = FSharp.Reflection.FSharpType.GetUnionCases(targetType)
-        // Create an expression builder that will take a value and wrap it in an
-        // {Option.Some} case.
-        let wrapValue (value: Expression) =
-            let someCase = unionCases |> Array.find _.Name.Equals("Some")
-            let constructorMethod = FSharp.Reflection.FSharpValue.PreComputeUnionConstructorInfo(someCase)
-            Expression.Call(constructorMethod, value) :> Expression
+    let createRequiredDeserializer
+        sourceSchema (optionInfo: OptionInfo) settings =
+        let wrapValue = optionInfo.CreateFromValue
         // Resolve the value deserializer. The value schema is just the same as
         // the source schema since we're dealing with a required field value.
-        let valueDotnetType = targetType.GetGenericArguments()[0]
         let valueDeserializer =
-            Deserializer.resolve sourceSchema valueDotnetType settings
-        Deserializer.wrapAs targetType valueDeserializer wrapValue
+            Deserializer.resolve sourceSchema optionInfo.ValueType settings
+        Deserializer.wrapAs optionInfo.Type valueDeserializer wrapValue
 
     // Create a deserializer for an optional field value. In this situation we
     // need to wrap the value deserializer in an {OptionalDeserializer} to
     // handle NULL values. When we read a NULL value we convert it to the
     // {Option.None} case. When we read a NOTNULL value we wrap it in the
     // {Option.Some} case.
-    let createOptionalDeserializer (sourceSchema: ValueSchema) targetType settings =
-        // TODO: Can we just use UnionInfo for this?
-        let unionCases = FSharp.Reflection.FSharpType.GetUnionCases(targetType)
+    let createOptionalDeserializer
+        (sourceSchema: ValueSchema) (optionInfo: OptionInfo) settings =
         // Resolve the value deserializer. Since we're dealing with an optional
         // field value and we're going to deal with this optionality by wrapping
         // the value deserializer in an {OptionalDeserializer}, we want to pass
         // down an equivalent non-optional value schema.
-        let valueDotnetType = targetType.GetGenericArguments()[0]
         let valueSchema = sourceSchema.MakeRequired()
-        let valueDeserializer = Deserializer.resolve valueSchema valueDotnetType settings
+        let valueDeserializer =
+            Deserializer.resolve valueSchema optionInfo.ValueType settings
         // Build the {OptionalDeserializer} wrapper.
-        let dotnetType = targetType
-        let createNull =
-            let noneCase = unionCases |> Array.find _.Name.Equals("None")
-            let constructorMethod = FSharp.Reflection.FSharpValue.PreComputeUnionConstructorInfo(noneCase)
-            Expression.Call(constructorMethod, [||])
-            :> Expression
-        let createFromValue =
-            let someCase = unionCases |> Array.find _.Name.Equals("Some")
-            let constructorMethod = FSharp.Reflection.FSharpValue.PreComputeUnionConstructorInfo(someCase)
-            fun (value: Expression) ->
-                Expression.Call(constructorMethod, value)
-                :> Expression
+        let dotnetType = optionInfo.Type
+        let createNull = optionInfo.CreateNull
+        let createFromValue = optionInfo.CreateFromValue
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
@@ -1855,19 +1824,20 @@ type internal DefaultOptionConverter private () =
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =
-            if isOptionType sourceType
-            then tryCreateSerializer sourceType settings
-            else Option.None
+            match sourceType with
+            | DotnetType.Option optionInfo ->
+                tryCreateSerializer optionInfo settings
+            | _ -> Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
-            if not (isOptionType targetType)
-            then Option.None
-            else
-                if sourceSchema.IsOptional
-                // TODO: These will actually continue to work fine even with
-                // nested options. Should we do something about this?
-                then Option.Some (createOptionalDeserializer sourceSchema targetType settings)
-                else Option.Some (createRequiredDeserializer sourceSchema targetType settings)
+            match targetType with
+            | DotnetType.Option optionInfo ->
+                let deserializer =
+                    if sourceSchema.IsOptional
+                    then createOptionalDeserializer sourceSchema optionInfo settings
+                    else createRequiredDeserializer sourceSchema optionInfo settings
+                Option.Some deserializer
+            | _ -> Option.None
 
 type internal DefaultNullableConverter private () =
     let tryCreateSerializer (nullableInfo: NullableInfo) settings =

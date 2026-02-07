@@ -6,6 +6,9 @@ open System.Collections.Generic
 open System.Linq.Expressions
 open System.Reflection
 
+// TODO: Should review this to move reflection and fixed expressions out
+// of expression builder functions
+
 type private TypeInfoCache<'TypeInfo>() =
     let cache = Dictionary<Type, 'TypeInfo>()
 
@@ -53,19 +56,22 @@ module internal UnionInfo =
         let unionCases =
             FSharpType.GetUnionCases(unionType)
             |> Array.map (fun unionCase ->
+                let fields = unionCase.GetFields()
+                // Cases with no fields are of the same type as the union. Cases
+                // with at least one field are defined as distinct types.
+                let dotnetType =
+                    match fields with
+                    | [||] -> unionType
+                    | fields -> fields[0].DeclaringType
                 let createFromFieldValues =
                     let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(unionCase)
                     fun (fieldValues: Expression[]) ->
                         Expression.Call(constructorMethod, fieldValues)
                         :> Expression
-                let dotnetType =
-                    match unionCase.GetFields() with
-                    | [||] -> unionType
-                    | fields -> fields[0].DeclaringType
                 { UnionCaseInfo.DotnetType = dotnetType
                   UnionCaseInfo.Tag = Expression.Constant(unionCase.Tag)
                   UnionCaseInfo.Name = unionCase.Name
-                  UnionCaseInfo.Fields = unionCase.GetFields()
+                  UnionCaseInfo.Fields = fields
                   UnionCaseInfo.CreateFromFieldValues = createFromFieldValues })
         let unionCategory =
             if unionCases |> Array.forall (fun case -> Array.isEmpty case.Fields)
@@ -75,14 +81,12 @@ module internal UnionInfo =
             else UnionCategory.MultiCase
         let getTag =
             match FSharpValue.PreComputeUnionTagMemberInfo(unionType) with
-            | :? MethodInfo as methodInfo ->
-                fun (union: Expression) ->
-                    if methodInfo.IsStatic
-                    then Expression.Call(methodInfo, union) :> Expression
-                    else Expression.Call(union, methodInfo) :> Expression
-            | :? PropertyInfo as propertyInfo ->
-                fun (union: Expression) ->
-                    Expression.Property(union, propertyInfo) :> Expression
+            | :? MethodInfo as method ->
+                if method.IsStatic
+                then fun (union: Expression) -> Expression.Call(method, union) :> Expression
+                else fun (union: Expression) -> Expression.Call(union, method) :> Expression
+            | :? PropertyInfo as property ->
+                fun (union: Expression) -> Expression.Property(union, property) :> Expression
             | memberInfo ->
                 failwith $"unsupported tag member info type '{memberInfo.GetType().FullName}'"
         let getCaseName (union: Expression) =
@@ -111,6 +115,56 @@ module internal UnionInfo =
 
     let ofTypeCached unionType =
         Cache.GetOrCreate unionType ofType
+
+type internal OptionInfo = {
+    Type: Type
+    ValueType: Type
+    IsNull: Expression -> Expression
+    GetValue: Expression -> Expression
+    CreateNull: Expression
+    CreateFromValue: Expression -> Expression }
+
+module internal OptionInfo =
+    let private Cache = TypeInfoCache<OptionInfo>()
+
+    let private OptionModuleType =
+        Assembly.Load("FSharp.Core").GetTypes()
+        |> Array.filter (fun type' -> type'.Name = "OptionModule")
+        |> Array.exactlyOne
+
+    let private ofType (optionType: Type) =
+        let unionCases = FSharpType.GetUnionCases(optionType)
+        let valueType = optionType.GetGenericArguments()[0]
+        let isNull =
+            let isNoneMethod = OptionModuleType.GetMethod("IsNone", [| valueType |])
+            fun (option: Expression) ->
+                Expression.Call(isNoneMethod, option)
+                :> Expression
+        let getValue =
+            let valueProperty = optionType.GetProperty("Value")
+            fun option ->
+                Expression.Property(option, valueProperty)
+                :> Expression
+        let createNull =
+            let noneCase = unionCases |> Array.find _.Name.Equals("None")
+            let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(noneCase)
+            Expression.Call(constructorMethod, [||])
+            :> Expression
+        let createFromValue =
+            let someCase = unionCases |> Array.find _.Name.Equals("Some")
+            let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(someCase)
+            fun (value: Expression) ->
+                Expression.Call(constructorMethod, value)
+                :> Expression
+        { OptionInfo.Type = optionType
+          OptionInfo.ValueType = valueType
+          OptionInfo.IsNull = isNull
+          OptionInfo.GetValue = getValue
+          OptionInfo.CreateNull = createNull
+          OptionInfo.CreateFromValue = createFromValue }
+
+    let ofTypeCached nullableType =
+        Cache.GetOrCreate nullableType ofType
 
 type internal NullableInfo = {
     Type: Type
@@ -188,7 +242,11 @@ module internal DotnetType =
 
     let (|GenericList|_|) = ActivePatternGenericTypeMatch<ResizeArray<_>>
     let (|FSharpList|_|) = ActivePatternGenericTypeMatch<list<_>>
-    let (|Option|_|) = ActivePatternGenericTypeMatch<option<_>>
+
+    let (|Option|_|) (dotnetType: Type) =
+        if DotnetType.isGenericType<option<_>> dotnetType
+        then Option.Some (OptionInfo.ofTypeCached dotnetType)
+        else Option.None
 
     let (|Nullable|_|) (dotnetType: Type) =
         if DotnetType.isGenericType<Nullable<_>> dotnetType

@@ -25,16 +25,16 @@ type ParquetSerializer =
             DefaultDateTimeConverter.Instance
             DefaultDateTimeOffsetConverter.Instance
             DefaultStringConverter.Instance
-            // This must come before the generic array type since byte arrays are
-            // supported as a primitive type in Parquet and are therefore handled as
-            // atomic values rather than lists.
+            // This must come before the generic array type since byte arrays
+            // are supported as a primitive type in Parquet and are therefore
+            // handled as atomic values rather than lists.
             DefaultByteArrayConverter.Instance
             DefaultListConverter.Instance
             DefaultArray1dConverter.Instance
             DefaultResizeArrayConverter.Instance
             DefaultRecordConverter.Instance
-            // This must come before the generic union type since option types are
-            // handled in a special way.
+            // This must come before the generic union type since option types
+            // are handled in a special way.
             DefaultOptionConverter.Instance
             DefaultNullableConverter.Instance
             DefaultUnionConverter.Instance |] }

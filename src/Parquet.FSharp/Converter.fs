@@ -1,7 +1,6 @@
 ﻿namespace rec Parquet.FSharp
 #nowarn 40
 
-open FSharp.Reflection
 open System
 open System.Collections.Generic
 open System.Linq.Expressions
@@ -163,86 +162,6 @@ type internal OptionalDeserializer = {
     ValueDeserializer: Deserializer
     CreateNull: Expression
     CreateFromValue: Expression -> Expression }
-
-type private UnionInfo = {
-    DotnetType: Type
-    UnionType: UnionType
-    GetTag: Expression -> Expression
-    GetCaseName: Expression -> Expression
-    UnionCases: UnionCaseInfo[] }
-
-type private UnionType =
-    | Enum
-    | SingleCase
-    | MultiCase
-
-type private UnionCaseInfo = {
-    DotnetType: Type
-    Tag: Expression
-    Name: string
-    Fields: PropertyInfo[]
-    CreateFromFieldValues: Expression[] -> Expression  }
-
-module private UnionInfo =
-    let ofUnion dotnetType =
-        let unionCases =
-            FSharpType.GetUnionCases(dotnetType)
-            |> Array.map (fun unionCase ->
-                let createFromFieldValues =
-                    let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(unionCase)
-                    fun (fieldValues: Expression[]) ->
-                        Expression.Call(constructorMethod, fieldValues)
-                        :> Expression
-                let dotnetType =
-                    match unionCase.GetFields() with
-                    | [||] -> dotnetType
-                    | fields -> fields[0].DeclaringType
-                { UnionCaseInfo.DotnetType = dotnetType
-                  UnionCaseInfo.Tag = Expression.Constant(unionCase.Tag)
-                  UnionCaseInfo.Name = unionCase.Name
-                  UnionCaseInfo.Fields = unionCase.GetFields()
-                  UnionCaseInfo.CreateFromFieldValues = createFromFieldValues })
-        let unionType =
-            if unionCases |> Array.forall (fun case -> Array.isEmpty case.Fields)
-            then UnionType.Enum
-            elif unionCases.Length = 1
-            then UnionType.SingleCase
-            else UnionType.MultiCase
-        let getTag =
-            match FSharpValue.PreComputeUnionTagMemberInfo(dotnetType) with
-            | :? MethodInfo as methodInfo ->
-                fun (union: Expression) ->
-                    if methodInfo.IsStatic
-                    then Expression.Call(methodInfo, union) :> Expression
-                    else Expression.Call(union, methodInfo) :> Expression
-            | :? PropertyInfo as propertyInfo ->
-                fun (union: Expression) ->
-                    Expression.Property(union, propertyInfo) :> Expression
-            | memberInfo ->
-                failwith $"unsupported tag member info type '{memberInfo.GetType().FullName}'"
-        let getCaseName (union: Expression) =
-            let tag = Expression.Variable(typeof<int>, "tag")
-            let returnLabel = Expression.Label(typeof<string>, "caseName")
-            Expression.Block(
-                [ tag ],
-                seq<Expression> {
-                    yield Expression.Assign(tag, getTag union)
-                    yield! unionCases
-                        |> Array.map (fun caseInfo ->
-                            Expression.IfThen(
-                                Expression.Equal(tag, caseInfo.Tag),
-                                Expression.Return(returnLabel, Expression.Constant(caseInfo.Name)))
-                            :> Expression)
-                    yield Expression.FailWith(
-                        $"union of type '{dotnetType.FullName}' has invalid tag value")
-                    yield Expression.Label(returnLabel, Expression.Null(returnLabel.Type))
-                })
-            :> Expression
-        { UnionInfo.DotnetType = dotnetType
-          UnionInfo.UnionType = unionType
-          UnionInfo.GetTag = getTag
-          UnionInfo.GetCaseName = getCaseName
-          UnionInfo.UnionCases = unionCases }
 
 module internal Serializer =
     let atomic schema dotnetType dataDotnetType getDataValue =
@@ -1509,17 +1428,17 @@ type internal DefaultResizeArrayConverter private () =
                 | _ -> Option.None
 
 type internal DefaultRecordConverter private () =
-    let isRecordType = FSharpType.IsRecord
+    let isRecordType = FSharp.Reflection.FSharpType.IsRecord
 
     let createSerializer (dotnetType: Type) settings =
         let fieldSerializers =
-            FSharpType.GetRecordFields(dotnetType)
+            FSharp.Reflection.FSharpType.GetRecordFields(dotnetType)
             |> Array.map (fun fieldInfo ->
                 FieldSerializer.ofProperty fieldInfo settings)
         Serializer.record dotnetType fieldSerializers
 
     let tryCreateRequiredDeserializer (recordSchema: RecordTypeSchema) (dotnetType: Type) settings =
-        let fields = FSharpType.GetRecordFields(dotnetType)
+        let fields = FSharp.Reflection.FSharpType.GetRecordFields(dotnetType)
         let fieldDeserializers =
             fields
             |> Array.choose (fun fieldInfo ->
@@ -1531,7 +1450,7 @@ type internal DefaultRecordConverter private () =
         then Option.None
         else
             let createFromFieldValues =
-                let constructor = FSharpValue.PreComputeRecordConstructorInfo(dotnetType)
+                let constructor = FSharp.Reflection.FSharpValue.PreComputeRecordConstructorInfo(dotnetType)
                 fun (fieldValues: Expression[]) ->
                     Expression.New(constructor, fieldValues)
                     :> Expression
@@ -1565,8 +1484,6 @@ type internal DefaultRecordConverter private () =
 // like they are fairly independent, particularly as common functionality lives in
 // the {UnionInfo} type(s).
 type internal DefaultUnionConverter private () =
-    let isUnionType = FSharpType.IsUnion
-
     let createEnumUnionSerializer (unionInfo: UnionInfo) settings =
         let dotnetType = unionInfo.DotnetType
         let caseNameSerializer = Serializer.resolve typeof<string> settings
@@ -1832,27 +1749,27 @@ type internal DefaultUnionConverter private () =
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =
-            if not (isUnionType sourceType)
-            then Option.None
-            else
-                let unionInfo = UnionInfo.ofUnion sourceType
-                match unionInfo.UnionType with
-                | UnionType.Enum -> Option.Some (createEnumUnionSerializer unionInfo settings)
-                | UnionType.SingleCase -> Option.Some (createSingleCaseUnionSerializer unionInfo settings)
-                | UnionType.MultiCase -> Option.Some (createMultiCaseUnionSerializer unionInfo settings)
+            match sourceType with
+            | DotnetType.Union unionInfo ->
+                let serializer =
+                    match unionInfo.UnionCategory with
+                    | UnionCategory.Enum -> createEnumUnionSerializer unionInfo settings
+                    | UnionCategory.SingleCase -> createSingleCaseUnionSerializer unionInfo settings
+                    | UnionCategory.MultiCase -> createMultiCaseUnionSerializer unionInfo settings
+                Option.Some serializer
+            | _ -> Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
-            if not (isUnionType targetType)
-            then Option.None
-            else
-                let unionInfo = UnionInfo.ofUnion targetType
-                match unionInfo.UnionType with
-                | UnionType.Enum ->
+            match targetType with
+            | DotnetType.Union unionInfo ->
+                match unionInfo.UnionCategory with
+                | UnionCategory.Enum ->
                     Option.Some (createEnumUnionDeserializer sourceSchema unionInfo settings)
-                | UnionType.SingleCase ->
+                | UnionCategory.SingleCase ->
                     tryCreateSingleCaseUnionDeserializer sourceSchema unionInfo settings
-                | UnionType.MultiCase ->
+                | UnionCategory.MultiCase ->
                     tryCreateMultiCaseUnionDeserializer sourceSchema unionInfo settings
+            | _ -> Option.None
 
 type internal DefaultOptionConverter private () =
     let isOptionType = DotnetType.isGenericType<option<_>>
@@ -1889,12 +1806,12 @@ type internal DefaultOptionConverter private () =
     // target option field.
     let createRequiredDeserializer (sourceSchema: ValueSchema) (targetType: Type) settings =
         // TODO: Can we just use UnionInfo for this?
-        let unionCases = FSharpType.GetUnionCases(targetType)
+        let unionCases = FSharp.Reflection.FSharpType.GetUnionCases(targetType)
         // Create an expression builder that will take a value and wrap it in an
         // {Option.Some} case.
         let wrapValue (value: Expression) =
             let someCase = unionCases |> Array.find _.Name.Equals("Some")
-            let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(someCase)
+            let constructorMethod = FSharp.Reflection.FSharpValue.PreComputeUnionConstructorInfo(someCase)
             Expression.Call(constructorMethod, value) :> Expression
         // Resolve the value deserializer. The value schema is just the same as
         // the source schema since we're dealing with a required field value.
@@ -1910,7 +1827,7 @@ type internal DefaultOptionConverter private () =
     // {Option.Some} case.
     let createOptionalDeserializer (sourceSchema: ValueSchema) targetType settings =
         // TODO: Can we just use UnionInfo for this?
-        let unionCases = FSharpType.GetUnionCases(targetType)
+        let unionCases = FSharp.Reflection.FSharpType.GetUnionCases(targetType)
         // Resolve the value deserializer. Since we're dealing with an optional
         // field value and we're going to deal with this optionality by wrapping
         // the value deserializer in an {OptionalDeserializer}, we want to pass
@@ -1922,12 +1839,12 @@ type internal DefaultOptionConverter private () =
         let dotnetType = targetType
         let createNull =
             let noneCase = unionCases |> Array.find _.Name.Equals("None")
-            let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(noneCase)
+            let constructorMethod = FSharp.Reflection.FSharpValue.PreComputeUnionConstructorInfo(noneCase)
             Expression.Call(constructorMethod, [||])
             :> Expression
         let createFromValue =
             let someCase = unionCases |> Array.find _.Name.Equals("Some")
-            let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(someCase)
+            let constructorMethod = FSharp.Reflection.FSharpValue.PreComputeUnionConstructorInfo(someCase)
             fun (value: Expression) ->
                 Expression.Call(constructorMethod, value)
                 :> Expression

@@ -4,6 +4,7 @@ open FSharp.Reflection
 open System
 open System.Collections.Generic
 open System.Linq.Expressions
+open System.Reflection
 
 type private TypeInfoCache<'TypeInfo>() =
     let cache = Dictionary<Type, 'TypeInfo>()
@@ -25,6 +26,91 @@ type private TypeInfoCache<'TypeInfo>() =
             let typeInfo = create dotnetType
             addToCache dotnetType typeInfo
             typeInfo
+
+type internal UnionInfo = {
+    DotnetType: Type
+    UnionCategory: UnionCategory
+    GetTag: Expression -> Expression
+    GetCaseName: Expression -> Expression
+    UnionCases: UnionCaseInfo[] }
+
+type internal UnionCategory =
+    | Enum
+    | SingleCase
+    | MultiCase
+
+type internal UnionCaseInfo = {
+    DotnetType: Type
+    Tag: Expression
+    Name: string
+    Fields: PropertyInfo[]
+    CreateFromFieldValues: Expression[] -> Expression  }
+
+module internal UnionInfo =
+    let private Cache = TypeInfoCache<UnionInfo>()
+
+    let private ofType unionType =
+        let unionCases =
+            FSharpType.GetUnionCases(unionType)
+            |> Array.map (fun unionCase ->
+                let createFromFieldValues =
+                    let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(unionCase)
+                    fun (fieldValues: Expression[]) ->
+                        Expression.Call(constructorMethod, fieldValues)
+                        :> Expression
+                let dotnetType =
+                    match unionCase.GetFields() with
+                    | [||] -> unionType
+                    | fields -> fields[0].DeclaringType
+                { UnionCaseInfo.DotnetType = dotnetType
+                  UnionCaseInfo.Tag = Expression.Constant(unionCase.Tag)
+                  UnionCaseInfo.Name = unionCase.Name
+                  UnionCaseInfo.Fields = unionCase.GetFields()
+                  UnionCaseInfo.CreateFromFieldValues = createFromFieldValues })
+        let unionCategory =
+            if unionCases |> Array.forall (fun case -> Array.isEmpty case.Fields)
+            then UnionCategory.Enum
+            elif unionCases.Length = 1
+            then UnionCategory.SingleCase
+            else UnionCategory.MultiCase
+        let getTag =
+            match FSharpValue.PreComputeUnionTagMemberInfo(unionType) with
+            | :? MethodInfo as methodInfo ->
+                fun (union: Expression) ->
+                    if methodInfo.IsStatic
+                    then Expression.Call(methodInfo, union) :> Expression
+                    else Expression.Call(union, methodInfo) :> Expression
+            | :? PropertyInfo as propertyInfo ->
+                fun (union: Expression) ->
+                    Expression.Property(union, propertyInfo) :> Expression
+            | memberInfo ->
+                failwith $"unsupported tag member info type '{memberInfo.GetType().FullName}'"
+        let getCaseName (union: Expression) =
+            let tag = Expression.Variable(typeof<int>, "tag")
+            let returnLabel = Expression.Label(typeof<string>, "caseName")
+            Expression.Block(
+                [ tag ],
+                seq<Expression> {
+                    yield Expression.Assign(tag, getTag union)
+                    yield! unionCases
+                        |> Array.map (fun caseInfo ->
+                            Expression.IfThen(
+                                Expression.Equal(tag, caseInfo.Tag),
+                                Expression.Return(returnLabel, Expression.Constant(caseInfo.Name)))
+                            :> Expression)
+                    yield Expression.FailWith(
+                        $"union of type '{unionType.FullName}' has invalid tag value")
+                    yield Expression.Label(returnLabel, Expression.Null(returnLabel.Type))
+                })
+            :> Expression
+        { UnionInfo.DotnetType = unionType
+          UnionInfo.UnionCategory = unionCategory
+          UnionInfo.GetTag = getTag
+          UnionInfo.GetCaseName = getCaseName
+          UnionInfo.UnionCases = unionCases }
+
+    let ofTypeCached unionType =
+        Cache.GetOrCreate unionType ofType
 
 type internal NullableInfo = {
     Type: Type
@@ -122,5 +208,5 @@ module internal DotnetType =
 
     let (|Union|_|) dotnetType =
         if FSharpType.IsUnion(dotnetType)
-        then Option.Some ()
+        then Option.Some (UnionInfo.ofTypeCached dotnetType)
         else Option.None

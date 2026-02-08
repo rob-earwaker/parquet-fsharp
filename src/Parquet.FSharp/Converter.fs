@@ -1,5 +1,4 @@
 ﻿namespace rec Parquet.FSharp
-#nowarn 40
 
 open System
 open System.Collections.Generic

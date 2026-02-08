@@ -420,13 +420,10 @@ module private FieldSerializer =
             :> Expression
         create name valueSerializer getValue
 
-    let ofUnionCaseField (unionCase: UnionCaseInfo) (field: PropertyInfo) settings =
-        let name = field.Name
-        let valueSerializer = Serializer.resolve field.PropertyType settings
-        let getValue (union: Expression) =
-            Expression.Property(
-                Expression.Convert(union, unionCase.DotnetType), field)
-            :> Expression
+    let ofUnionField (unionField: UnionFieldInfo) settings =
+        let name = unionField.Name
+        let valueSerializer = Serializer.resolve unionField.DotnetType settings
+        let getValue = unionField.GetValue
         create name valueSerializer getValue
 
 module private FieldDeserializer =
@@ -439,6 +436,11 @@ module private FieldDeserializer =
     let ofProperty schema (field: PropertyInfo) settings =
         let name = field.Name
         let deserializer = Deserializer.resolve schema field.PropertyType settings
+        create name deserializer
+
+    let ofUnionField schema (field: UnionFieldInfo) settings =
+        let name = field.Name
+        let deserializer = Deserializer.resolve schema field.DotnetType settings
         create name deserializer
 
 type internal DefaultBoolConverter private () =
@@ -1496,11 +1498,11 @@ type internal DefaultUnionConverter private () =
         // field values. We serialize single case unions as a record using the
         // case field names and types.
         let dotnetType = unionInfo.DotnetType
-        let unionCase = unionInfo.UnionCases[0]
+        let unionCase = unionInfo.Cases[0]
         let fieldSerializers =
             unionCase.Fields
             |> Array.map (fun fieldInfo ->
-                FieldSerializer.ofUnionCaseField unionCase fieldInfo settings)
+                FieldSerializer.ofUnionField fieldInfo settings)
         Serializer.record dotnetType fieldSerializers
 
     let createUnionCaseSerializer (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) settings =
@@ -1513,7 +1515,7 @@ type internal DefaultUnionConverter private () =
             let fieldSerializers =
                 unionCase.Fields
                 |> Array.map (fun fieldInfo ->
-                    FieldSerializer.ofUnionCaseField unionCase fieldInfo settings)
+                    FieldSerializer.ofUnionField fieldInfo settings)
             Serializer.record dotnetType fieldSerializers
         // The data for this case is NULL if the union tag does not match the
         // tag for this case.
@@ -1530,7 +1532,7 @@ type internal DefaultUnionConverter private () =
         // additional fields to hold any associated case data.
         let dotnetType = unionInfo.DotnetType
         let unionCasesWithFields =
-            unionInfo.UnionCases
+            unionInfo.Cases
             |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
         // The 'Type' field holds the case name. Since unions are not nullable
         // there must always be a case name present. We therefore model this
@@ -1581,7 +1583,7 @@ type internal DefaultUnionConverter private () =
             let returnLabel = Expression.Label(dotnetType, "union")
             Expression.Block(
                 seq<Expression> {
-                    yield! unionInfo.UnionCases
+                    yield! unionInfo.Cases
                         |> Array.map (fun caseInfo ->
                             Expression.IfThen(
                                 Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
@@ -1604,14 +1606,14 @@ type internal DefaultUnionConverter private () =
         match sourceSchema.Type with
         | ValueTypeSchema.Record recordSchema ->
             let dotnetType = unionInfo.DotnetType
-            let unionCase = unionInfo.UnionCases[0]
+            let unionCase = unionInfo.Cases[0]
             let fieldDeserializers =
                 unionCase.Fields
                 |> Array.choose (fun fieldInfo ->
                     recordSchema.Fields
                     |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = fieldInfo.Name)
                     |> Option.map (fun fieldSchema ->
-                        FieldDeserializer.ofProperty fieldSchema.Value fieldInfo settings))
+                        FieldDeserializer.ofUnionField fieldSchema.Value fieldInfo settings))
             let createFromFieldValues = unionCase.CreateFromFieldValues
             if fieldDeserializers.Length < unionCase.Fields.Length
             then Option.None
@@ -1639,7 +1641,7 @@ type internal DefaultUnionConverter private () =
                     schema.Fields
                     |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = fieldInfo.Name)
                     |> Option.map (fun fieldSchema ->
-                        FieldDeserializer.ofProperty fieldSchema.Value fieldInfo settings))
+                        FieldDeserializer.ofUnionField fieldSchema.Value fieldInfo settings))
             let createFromFieldValues = unionCase.CreateFromFieldValues
             if fieldDeserializers.Length < unionCase.Fields.Length
             then Option.None
@@ -1665,7 +1667,7 @@ type internal DefaultUnionConverter private () =
         | ValueTypeSchema.Record recordSchema ->
             let dotnetType = unionInfo.DotnetType
             let unionCasesWithFields =
-                unionInfo.UnionCases
+                unionInfo.Cases
                 |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
             // The 'Type' field holds the case name as a string.
             let typeFieldDeserializer =
@@ -1713,7 +1715,7 @@ type internal DefaultUnionConverter private () =
                         [ caseName ],
                         seq<Expression> {
                             yield Expression.Assign(caseName, fieldValues[0])
-                            for caseInfo in unionInfo.UnionCases do
+                            for caseInfo in unionInfo.Cases do
                                 yield Expression.IfThen(
                                     Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
                                     if caseInfo.Fields.Length = 0

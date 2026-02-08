@@ -35,7 +35,7 @@ type internal UnionInfo = {
     UnionCategory: UnionCategory
     GetTag: Expression -> Expression
     GetCaseName: Expression -> Expression
-    UnionCases: UnionCaseInfo[] }
+    Cases: UnionCaseInfo[] }
 
 type internal UnionCategory =
     | Enum
@@ -43,11 +43,15 @@ type internal UnionCategory =
     | MultiCase
 
 type internal UnionCaseInfo = {
-    DotnetType: Type
     Tag: Expression
     Name: string
-    Fields: PropertyInfo[]
-    CreateFromFieldValues: Expression[] -> Expression  }
+    Fields: UnionFieldInfo[]
+    CreateFromFieldValues: Expression[] -> Expression }
+
+type UnionFieldInfo = {
+    Name: string
+    DotnetType: Type
+    GetValue: Expression -> Expression }
 
 module internal UnionInfo =
     let private Cache = TypeInfoCache<UnionInfo>()
@@ -56,20 +60,28 @@ module internal UnionInfo =
         let unionCases =
             FSharpType.GetUnionCases(unionType)
             |> Array.map (fun unionCase ->
-                let fields = unionCase.GetFields()
-                // Cases with no fields are of the same type as the union. Cases
-                // with at least one field are defined as distinct types.
-                let dotnetType =
-                    match fields with
-                    | [||] -> unionType
-                    | fields -> fields[0].DeclaringType
+                let fields =
+                    unionCase.GetFields()
+                    |> Array.map (fun field ->
+                        let getValue =
+                            // Cases with fields are defined in their own
+                            // distinct types that inherit from the union type.
+                            // In order to access the field, the union must
+                            // first be converted to this type.
+                            let unionCaseType = field.DeclaringType
+                            fun (union: Expression) ->
+                                let unionCase = Expression.Convert(union, unionCaseType)
+                                Expression.Property(unionCase, field)
+                                :> Expression
+                        { UnionFieldInfo.Name = field.Name
+                          UnionFieldInfo.DotnetType = field.PropertyType
+                          UnionFieldInfo.GetValue = getValue })
                 let createFromFieldValues =
                     let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(unionCase)
                     fun (fieldValues: Expression[]) ->
                         Expression.Call(constructorMethod, fieldValues)
                         :> Expression
-                { UnionCaseInfo.DotnetType = dotnetType
-                  UnionCaseInfo.Tag = Expression.Constant(unionCase.Tag)
+                { UnionCaseInfo.Tag = Expression.Constant(unionCase.Tag)
                   UnionCaseInfo.Name = unionCase.Name
                   UnionCaseInfo.Fields = fields
                   UnionCaseInfo.CreateFromFieldValues = createFromFieldValues })
@@ -111,7 +123,7 @@ module internal UnionInfo =
           UnionInfo.UnionCategory = unionCategory
           UnionInfo.GetTag = getTag
           UnionInfo.GetCaseName = getCaseName
-          UnionInfo.UnionCases = unionCases }
+          UnionInfo.Cases = unionCases }
 
     let ofTypeCached unionType =
         Cache.GetOrCreate unionType ofType
@@ -136,7 +148,10 @@ module internal OptionInfo =
         let unionCases = FSharpType.GetUnionCases(optionType)
         let valueType = optionType.GetGenericArguments()[0]
         let isNull =
-            let isNoneMethod = OptionModuleType.GetMethod("IsNone", [| valueType |])
+            let isNoneMethod =
+                OptionModuleType.GetMethods(BindingFlags.Public ||| BindingFlags.Static)
+                |> Array.find (fun method -> method.Name = "IsNone")
+                |> _.MakeGenericMethod(valueType)
             fun (option: Expression) ->
                 Expression.Call(isNoneMethod, option)
                 :> Expression

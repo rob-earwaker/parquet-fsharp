@@ -3,7 +3,6 @@
 open System
 open System.Collections.Generic
 open System.Linq.Expressions
-open System.Reflection
 
 type SerializationException(message) =
     inherit Exception(message)
@@ -411,18 +410,10 @@ module private FieldSerializer =
           FieldSerializer.ValueSerializer = valueSerializer
           FieldSerializer.GetValue = getValue }
 
-    let ofProperty (field: PropertyInfo) settings : FieldSerializer =
+    let ofField (field: FieldInfo) settings =
         let name = field.Name
-        let valueSerializer = Serializer.resolve field.PropertyType settings
-        let getValue (record: Expression) =
-            Expression.Property(record, field)
-            :> Expression
-        create name valueSerializer getValue
-
-    let ofUnionField (unionField: UnionFieldInfo) settings =
-        let name = unionField.Name
-        let valueSerializer = Serializer.resolve unionField.DotnetType settings
-        let getValue = unionField.GetValue
+        let valueSerializer = Serializer.resolve field.Type settings
+        let getValue = field.GetValue
         create name valueSerializer getValue
 
 module private FieldDeserializer =
@@ -432,14 +423,9 @@ module private FieldDeserializer =
           FieldDeserializer.Name = name
           FieldDeserializer.ValueDeserializer = valueDeserializer }
 
-    let ofProperty schema (field: PropertyInfo) settings =
+    let ofField schema (field: FieldInfo) settings =
         let name = field.Name
-        let deserializer = Deserializer.resolve schema field.PropertyType settings
-        create name deserializer
-
-    let ofUnionField schema (field: UnionFieldInfo) settings =
-        let name = field.Name
-        let deserializer = Deserializer.resolve schema field.DotnetType settings
+        let deserializer = Deserializer.resolve schema field.Type settings
         create name deserializer
 
 type internal DefaultBoolConverter private () =
@@ -1267,7 +1253,7 @@ type internal DefaultListConverter private () =
             Expression.Property(null, dotnetType.GetProperty("Empty"))
         let createFromElementValues (elementValues: Expression) =
             let seqModuleType =
-                Assembly.Load("FSharp.Core").GetTypes()
+                System.Reflection.Assembly.Load("FSharp.Core").GetTypes()
                 |> Array.filter (fun type' -> type'.Name = "SeqModule")
                 |> Array.exactlyOne
             Expression.Call(seqModuleType, "ToList", [| elementDotnetType |], elementValues)
@@ -1429,64 +1415,59 @@ type internal DefaultResizeArrayConverter private () =
                 | _ -> Option.None
 
 type internal DefaultRecordConverter private () =
-    let isRecordType = FSharp.Reflection.FSharpType.IsRecord
-
-    let createSerializer (dotnetType: Type) settings =
+    let createSerializer (recordInfo: RecordInfo) settings =
         let fieldSerializers =
-            FSharp.Reflection.FSharpType.GetRecordFields(dotnetType)
+            recordInfo.Fields
             |> Array.map (fun fieldInfo ->
-                FieldSerializer.ofProperty fieldInfo settings)
-        Serializer.record dotnetType fieldSerializers
+                FieldSerializer.ofField fieldInfo settings)
+        Serializer.record recordInfo.Type fieldSerializers
 
-    let tryCreateRequiredDeserializer (recordSchema: RecordTypeSchema) (dotnetType: Type) settings =
-        let fields = FSharp.Reflection.FSharpType.GetRecordFields(dotnetType)
+    let tryCreateRequiredDeserializer
+        (recordSchema: RecordTypeSchema) (recordInfo: RecordInfo) settings =
         let fieldDeserializers =
-            fields
+            recordInfo.Fields
             |> Array.choose (fun fieldInfo ->
                 recordSchema.Fields
                 |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = fieldInfo.Name)
                 |> Option.map (fun fieldSchema ->
-                    FieldDeserializer.ofProperty fieldSchema.Value fieldInfo settings))
-        if fieldDeserializers.Length < fields.Length
+                    FieldDeserializer.ofField fieldSchema.Value fieldInfo settings))
+        if fieldDeserializers.Length < recordInfo.Fields.Length
         then Option.None
         else
-            let createFromFieldValues =
-                let constructor = FSharp.Reflection.FSharpValue.PreComputeRecordConstructorInfo(dotnetType)
-                fun (fieldValues: Expression[]) ->
-                    Expression.New(constructor, fieldValues)
-                    :> Expression
-            Deserializer.record dotnetType fieldDeserializers createFromFieldValues
+            Deserializer.record
+                recordInfo.Type fieldDeserializers recordInfo.CreateFromFieldValues
             |> Option.Some
 
-    let tryCreateOptionalDeserializer recordSchema dotnetType settings =
-        tryCreateRequiredDeserializer recordSchema dotnetType settings
+    let tryCreateOptionalDeserializer recordSchema recordInfo settings =
+        tryCreateRequiredDeserializer recordSchema recordInfo settings
         |> Option.map Deserializer.optionalNonNullableTypeWrapper
 
     static member Instance = DefaultRecordConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =
-            if isRecordType sourceType
-            then Option.Some (createSerializer sourceType settings)
-            else Option.None
+            match sourceType with
+            | DotnetType.Record recordInfo ->
+                Option.Some (createSerializer recordInfo settings)
+            | _ -> Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
-            if not (isRecordType targetType)
-            then Option.None
-            else
+            match targetType with
+            | DotnetType.Record recordInfo ->
                 match sourceSchema.Type with
                 | ValueTypeSchema.Record recordSchema ->
                     if sourceSchema.IsOptional
-                    then tryCreateOptionalDeserializer recordSchema targetType settings
-                    else tryCreateRequiredDeserializer recordSchema targetType settings
+                    then tryCreateOptionalDeserializer recordSchema recordInfo settings
+                    else tryCreateRequiredDeserializer recordSchema recordInfo settings
                 | _ -> Option.None
+            | _ -> Option.None
 
 // TODO: Should we have separate converters for the different union types? Seems
 // like they are fairly independent, particularly as common functionality lives in
 // the {UnionInfo} type(s).
 type internal DefaultUnionConverter private () =
     let createEnumUnionSerializer (unionInfo: UnionInfo) settings =
-        let dotnetType = unionInfo.DotnetType
+        let dotnetType = unionInfo.Type
         let caseNameSerializer = Serializer.resolve typeof<string> settings
         let unwrapValue = unionInfo.GetCaseName
         Serializer.wrapAs dotnetType caseNameSerializer unwrapValue
@@ -1496,25 +1477,25 @@ type internal DefaultUnionConverter private () =
         // stricter type checking and to allow encapsulation of any associated
         // field values. We serialize single case unions as a record using the
         // case field names and types.
-        let dotnetType = unionInfo.DotnetType
+        let dotnetType = unionInfo.Type
         let unionCase = unionInfo.Cases[0]
         let fieldSerializers =
             unionCase.Fields
             |> Array.map (fun fieldInfo ->
-                FieldSerializer.ofUnionField fieldInfo settings)
+                FieldSerializer.ofField fieldInfo settings)
         Serializer.record dotnetType fieldSerializers
 
     let createUnionCaseSerializer (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) settings =
         // Union case data is represented as an optional record containing the
         // field values for that case. The record needs to be optional since
         // only one case from the union can be set and the others will be NULL.
-        let dotnetType = unionInfo.DotnetType
+        let dotnetType = unionInfo.Type
         let valueSerializer =
-            let dotnetType = unionInfo.DotnetType
+            let dotnetType = unionInfo.Type
             let fieldSerializers =
                 unionCase.Fields
                 |> Array.map (fun fieldInfo ->
-                    FieldSerializer.ofUnionField fieldInfo settings)
+                    FieldSerializer.ofField fieldInfo settings)
             Serializer.record dotnetType fieldSerializers
         // The data for this case is NULL if the union tag does not match the
         // tag for this case.
@@ -1529,7 +1510,7 @@ type internal DefaultUnionConverter private () =
         // represented as a simple string value. Instead, we have to model the
         // union as a record with a field to capture the case name and
         // additional fields to hold any associated case data.
-        let dotnetType = unionInfo.DotnetType
+        let dotnetType = unionInfo.Type
         let unionCasesWithFields =
             unionInfo.Cases
             |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
@@ -1570,7 +1551,7 @@ type internal DefaultUnionConverter private () =
         // simple string value containing the case name. Since a union value
         // can't be null and must be one of the possible cases, this value is
         // not optional.
-        let dotnetType = unionInfo.DotnetType
+        let dotnetType = unionInfo.Type
         // TODO: Could catch exception that occurs if this isn't resolved and
         // raise a more descriptive exception, or event add a tryResolve function.
         // Also applies to other places where we use 'resolve' for both serializers
@@ -1604,7 +1585,7 @@ type internal DefaultUnionConverter private () =
         (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
         match sourceSchema.Type with
         | ValueTypeSchema.Record recordSchema ->
-            let dotnetType = unionInfo.DotnetType
+            let dotnetType = unionInfo.Type
             let unionCase = unionInfo.Cases[0]
             let fieldDeserializers =
                 unionCase.Fields
@@ -1612,7 +1593,7 @@ type internal DefaultUnionConverter private () =
                     recordSchema.Fields
                     |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = fieldInfo.Name)
                     |> Option.map (fun fieldSchema ->
-                        FieldDeserializer.ofUnionField fieldSchema.Value fieldInfo settings))
+                        FieldDeserializer.ofField fieldSchema.Value fieldInfo settings))
             let createFromFieldValues = unionCase.CreateFromFieldValues
             if fieldDeserializers.Length < unionCase.Fields.Length
             then Option.None
@@ -1631,16 +1612,16 @@ type internal DefaultUnionConverter private () =
         // Union case data is represented as an optional record containing the
         // field values for that case. The record needs to be optional since
         // only one case from the union can be set and the others will be NULL.
-        let dotnetType = unionInfo.DotnetType
+        let dotnetType = unionInfo.Type
         let deserializer =
-            let dotnetType = unionInfo.DotnetType
+            let dotnetType = unionInfo.Type
             let fieldDeserializers =
                 unionCase.Fields
                 |> Array.choose (fun fieldInfo ->
                     schema.Fields
                     |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = fieldInfo.Name)
                     |> Option.map (fun fieldSchema ->
-                        FieldDeserializer.ofUnionField fieldSchema.Value fieldInfo settings))
+                        FieldDeserializer.ofField fieldSchema.Value fieldInfo settings))
             let createFromFieldValues = unionCase.CreateFromFieldValues
             if fieldDeserializers.Length < unionCase.Fields.Length
             then Option.None
@@ -1664,7 +1645,7 @@ type internal DefaultUnionConverter private () =
         // additional fields to hold any associated case data.
         match sourceSchema.Type with
         | ValueTypeSchema.Record recordSchema ->
-            let dotnetType = unionInfo.DotnetType
+            let dotnetType = unionInfo.Type
             let unionCasesWithFields =
                 unionInfo.Cases
                 |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)

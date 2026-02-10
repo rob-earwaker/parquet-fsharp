@@ -9,6 +9,50 @@ open System.Reflection
 // TODO: Should review this to move reflection and fixed expressions out
 // of expression builder functions
 
+type internal FieldInfo = {
+    Name: string
+    Type: Type
+    GetValue: Expression -> Expression }
+
+type internal RecordInfo = {
+    Type: Type
+    Fields: FieldInfo[]
+    CreateFromFieldValues: Expression[] -> Expression }
+
+type internal UnionInfo = {
+    Type: Type
+    UnionCategory: UnionCategory
+    GetTag: Expression -> Expression
+    GetCaseName: Expression -> Expression
+    Cases: UnionCaseInfo[] }
+
+type internal UnionCategory =
+    | Enum
+    | SingleCase
+    | MultiCase
+
+type internal UnionCaseInfo = {
+    Tag: Expression
+    Name: string
+    Fields: FieldInfo[]
+    CreateFromFieldValues: Expression[] -> Expression }
+
+type internal OptionInfo = {
+    Type: Type
+    ValueType: Type
+    IsNull: Expression -> Expression
+    GetValue: Expression -> Expression
+    CreateNull: Expression
+    CreateFromValue: Expression -> Expression }
+
+type internal NullableInfo = {
+    Type: Type
+    ValueType: Type
+    IsNull: Expression -> Expression
+    GetValue: Expression -> Expression
+    CreateNull: Expression
+    CreateFromValue: Expression -> Expression }
+
 type private TypeInfoCache<'TypeInfo>() =
     let cache = Dictionary<Type, 'TypeInfo>()
 
@@ -30,28 +74,30 @@ type private TypeInfoCache<'TypeInfo>() =
             addToCache dotnetType typeInfo
             typeInfo
 
-type internal UnionInfo = {
-    DotnetType: Type
-    UnionCategory: UnionCategory
-    GetTag: Expression -> Expression
-    GetCaseName: Expression -> Expression
-    Cases: UnionCaseInfo[] }
+module internal RecordInfo =
+    let private Cache = TypeInfoCache<RecordInfo>()
 
-type internal UnionCategory =
-    | Enum
-    | SingleCase
-    | MultiCase
+    let private ofType (recordType: Type) =
+        let fields =
+            FSharpType.GetRecordFields(recordType)
+            |> Array.map (fun field ->
+                let getValue (record: Expression) =
+                    Expression.Property(record, field)
+                    :> Expression
+                { FieldInfo.Name = field.Name
+                  FieldInfo.Type = field.PropertyType
+                  FieldInfo.GetValue = getValue })
+        let createFromFieldValues =
+            let constructor = FSharpValue.PreComputeRecordConstructorInfo(recordType)
+            fun (fieldValues: Expression[]) ->
+                Expression.New(constructor, fieldValues)
+                :> Expression
+        { RecordInfo.Type = recordType
+          RecordInfo.Fields = fields
+          RecordInfo.CreateFromFieldValues = createFromFieldValues }
 
-type internal UnionCaseInfo = {
-    Tag: Expression
-    Name: string
-    Fields: UnionFieldInfo[]
-    CreateFromFieldValues: Expression[] -> Expression }
-
-type UnionFieldInfo = {
-    Name: string
-    DotnetType: Type
-    GetValue: Expression -> Expression }
+    let ofTypeCached recordType =
+        Cache.GetOrCreate recordType ofType
 
 module internal UnionInfo =
     let private Cache = TypeInfoCache<UnionInfo>()
@@ -73,9 +119,9 @@ module internal UnionInfo =
                                 let unionCase = Expression.Convert(union, unionCaseType)
                                 Expression.Property(unionCase, field)
                                 :> Expression
-                        { UnionFieldInfo.Name = field.Name
-                          UnionFieldInfo.DotnetType = field.PropertyType
-                          UnionFieldInfo.GetValue = getValue })
+                        { FieldInfo.Name = field.Name
+                          FieldInfo.Type = field.PropertyType
+                          FieldInfo.GetValue = getValue })
                 let createFromFieldValues =
                     let constructorMethod = FSharpValue.PreComputeUnionConstructorInfo(unionCase)
                     fun (fieldValues: Expression[]) ->
@@ -119,7 +165,7 @@ module internal UnionInfo =
                     yield Expression.Label(returnLabel, Expression.Null(returnLabel.Type))
                 })
             :> Expression
-        { UnionInfo.DotnetType = unionType
+        { UnionInfo.Type = unionType
           UnionInfo.UnionCategory = unionCategory
           UnionInfo.GetTag = getTag
           UnionInfo.GetCaseName = getCaseName
@@ -127,14 +173,6 @@ module internal UnionInfo =
 
     let ofTypeCached unionType =
         Cache.GetOrCreate unionType ofType
-
-type internal OptionInfo = {
-    Type: Type
-    ValueType: Type
-    IsNull: Expression -> Expression
-    GetValue: Expression -> Expression
-    CreateNull: Expression
-    CreateFromValue: Expression -> Expression }
 
 module internal OptionInfo =
     let private Cache = TypeInfoCache<OptionInfo>()
@@ -180,14 +218,6 @@ module internal OptionInfo =
 
     let ofTypeCached nullableType =
         Cache.GetOrCreate nullableType ofType
-
-type internal NullableInfo = {
-    Type: Type
-    ValueType: Type
-    IsNull: Expression -> Expression
-    GetValue: Expression -> Expression
-    CreateNull: Expression
-    CreateFromValue: Expression -> Expression }
 
 module internal NullableInfo =
     let private Cache = TypeInfoCache<NullableInfo>()
@@ -276,7 +306,7 @@ module internal DotnetType =
 
     let (|Record|_|) dotnetType =
         if FSharpType.IsRecord(dotnetType)
-        then Option.Some ()
+        then Option.Some (RecordInfo.ofTypeCached dotnetType)
         else Option.None
 
     let (|Union|_|) dotnetType =

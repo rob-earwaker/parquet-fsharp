@@ -273,7 +273,9 @@ module internal Serializer =
             // so probably will want to make the exception more generic to
             // avoid confusion if there is a converter registered to support the
             // specified type.
-            failwith $"unsupported type '{sourceType.FullName}'")
+            failwith <|
+                "could not find converter to serialize type"
+                + $" '{sourceType.FullName}'")
 
 module internal Deserializer =
     let atomic schema dotnetType dataDotnetType createFromDataValue =
@@ -362,15 +364,17 @@ module internal Deserializer =
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
+    let throwNullValueEncounteredForNonNullableType (dotnetType: Type) =
+        Expression.Block(
+            Expression.FailWith<SerializationException>(
+                "null value encountered during deserialization for"
+                + $" non-nullable type '{dotnetType.FullName}'"),
+            Expression.Default(dotnetType))
+        :> Expression
+
     let optionalNonNullableTypeWrapper (valueDeserializer: Deserializer) =
         let dotnetType = valueDeserializer.DotnetType
-        let createNull =
-            Expression.Block(
-                Expression.FailWith<SerializationException>(
-                    "null value encountered during deserialization for"
-                    + $" non-nullable type '{dotnetType.FullName}'"),
-                Expression.Default(dotnetType))
-            :> Expression
+        let createNull = throwNullValueEncounteredForNonNullableType dotnetType
         let createFromValue = id
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue

@@ -12,6 +12,7 @@ An F# serailization library for the [Apache Parquet](https://parquet.apache.org/
   - [Booleans](#booleans)
   - [Numeric Types](#numeric-types)
   - [GUIDs](#guids)
+  - [Enums](#enums)
   - [Date Times](#date-times)
   - [Strings](#strings)
   - [Byte Arrays](#byte-arrays)
@@ -106,6 +107,14 @@ For deserialization, the target .NET numeric type does not have to match the sou
 Applies to: `Guid`
 
 GUIDs are serialized as required values by default. They can be deserialized from either required or optional GUID values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
+### Enums
+
+Applies to: `'Enum<int32>`
+
+Enums with an underlying type of `int32` are serialized and deserialized as if they were `int32` values - see [Numeric Types](#numeric-types) for details.
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -288,7 +297,8 @@ The following features and improvements are on the roadmap and may be implemente
 ### Extend Supported Types
 
 The following types are not currently supported but will likely be added in the future:
-- Enums
+
+- Enums (with other underlying types)
 - `DateOnly`
 - `TimeOnly`
 - `TimeSpan`

@@ -40,6 +40,7 @@
     <Compile Include="Converters\DefaultFloat64Converter.fs" />
     <Compile Include="Converters\DefaultDecimalConverter.fs" />
     <Compile Include="Converters\DefaultGuidConverter.fs" />
+    <Compile Include="Converters\DefaultEnumConverter.fs" />
     <Compile Include="Converters\DefaultDateTimeConverter.fs" />
     <Compile Include="Converters\DefaultDateTimeOffsetConverter.fs" />
     <Compile Include="Converters\DefaultStringConverter.fs" />

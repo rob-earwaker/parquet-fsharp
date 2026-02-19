@@ -216,8 +216,8 @@ module internal OptionInfo =
           OptionInfo.CreateNull = createNull
           OptionInfo.CreateFromValue = createFromValue }
 
-    let ofTypeCached nullableType =
-        Cache.GetOrCreate nullableType ofType
+    let ofTypeCached optionType =
+        Cache.GetOrCreate optionType ofType
 
 module internal NullableInfo =
     let private Cache = TypeInfoCache<NullableInfo>()
@@ -275,6 +275,13 @@ module internal DotnetType =
     let (|DateTimeOffset|_|) = ActivePatternTypeMatch<DateTimeOffset>
     let (|String|_|) = ActivePatternTypeMatch<string>
     let (|ByteArray|_|) = ActivePatternTypeMatch<byte[]>
+
+    let (|Enum|_|) (dotnetType: Type) =
+        // TODO: Add support for alternative backing types.
+        if dotnetType.IsEnum
+            && Enum.GetUnderlyingType(dotnetType) = typeof<int>
+        then Option.Some ()
+        else Option.None
 
     let isGenericType<'GenericType> (dotnetType: Type) =
         dotnetType.IsGenericType

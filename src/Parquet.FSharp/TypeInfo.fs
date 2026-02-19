@@ -9,6 +9,11 @@ open System.Reflection
 // TODO: Should review this to move reflection and fixed expressions out
 // of expression builder functions
 
+type internal EnumInfo = {
+    Type: Type
+    ValueType: Type
+    ValueOptionInfo: OptionInfo }
+
 type internal FieldInfo = {
     Name: string
     Type: Type
@@ -73,6 +78,20 @@ type private TypeInfoCache<'TypeInfo>() =
             let typeInfo = create dotnetType
             addToCache dotnetType typeInfo
             typeInfo
+
+module internal EnumInfo =
+    let private Cache = TypeInfoCache<EnumInfo>()
+
+    let private ofType (enumType: Type) =
+        let valueType = Enum.GetUnderlyingType(enumType)
+        let valueOptionType =typedefof<option<_>>.MakeGenericType(valueType)
+        let valueOptionInfo = OptionInfo.ofTypeCached valueOptionType
+        { EnumInfo.Type = enumType
+          EnumInfo.ValueType = valueType
+          EnumInfo.ValueOptionInfo = valueOptionInfo }
+
+    let ofTypeCached enumType =
+        Cache.GetOrCreate enumType ofType
 
 module internal RecordInfo =
     let private Cache = TypeInfoCache<RecordInfo>()
@@ -277,11 +296,20 @@ module internal DotnetType =
     let (|ByteArray|_|) = ActivePatternTypeMatch<byte[]>
 
     let (|Enum|_|) (dotnetType: Type) =
-        // TODO: Add support for alternative backing types.
-        if dotnetType.IsEnum
-            && Enum.GetUnderlyingType(dotnetType) = typeof<int>
-        then Option.Some ()
-        else Option.None
+        if not dotnetType.IsEnum
+        then Option.None
+        else
+            let enumInfo = EnumInfo.ofTypeCached dotnetType
+            if enumInfo.ValueType = typeof<int8>
+                || enumInfo.ValueType = typeof<int16>
+                || enumInfo.ValueType = typeof<int32>
+                || enumInfo.ValueType = typeof<int64>
+                || enumInfo.ValueType = typeof<uint8>
+                || enumInfo.ValueType = typeof<uint16>
+                || enumInfo.ValueType = typeof<uint32>
+                || enumInfo.ValueType = typeof<uint64>
+            then Option.Some enumInfo
+            else Option.None
 
     let isGenericType<'GenericType> (dotnetType: Type) =
         dotnetType.IsGenericType

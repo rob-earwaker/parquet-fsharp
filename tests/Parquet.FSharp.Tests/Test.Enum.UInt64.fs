@@ -7,25 +7,25 @@ open Swensen.Unquote
 open System
 open Xunit
 
-module ``serialize int32 enum`` =
-    type Enum = Value1 = 0 | Value2 = 1 | Value3 = 2
+module ``serialize uint64 enum`` =
+    type Enum = Value1 = 0UL | Value2 = 1UL | Value3 = 2UL
     type Input = { Field1: Enum }
-    type Output = { Field1: int32 }
+    type Output = { Field1: uint64 }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
             Assert.field [
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isRequired
-                Assert.Field.Type.isInt32
-                Assert.Field.LogicalType.isInteger 32 true
-                Assert.Field.ConvertedType.isInt32
+                Assert.Field.Type.isInt64
+                Assert.Field.LogicalType.isInteger 64 false
+                Assert.Field.ConvertedType.isUInt64
                 Assert.Field.hasNoChildren ] ]
 
     [<Theory>]
-    [<InlineData((* inputValue *) Enum.Value1, (* outputValue *) 0)>]
-    [<InlineData((* inputValue *) Enum.Value2, (* outputValue *) 1)>]
-    [<InlineData((* inputValue *) Enum.Value3, (* outputValue *) 2)>]
+    [<InlineData((* inputValue *) Enum.Value1, (* outputValue *) 0UL)>]
+    [<InlineData((* inputValue *) Enum.Value2, (* outputValue *) 1UL)>]
+    [<InlineData((* inputValue *) Enum.Value3, (* outputValue *) 2UL)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -35,10 +35,8 @@ module ``serialize int32 enum`` =
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
     [<Theory>]
-    [<InlineData(Int32.MinValue)>]
-    [<InlineData(            -1)>]
-    [<InlineData(             3)>]
-    [<InlineData(Int32.MaxValue)>]
+    [<InlineData(            3UL)>]
+    [<InlineData(UInt64.MaxValue)>]
     let ``undefined value`` value =
         let inputRecords = [| { Input.Field1 = EnumOfValue value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -47,15 +45,15 @@ module ``serialize int32 enum`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize int32 enum from required int32`` =
-    type Enum = Value1 = 0 | Value2 = 1 | Value3 = 2
-    type Input = { Field1: int32 }
+module ``deserialize uint64 enum from required uint64`` =
+    type Enum = Value1 = 0UL | Value2 = 1UL | Value3 = 2UL
+    type Input = { Field1: uint64 }
     type Output = { Field1: Enum }
 
     [<Theory>]
-    [<InlineData((* inputValue *) 0, (* outputValue *) Enum.Value1)>]
-    [<InlineData((* inputValue *) 1, (* outputValue *) Enum.Value2)>]
-    [<InlineData((* inputValue *) 2, (* outputValue *) Enum.Value3)>]
+    [<InlineData((* inputValue *) 0UL, (* outputValue *) Enum.Value1)>]
+    [<InlineData((* inputValue *) 1UL, (* outputValue *) Enum.Value2)>]
+    [<InlineData((* inputValue *) 2UL, (* outputValue *) Enum.Value3)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -63,19 +61,17 @@ module ``deserialize int32 enum from required int32`` =
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
     [<Theory>]
-    [<InlineData(Int32.MinValue)>]
-    [<InlineData(            -1)>]
-    [<InlineData(             3)>]
-    [<InlineData(Int32.MaxValue)>]
+    [<InlineData(            3UL)>]
+    [<InlineData(UInt64.MaxValue)>]
     let ``undefined value`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = EnumOfValue value } |] @>
 
-module ``deserialize int32 enum from optional int32`` =
-    type Enum = Value1 = 0 | Value2 = 1 | Value3 = 2
-    type Input = { Field1: int32 option }
+module ``deserialize uint64 enum from optional uint64`` =
+    type Enum = Value1 = 0UL | Value2 = 1UL | Value3 = 2UL
+    type Input = { Field1: uint64 option }
     type Output = { Field1: Enum }
 
     [<Fact>]
@@ -90,9 +86,9 @@ module ``deserialize int32 enum from optional int32`` =
                     + $" non-nullable type '{typeof<Enum>.FullName}'" @>)
 
     [<Theory>]
-    [<InlineData((* inputValue *) 0, (* outputValue *) Enum.Value1)>]
-    [<InlineData((* inputValue *) 1, (* outputValue *) Enum.Value2)>]
-    [<InlineData((* inputValue *) 2, (* outputValue *) Enum.Value3)>]
+    [<InlineData((* inputValue *) 0UL, (* outputValue *) Enum.Value1)>]
+    [<InlineData((* inputValue *) 1UL, (* outputValue *) Enum.Value2)>]
+    [<InlineData((* inputValue *) 2UL, (* outputValue *) Enum.Value3)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -100,25 +96,23 @@ module ``deserialize int32 enum from optional int32`` =
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
     [<Theory>]
-    [<InlineData(Int32.MinValue)>]
-    [<InlineData(            -1)>]
-    [<InlineData(             3)>]
-    [<InlineData(Int32.MaxValue)>]
+    [<InlineData(            3UL)>]
+    [<InlineData(UInt64.MaxValue)>]
     let ``undefined value`` value =
         let inputRecords = [| { Input.Field1 = Option.Some value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = EnumOfValue value } |] @>
 
-module ``deserialize int32 enum from required int16`` =
-    type Enum = Value1 = 0 | Value2 = 1 | Value3 = 2
-    type Input = { Field1: int16 }
+module ``deserialize uint64 enum from required uint32`` =
+    type Enum = Value1 = 0UL | Value2 = 1UL | Value3 = 2UL
+    type Input = { Field1: uint32 }
     type Output = { Field1: Enum }
 
     [<Theory>]
-    [<InlineData((* inputValue *) 0s, (* outputValue *) Enum.Value1)>]
-    [<InlineData((* inputValue *) 1s, (* outputValue *) Enum.Value2)>]
-    [<InlineData((* inputValue *) 2s, (* outputValue *) Enum.Value3)>]
+    [<InlineData((* inputValue *) 0u, (* outputValue *) Enum.Value1)>]
+    [<InlineData((* inputValue *) 1u, (* outputValue *) Enum.Value2)>]
+    [<InlineData((* inputValue *) 2u, (* outputValue *) Enum.Value3)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -126,82 +120,17 @@ module ``deserialize int32 enum from required int16`` =
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
     [<Theory>]
-    [<InlineData((* inputValue *) Int16.MinValue, (* outputValue *) -32768)>]
-    [<InlineData((* inputValue *)            -1s, (* outputValue *)     -1)>]
-    [<InlineData((* inputValue *)             3s, (* outputValue *)      3)>]
-    [<InlineData((* inputValue *) Int16.MaxValue, (* outputValue *)  32767)>]
+    [<InlineData((* inputValue *)              3u, (* outputValue *)          3UL)>]
+    [<InlineData((* inputValue *) UInt32.MaxValue, (* outputValue *) 4294967295UL)>]
     let ``undefined value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = EnumOfValue outputValue } |] @>
 
-module ``deserialize int32 enum from optional int16`` =
-    type Enum = Value1 = 0 | Value2 = 1 | Value3 = 2
-    type Input = { Field1: int16 option }
-    type Output = { Field1: Enum }
-
-    [<Fact>]
-    let ``null value`` () =
-        let inputRecords = [| { Input.Field1 = Option.None } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        raisesWith<SerializationException>
-            <@ ParquetSerializer.Deserialize<Output>(bytes) @>
-            (fun exn ->
-                <@ exn.Message =
-                    "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Enum>.FullName}'" @>)
-
-    [<Theory>]
-    [<InlineData((* inputValue *) 0s, (* outputValue *) Enum.Value1)>]
-    [<InlineData((* inputValue *) 1s, (* outputValue *) Enum.Value2)>]
-    [<InlineData((* inputValue *) 2s, (* outputValue *) Enum.Value3)>]
-    let ``value`` inputValue outputValue =
-        let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
-
-    [<Theory>]
-    [<InlineData((* inputValue *) Int16.MinValue, (* outputValue *) -32768)>]
-    [<InlineData((* inputValue *)            -1s, (* outputValue *)     -1)>]
-    [<InlineData((* inputValue *)             3s, (* outputValue *)      3)>]
-    [<InlineData((* inputValue *) Int16.MaxValue, (* outputValue *)  32767)>]
-    let ``undefined value`` inputValue outputValue =
-        let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = EnumOfValue outputValue } |] @>
-
-module ``deserialize int32 enum from required int8`` =
-    type Enum = Value1 = 0 | Value2 = 1 | Value3 = 2
-    type Input = { Field1: int8 }
-    type Output = { Field1: Enum }
-
-    [<Theory>]
-    [<InlineData((* inputValue *) 0y, (* outputValue *) Enum.Value1)>]
-    [<InlineData((* inputValue *) 1y, (* outputValue *) Enum.Value2)>]
-    [<InlineData((* inputValue *) 2y, (* outputValue *) Enum.Value3)>]
-    let ``value`` inputValue outputValue =
-        let inputRecords = [| { Input.Field1 = inputValue } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
-
-    [<Theory>]
-    [<InlineData((* inputValue *) SByte.MinValue, (* outputValue *) -128)>]
-    [<InlineData((* inputValue *)            -1y, (* outputValue *)   -1)>]
-    [<InlineData((* inputValue *)             3y, (* outputValue *)    3)>]
-    [<InlineData((* inputValue *) SByte.MaxValue, (* outputValue *)  127)>]
-    let ``undefined value`` inputValue outputValue =
-        let inputRecords = [| { Input.Field1 = inputValue } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = EnumOfValue outputValue } |] @>
-
-module ``deserialize int32 enum from optional int8`` =
-    type Enum = Value1 = 0 | Value2 = 1 | Value3 = 2
-    type Input = { Field1: int8 option }
+module ``deserialize uint64 enum from optional uint32`` =
+    type Enum = Value1 = 0UL | Value2 = 1UL | Value3 = 2UL
+    type Input = { Field1: uint32 option }
     type Output = { Field1: Enum }
 
     [<Fact>]
@@ -216,9 +145,9 @@ module ``deserialize int32 enum from optional int8`` =
                     + $" non-nullable type '{typeof<Enum>.FullName}'" @>)
 
     [<Theory>]
-    [<InlineData((* inputValue *) 0y, (* outputValue *) Enum.Value1)>]
-    [<InlineData((* inputValue *) 1y, (* outputValue *) Enum.Value2)>]
-    [<InlineData((* inputValue *) 2y, (* outputValue *) Enum.Value3)>]
+    [<InlineData((* inputValue *) 0u, (* outputValue *) Enum.Value1)>]
+    [<InlineData((* inputValue *) 1u, (* outputValue *) Enum.Value2)>]
+    [<InlineData((* inputValue *) 2u, (* outputValue *) Enum.Value3)>]
     let ``value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
@@ -226,18 +155,16 @@ module ``deserialize int32 enum from optional int8`` =
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
     [<Theory>]
-    [<InlineData((* inputValue *) SByte.MinValue, (* outputValue *) -128)>]
-    [<InlineData((* inputValue *)            -1y, (* outputValue *)   -1)>]
-    [<InlineData((* inputValue *)             3y, (* outputValue *)    3)>]
-    [<InlineData((* inputValue *) SByte.MaxValue, (* outputValue *)  127)>]
+    [<InlineData((* inputValue *)              3u, (* outputValue *)          3UL)>]
+    [<InlineData((* inputValue *) UInt32.MaxValue, (* outputValue *) 4294967295UL)>]
     let ``undefined value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = EnumOfValue outputValue } |] @>
 
-module ``deserialize int32 enum from required uint16`` =
-    type Enum = Value1 = 0 | Value2 = 1 | Value3 = 2
+module ``deserialize uint64 enum from required uint16`` =
+    type Enum = Value1 = 0UL | Value2 = 1UL | Value3 = 2UL
     type Input = { Field1: uint16 }
     type Output = { Field1: Enum }
 
@@ -252,16 +179,16 @@ module ``deserialize int32 enum from required uint16`` =
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
     [<Theory>]
-    [<InlineData((* inputValue *)             3us, (* outputValue *)     3)>]
-    [<InlineData((* inputValue *) UInt16.MaxValue, (* outputValue *) 65535)>]
+    [<InlineData((* inputValue *)             3us, (* outputValue *)     3UL)>]
+    [<InlineData((* inputValue *) UInt16.MaxValue, (* outputValue *) 65535UL)>]
     let ``undefined value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = EnumOfValue outputValue } |] @>
 
-module ``deserialize int32 enum from optional uint16`` =
-    type Enum = Value1 = 0 | Value2 = 1 | Value3 = 2
+module ``deserialize uint64 enum from optional uint16`` =
+    type Enum = Value1 = 0UL | Value2 = 1UL | Value3 = 2UL
     type Input = { Field1: uint16 option }
     type Output = { Field1: Enum }
 
@@ -287,16 +214,16 @@ module ``deserialize int32 enum from optional uint16`` =
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
     [<Theory>]
-    [<InlineData((* inputValue *)             3us, (* outputValue *)     3)>]
-    [<InlineData((* inputValue *) UInt16.MaxValue, (* outputValue *) 65535)>]
+    [<InlineData((* inputValue *)             3us, (* outputValue *)     3UL)>]
+    [<InlineData((* inputValue *) UInt16.MaxValue, (* outputValue *) 65535UL)>]
     let ``undefined value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = EnumOfValue outputValue } |] @>
 
-module ``deserialize int32 enum from required uint8`` =
-    type Enum = Value1 = 0 | Value2 = 1 | Value3 = 2
+module ``deserialize uint64 enum from required uint8`` =
+    type Enum = Value1 = 0UL | Value2 = 1UL | Value3 = 2UL
     type Input = { Field1: uint8 }
     type Output = { Field1: Enum }
 
@@ -311,16 +238,16 @@ module ``deserialize int32 enum from required uint8`` =
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
     [<Theory>]
-    [<InlineData((* inputValue *)           3uy, (* outputValue *)   3)>]
-    [<InlineData((* inputValue *) Byte.MaxValue, (* outputValue *) 255)>]
+    [<InlineData((* inputValue *)           3uy, (* outputValue *)   3UL)>]
+    [<InlineData((* inputValue *) Byte.MaxValue, (* outputValue *) 255UL)>]
     let ``undefined value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = EnumOfValue outputValue } |] @>
 
-module ``deserialize int32 enum from optional uint8`` =
-    type Enum = Value1 = 0 | Value2 = 1 | Value3 = 2
+module ``deserialize uint64 enum from optional uint8`` =
+    type Enum = Value1 = 0UL | Value2 = 1UL | Value3 = 2UL
     type Input = { Field1: uint8 option }
     type Output = { Field1: Enum }
 
@@ -346,8 +273,8 @@ module ``deserialize int32 enum from optional uint8`` =
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
 
     [<Theory>]
-    [<InlineData((* inputValue *)           3uy, (* outputValue *)   3)>]
-    [<InlineData((* inputValue *) Byte.MaxValue, (* outputValue *) 255)>]
+    [<InlineData((* inputValue *)           3uy, (* outputValue *)   3UL)>]
+    [<InlineData((* inputValue *) Byte.MaxValue, (* outputValue *) 255UL)>]
     let ``undefined value`` inputValue outputValue =
         let inputRecords = [| { Input.Field1 = Option.Some inputValue } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)

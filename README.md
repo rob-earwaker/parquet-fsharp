@@ -112,9 +112,9 @@ GUIDs are serialized as required values by default. They can be deserialized fro
 
 ### Enums
 
-Applies to: `'Enum<int32>`
+Applies to: `'Enum` (with underlying type: `int8`, `int16`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, `uint64`)
 
-Enums with an underlying type of `int32` are serialized and deserialized as if they were `int32` values - see [Numeric Types](#numeric-types) for details.
+Enums are serialized and deserialized as if they were their underlying integral numeric type - see [Numeric Types](#numeric-types) for details.
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -298,7 +298,6 @@ The following features and improvements are on the roadmap and may be implemente
 
 The following types are not currently supported but will likely be added in the future:
 
-- Enums (with other underlying types)
 - `DateOnly`
 - `TimeOnly`
 - `TimeSpan`

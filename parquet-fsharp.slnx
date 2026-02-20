@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Parquet.FSharp/Parquet.FSharp.fsproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Parquet.FSharp.Tests/Parquet.FSharp.Tests.fsproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Parquet.FSharp.Benchmarks/Parquet.FSharp.Benchmarks.fsproj" />
+    <Project Path="tools/Parquet.FSharp.TestApp/Parquet.FSharp.TestApp.fsproj" />
+  </Folder>
+</Solution>

@@ -58,7 +58,6 @@ type internal DefaultUnionConverter private () =
         // there must always be a case name present. We therefore model this
         // as a non-optional string value.
         let typeFieldSerializer =
-            // TODO: The name of this field could be configurable via an attribute.
             let name = "Type"
             let valueSerializer = Serializer.resolve typeof<string> settings
             let getValue = unionInfo.GetCaseName
@@ -191,7 +190,6 @@ type internal DefaultUnionConverter private () =
                 |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
             // The 'Type' field holds the case name as a string.
             let typeFieldDeserializer =
-                // TODO: The name of this field could be configurable via an attribute.
                 let name = "Type"
                 recordSchema.Fields
                 |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = name)

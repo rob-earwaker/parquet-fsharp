@@ -3,7 +3,6 @@
 open Parquet
 open System.IO
 
-// TODO: Support for attributes
 // TODO: Support for various serializer options in Parquet.Net.
 
 type ParquetSerializer =

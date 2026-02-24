@@ -41,8 +41,6 @@ type SerializationException(message) =
 
 // TODO: Replace 'failwith' with 'SerializationException'.
 
-// TODO: Can we cache anything, e.g. reflected info?
-
 // TODO: Attribute to select specific serializer type to use? Alternatively could
 // be part of the serializer configuration?
 

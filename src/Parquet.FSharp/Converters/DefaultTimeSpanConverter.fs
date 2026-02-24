@@ -3,11 +3,6 @@ namespace Parquet.FSharp
 open System
 open System.Linq.Expressions
 
-// TODO: Should really only allow TimeSpan values in the same range as TimeOnly
-// as we're using the Parquet Time type, which represents time of day, but
-// Parquet.Net allows values outside of this range, so allow them as well for
-// now. Hopefully Parquet will eventually support a duration type.
-
 type internal DefaultTimeSpanConverter private () =
     let dotnetType = typeof<TimeSpan>
     let ticksProperty = typeof<TimeSpan>.GetProperty("Ticks")

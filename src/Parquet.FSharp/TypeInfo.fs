@@ -6,9 +6,6 @@ open System.Collections.Generic
 open System.Linq.Expressions
 open System.Reflection
 
-// TODO: Should review this to move reflection and fixed expressions out
-// of expression builder functions
-
 type internal EnumInfo = {
     Type: Type
     ValueType: Type

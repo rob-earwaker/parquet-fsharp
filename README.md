@@ -13,6 +13,7 @@ An F# serailization library for the [Apache Parquet](https://parquet.apache.org/
   - [Numeric Types](#numeric-types)
   - [GUIDs](#guids)
   - [Enums](#enums)
+  - [Durations](#durations)
   - [Date Times](#date-times)
   - [Strings](#strings)
   - [Byte Arrays](#byte-arrays)
@@ -118,6 +119,18 @@ Enums are serialized and deserialized as if they were their underlying integral 
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
+### Durations
+
+Applies to: `TimeSpan`
+
+The Parquet format does not have built-in support for arbitrary durations. It only supports time-of-day durations via the [Time](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#time) logical type and positive durations with millisecond precision via the [Interval](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#interval) logical type. Neither of these are particularly compatible with the range of values that can be represented by a `TimeSpan`.
+
+Due to the limitations above, `TimeSpan` values are serialized and deserailized as `int64` microsecond values. See [Numeric Types](#numeric-types) for details of `int64` serialization.
+
+The `TimeSpan` type uses 'ticks' as a base unit, where each tick represents 100 nanoseconds. Since the default precision is microseconds, serialization results in a slight truncation, equivalent to rounding the values down to the nearest 10 ticks.
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
 ### Date Times
 
 Applies to: `DateTime`, `DateTimeOffset`
@@ -128,7 +141,7 @@ Since `DateTime` values have an associated `DateTimeKind`, which is one of `Unsp
 
 `DateTimeOffset` values always map to a specific instant in time, so can always be converted to UTC in an unambiguous way. During serialization, `DateTimeOffset` values will be converted to their UTC equivalent. This means that the offset information is lost, but the serialized value is guaranteed to identify the same instant in time.
 
-Both `DateTime` and `DateTimeOffset` use 'ticks' as their base unit, where each tick represents a 100 nanosecond period. Since the default precision is microseconds, serialization results in a slight truncation, equivalent to rounding the values down to the nearest 10 ticks.
+Both `DateTime` and `DateTimeOffset` use 'ticks' as their base unit, where each tick represents 100 nanoseconds. Since the default precision is microseconds, serialization results in a slight truncation, equivalent to rounding the values down to the nearest 10 ticks.
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -300,7 +313,6 @@ The following types are not currently supported but will likely be added in the 
 
 - `DateOnly`
 - `TimeOnly`
-- `TimeSpan`
 - `Interval` (from **Parquet.Net**)
 - `BigDecimal` (from **Parquet.Net**)
 - `BigInteger` (from **System.Numerics**)

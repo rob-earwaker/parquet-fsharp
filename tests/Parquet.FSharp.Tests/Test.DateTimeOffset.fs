@@ -16,7 +16,7 @@ module ``serialize date time offset`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isRequired
                 Assert.Field.Type.isInt64
-                Assert.Field.LogicalType.isTimestamp true "microseconds"
+                Assert.Field.LogicalType.isTimestamp "utc" "microseconds"
                 Assert.Field.ConvertedType.hasNoValue
                 Assert.Field.hasNoChildren ] ]
 
@@ -116,7 +116,7 @@ module ``serialize date time offset`` =
         // stored in UTC.
         test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
 
-module ``deserialize date time offset from required utc micros logical timestamp`` =
+module ``deserialize date time offset from required utc microseconds logical timestamp`` =
     type Input = { Field1: DateTime }
     type Output = { Field1: DateTimeOffset }
 
@@ -136,7 +136,7 @@ module ``deserialize date time offset from required utc micros logical timestamp
         let expectedValue = DateTimeOffset(ticks, TimeSpan.Zero)
         test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
 
-module ``deserialize date time offset from optional utc micros logical timestamp`` =
+module ``deserialize date time offset from optional utc microseconds logical timestamp`` =
     type Input = { Field1: DateTime option }
     type Output = { Field1: DateTimeOffset }
 

@@ -16,7 +16,7 @@ module ``serialize date time`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isRequired
                 Assert.Field.Type.isInt64
-                Assert.Field.LogicalType.isTimestamp true "microseconds"
+                Assert.Field.LogicalType.isTimestamp "utc" "microseconds"
                 Assert.Field.ConvertedType.hasNoValue
                 Assert.Field.hasNoChildren ] ]
 
@@ -138,7 +138,7 @@ module ``serialize date time`` =
         test <@ outputRecord.Field1 = expectedValue @>
         test <@ outputRecord.Field1.Kind = DateTimeKind.Utc @>
 
-module ``deserialize date time from required utc micros logical timestamp`` =
+module ``deserialize date time from required utc microseconds logical timestamp`` =
     type Input = { Field1: DateTime }
     type Output = { Field1: DateTime }
 
@@ -162,7 +162,7 @@ module ``deserialize date time from required utc micros logical timestamp`` =
         test <@ outputRecord.Field1 = value @>
         test <@ outputRecord.Field1.Kind = DateTimeKind.Utc @>
 
-module ``deserialize date time from optional utc micros logical timestamp`` =
+module ``deserialize date time from optional utc microseconds logical timestamp`` =
     type Input = { Field1: DateTime option }
     type Output = { Field1: DateTime }
 

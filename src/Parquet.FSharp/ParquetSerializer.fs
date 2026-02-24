@@ -23,6 +23,7 @@ type ParquetSerializer =
             DefaultDecimalConverter.Instance
             DefaultGuidConverter.Instance
             DefaultEnumConverter.Instance
+            DefaultTimeSpanConverter.Instance
             DefaultDateTimeConverter.Instance
             DefaultDateTimeOffsetConverter.Instance
             DefaultStringConverter.Instance

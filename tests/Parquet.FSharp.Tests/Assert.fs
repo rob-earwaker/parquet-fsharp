@@ -251,20 +251,33 @@ module Field =
             test <@ field.Schema.Scale = Nullable(scale) @>
             test <@ field.Schema.Precision = Nullable(precision) @>
 
-        let isTimestamp isAdjustedToUtc unit (field: Field) =
+        let isTime kind unit (field: Field) =
+            test <@ not (isNull field.Schema.LogicalType) @>
+            test <@ not (isNull field.Schema.LogicalType.TIME) @>
+            test <@ not (isNull field.Schema.LogicalType.TIME.Unit) @>
+            match kind with
+            | "utc" -> test <@ field.Schema.LogicalType.TIME.IsAdjustedToUTC = true @>
+            | "local" -> test <@ field.Schema.LogicalType.TIME.IsAdjustedToUTC = false @>
+            | _ -> failwith $"invalid kind '{kind}'"
+            match unit with
+            | "milliseconds" -> test <@ not (isNull field.Schema.LogicalType.TIME.Unit.MILLIS) @>
+            | "microseconds" -> test <@ not (isNull field.Schema.LogicalType.TIME.Unit.MICROS) @>
+            | "nanoseconds" -> test <@ not (isNull field.Schema.LogicalType.TIME.Unit.NANOS) @>
+            | _ -> failwith $"invalid unit '{unit}'"
+
+        let isTimestamp kind unit (field: Field) =
             test <@ not (isNull field.Schema.LogicalType) @>
             test <@ not (isNull field.Schema.LogicalType.TIMESTAMP) @>
             test <@ not (isNull field.Schema.LogicalType.TIMESTAMP.Unit) @>
-            test <@ field.Schema.LogicalType.TIMESTAMP.IsAdjustedToUTC = isAdjustedToUtc @>
+            match kind with
+            | "utc" -> test <@ field.Schema.LogicalType.TIMESTAMP.IsAdjustedToUTC = true @>
+            | "local" -> test <@ field.Schema.LogicalType.TIMESTAMP.IsAdjustedToUTC = false @>
+            | _ -> failwith $"invalid kind '{kind}'"
             match unit with
-            | "milliseconds" ->
-                test <@ not (isNull field.Schema.LogicalType.TIMESTAMP.Unit.MILLIS) @>
-            | "microseconds" ->
-                test <@ not (isNull field.Schema.LogicalType.TIMESTAMP.Unit.MICROS) @>
-            | "nanoseconds" ->
-                test <@ not (isNull field.Schema.LogicalType.TIMESTAMP.Unit.NANOS) @>
-            | _ ->
-                failwith $"invalid unit '{unit}'"
+            | "milliseconds" -> test <@ not (isNull field.Schema.LogicalType.TIMESTAMP.Unit.MILLIS) @>
+            | "microseconds" -> test <@ not (isNull field.Schema.LogicalType.TIMESTAMP.Unit.MICROS) @>
+            | "nanoseconds" -> test <@ not (isNull field.Schema.LogicalType.TIMESTAMP.Unit.NANOS) @>
+            | _ -> failwith $"invalid unit '{unit}'"
 
     module ConvertedType =
         let private is convertedType (field: Field) =
@@ -283,6 +296,7 @@ module Field =
         let isUInt32 = is ConvertedType.UINT_32
         let isUInt64 = is ConvertedType.UINT_64
         let isDecimal = is ConvertedType.DECIMAL
+        let isTimeMicros = is ConvertedType.TIME_MICROS
         let isList = is ConvertedType.LIST
 
     let hasNoChildren (field: Field) =

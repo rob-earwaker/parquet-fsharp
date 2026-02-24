@@ -35,6 +35,7 @@
     <Compile Include="Test.Enum.UInt16.fs" />
     <Compile Include="Test.Enum.UInt32.fs" />
     <Compile Include="Test.Enum.UInt64.fs" />
+    <Compile Include="Test.TimeSpan.fs" />
     <Compile Include="Test.DateTime.fs" />
     <Compile Include="Test.DateTimeOffset.fs" />
     <Compile Include="Test.String.fs" />

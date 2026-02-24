@@ -46,14 +46,26 @@ type internal PrimitiveTypeSchema = {
     with
     override this.ToString() =
         // TODO: Could enumerate all primitive types here to make it nicer.
-        this.DataDotnetType.Name
+        this.DataDotnetType.Name.ToLower()
 
 type internal DateTimeTypeSchema = {
-    IsAdjustedToUtc: bool }
+    IsAdjustedToUtc: bool
+    Unit: TimeUnit }
     with
     override this.ToString() =
         let kind = if this.IsAdjustedToUtc then "utc" else "local"
-        $"DateTime[{kind}]"
+        $"datetime[{kind}, {this.Unit}]"
+
+type internal TimeUnit =
+    | Milliseconds
+    | Microseconds
+    | Nanoseconds
+    with
+    override this.ToString() =
+        match this with
+        | TimeUnit.Milliseconds -> "ms"
+        | TimeUnit.Microseconds -> "us"
+        | TimeUnit.Nanoseconds -> "ns"
 
 type internal ListTypeSchema = {
     Element: ValueSchema }
@@ -72,8 +84,10 @@ module internal ValueTypeSchema =
     let primitive dataDotnetType =
         ValueTypeSchema.Primitive { DataDotnetType = dataDotnetType }
         
-    let dateTime isAdjustedToUtc =
-        ValueTypeSchema.DateTime { IsAdjustedToUtc = isAdjustedToUtc }
+    let dateTime isAdjustedToUtc unit =
+        ValueTypeSchema.DateTime {
+            IsAdjustedToUtc = isAdjustedToUtc
+            Unit = unit }
 
     let list element =
         ValueTypeSchema.List { Element = element }
@@ -93,7 +107,12 @@ module internal ValueSchema =
             // This inherits from {DataField} so must come before it.
             | :? DateTimeDataField as dateTimeField ->
                 let isAdjustedToUtc = dateTimeField.IsAdjustedToUTC
-                ValueTypeSchema.dateTime isAdjustedToUtc
+                let unit =
+                    match dateTimeField.Unit with
+                    | DateTimeTimeUnit.Millis -> TimeUnit.Milliseconds
+                    | DateTimeTimeUnit.Micros -> TimeUnit.Microseconds
+                    | _ -> TimeUnit.Nanoseconds
+                ValueTypeSchema.dateTime isAdjustedToUtc unit
             | :? DataField as dataField ->
                 let dataDotnetType = dataField.ClrType
                 ValueTypeSchema.primitive dataDotnetType

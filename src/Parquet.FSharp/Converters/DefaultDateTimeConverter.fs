@@ -35,7 +35,8 @@ type internal DefaultDateTimeConverter private () =
     let serializer =
         let schema =
             let isAdjustedToUtc = true
-            ValueTypeSchema.dateTime isAdjustedToUtc
+            let unit = TimeUnit.Microseconds
+            ValueTypeSchema.dateTime isAdjustedToUtc unit
         let getDataValue (dateTime: Expression) =
             // if dateTime.Kind <> DateTimeKind.Utc then
             //     raise SerializationException(...)
@@ -59,7 +60,8 @@ type internal DefaultDateTimeConverter private () =
     let requiredDeserializer =
         let schema =
             let isAdjustedToUtc = true
-            ValueTypeSchema.dateTime isAdjustedToUtc
+            let unit = TimeUnit.Microseconds
+            ValueTypeSchema.dateTime isAdjustedToUtc unit
         let createFromDataValue = id
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
@@ -81,7 +83,8 @@ type internal DefaultDateTimeConverter private () =
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.DateTime dateTimeSchema
-                    when dateTimeSchema.IsAdjustedToUtc ->
+                    when dateTimeSchema.IsAdjustedToUtc
+                        && dateTimeSchema.Unit = TimeUnit.Microseconds ->
                     if sourceSchema.IsOptional
                     then Option.Some optionalDeserializer
                     else Option.Some requiredDeserializer

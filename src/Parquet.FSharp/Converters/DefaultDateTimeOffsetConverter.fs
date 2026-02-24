@@ -8,10 +8,13 @@ type internal DefaultDateTimeOffsetConverter private () =
     let dotnetType = typeof<DateTimeOffset>
     let dataDotnetType = typeof<DateTime>
 
+    // TODO: Maybe should resolve a DateTime serializer/deserializer and wrap?
+
     let serializer =
         let schema =
             let isAdjustedToUtc = true
-            ValueTypeSchema.dateTime isAdjustedToUtc
+            let unit = TimeUnit.Microseconds
+            ValueTypeSchema.dateTime isAdjustedToUtc unit
         let getDataValue (value: Expression) =
             Expression.Property(value, "UtcDateTime")
             :> Expression
@@ -20,7 +23,8 @@ type internal DefaultDateTimeOffsetConverter private () =
     let requiredDeserializer =
         let schema =
             let isAdjustedToUtc = true
-            ValueTypeSchema.dateTime isAdjustedToUtc
+            let unit = TimeUnit.Microseconds
+            ValueTypeSchema.dateTime isAdjustedToUtc unit
         let createFromDataValue (dateTime: Expression) =
             Expression.New(
                 typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
@@ -46,7 +50,8 @@ type internal DefaultDateTimeOffsetConverter private () =
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.DateTime dateTimeSchema
-                    when dateTimeSchema.IsAdjustedToUtc ->
+                    when dateTimeSchema.IsAdjustedToUtc
+                        && dateTimeSchema.Unit = TimeUnit.Microseconds ->
                     if sourceSchema.IsOptional
                     then Option.Some optionalDeserializer
                     else Option.Some requiredDeserializer

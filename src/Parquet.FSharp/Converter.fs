@@ -3,161 +3,8 @@
 open System
 open System.Linq.Expressions
 
-type SerializationException(message) =
-    inherit Exception(message)
-
-// TODO: Attribute ideas:
-//   - ParquetAttribute (base class)
-//
-//   - ParquetField(name: string, required: bool, optional: bool, allowNulls: bool)
-//   - ParquetDecimalField(<inherited>, scale: int, precision: int)
-//   - ParquetDateTimeField(<inherited>, isAdjustedToUtc: bool, unit: <enum TimeUnit>)
-//   - ParquetDateTimeOffsetField(<inherited>, unit: <enum TimeUnit>)
-//   - ParquetUnionField(<inherited>, enum: bool, caseTypeFieldName: string)
-
-//   - ParquetUnion(caseTypeFieldName: string)
-//   - ParquetUnionCase(typeName: string, dataFieldName: string)
-//   - ParquetRequired()
-//   - ParquetOptional(allowNulls: bool)
-
-// TODO: Types supported by Parquet.Net:
-
-//   Implemented:
-//     - bool
-//     - int8, int16, int32, int64
-//     - uint8, uint16, uint32, uint64
-//     - float32, float64
-//     - decimal
-//     - DateTime
-//     - string
-//     - Guid
-//     - byte[]
-
-//   Not implemented:
-//     - BigInteger
-//     - DateOnly, TimeOnly
-//     - TimeSpan, Interval
-//     - Enums?
-
-// TODO: Replace 'failwith' with 'SerializationException'.
-
-// TODO: Attribute to select specific serializer type to use? Alternatively could
-// be part of the serializer configuration?
-
-// TODO: Add converter type to serializer/deserializer so we can catch exceptions
-// that occur when calling the compiled lambda functions and enrich with info about
-// which converter they originated from and which lambda function they originated from.
-
-type internal Settings = {
-    ValueConverters: IValueConverter[] }
-
-type internal IValueConverter =
-    abstract member TryCreateSerializer
-        : sourceType:Type * settings:Settings -> Serializer option
-    abstract member TryCreateDeserializer
-        : sourceSchema:ValueSchema * targetType:Type * settings:Settings -> Deserializer option
-
-type internal Serializer =
-    | Atomic of AtomicSerializer
-    | List of ListSerializer
-    | Record of RecordSerializer
-    | Optional of OptionalSerializer
-    with
-    member this.Schema =
-        match this with
-        | Serializer.Atomic atomicSerializer -> atomicSerializer.Schema
-        | Serializer.List listSerializer -> listSerializer.Schema
-        | Serializer.Record recordSerializer -> recordSerializer.Schema
-        | Serializer.Optional optionalSerializer -> optionalSerializer.Schema
-
-    member this.DotnetType =
-        match this with
-        | Serializer.Atomic atomicSerializer -> atomicSerializer.DotnetType
-        | Serializer.List listSerializer -> listSerializer.DotnetType
-        | Serializer.Record recordSerializer -> recordSerializer.DotnetType
-        | Serializer.Optional optionalSerializer -> optionalSerializer.DotnetType
-
-type internal AtomicSerializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    DataDotnetType: Type
-    GetDataValue: Expression -> Expression }
-
-type internal ListSerializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    ElementSerializer: Serializer
-    GetEnumerator: Expression -> Expression }
-
-type internal FieldSerializer = {
-    Schema: FieldSchema
-    Name: string
-    ValueSerializer: Serializer
-    GetValue: Expression -> Expression }
-
-type internal RecordSerializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    FieldSerializers: FieldSerializer[] }
-
-type internal OptionalSerializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    ValueSerializer: Serializer
-    IsNull: Expression -> Expression
-    GetValue: Expression -> Expression }
-
-type internal Deserializer =
-    | Atomic of AtomicDeserializer
-    | List of ListDeserializer
-    | Record of RecordDeserializer
-    | Optional of OptionalDeserializer
-    with
-    member this.Schema =
-        match this with
-        | Deserializer.Atomic atomicDeserializer -> atomicDeserializer.Schema
-        | Deserializer.List listDeserializer -> listDeserializer.Schema
-        | Deserializer.Record recordDeserializer -> recordDeserializer.Schema
-        | Deserializer.Optional optionalDeserializer -> optionalDeserializer.Schema
-
-    member this.DotnetType =
-        match this with
-        | Deserializer.Atomic atomicDeserializer -> atomicDeserializer.DotnetType
-        | Deserializer.List listDeserializer -> listDeserializer.DotnetType
-        | Deserializer.Record recordDeserializer -> recordDeserializer.DotnetType
-        | Deserializer.Optional optionalDeserializer -> optionalDeserializer.DotnetType
-
-type internal AtomicDeserializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    DataDotnetType: Type
-    CreateFromDataValue: Expression -> Expression }
-
-type internal ListDeserializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    ElementDeserializer: Deserializer
-    CreateEmpty: Expression
-    CreateFromElementValues: Expression -> Expression }
-
-type internal FieldDeserializer = {
-    Schema: FieldSchema
-    Name: string
-    ValueDeserializer: Deserializer }
-
-type internal RecordDeserializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    FieldDeserializers: FieldDeserializer[]
-    CreateFromFieldValues: Expression[] -> Expression }
-
-type internal OptionalDeserializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    ValueDeserializer: Deserializer
-    CreateNull: Expression
-    CreateFromValue: Expression -> Expression }
-
+// Add module suffix so we can define the module in a different file to the type.
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal Serializer =
     let atomic schema dotnetType dataDotnetType getDataValue =
         let schema =
@@ -275,6 +122,8 @@ module internal Serializer =
                 "could not find converter to serialize type"
                 + $" '{sourceType.FullName}'")
 
+// Add module suffix so we can define the module in a different file to the type.
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal Deserializer =
     let atomic schema dotnetType dataDotnetType createFromDataValue =
         let schema =
@@ -403,6 +252,8 @@ module internal Deserializer =
                 "could not find converter to deserialize from schema"
                 + $" '{sourceSchema}' to type '{targetType.FullName}'")
 
+// Add module suffix so we can define the module in a different file to the type.
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal FieldSerializer =
     let create name (valueSerializer: Serializer) getValue =
         let schema = FieldSchema.create name valueSerializer.Schema
@@ -417,6 +268,8 @@ module internal FieldSerializer =
         let getValue = field.GetValue
         create name valueSerializer getValue
 
+// Add module suffix so we can define the module in a different file to the type.
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal FieldDeserializer =
     let create name (valueDeserializer: Deserializer) =
         let schema = FieldSchema.create name valueDeserializer.Schema

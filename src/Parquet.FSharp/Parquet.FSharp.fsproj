@@ -26,6 +26,7 @@
     <Compile Include="Schema.fs" />
     <Compile Include="Expression.fs" />
     <Compile Include="TypeInfo.fs" />
+    <Compile Include="TypeDefinitions.fs" />
     <Compile Include="Converter.fs" />
     <Compile Include="Converters\DefaultBoolConverter.fs" />
     <Compile Include="Converters\DefaultInt8Converter.fs" />

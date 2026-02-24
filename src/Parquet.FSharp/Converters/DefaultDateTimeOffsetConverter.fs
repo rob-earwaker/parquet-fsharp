@@ -6,53 +6,44 @@ open System.Linq.Expressions
 // TODO: Handle UTC vs Local for both serialization and deserialization.
 type internal DefaultDateTimeOffsetConverter private () =
     let dotnetType = typeof<DateTimeOffset>
-    let dataDotnetType = typeof<DateTime>
+    let utcDateTimeProperty = typeof<DateTimeOffset>.GetProperty("UtcDateTime")
+    let dateTimeOptionInfo = OptionInfo.ofTypeCached typeof<DateTime option>
+    let dateTimeConstructor = typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |])
 
-    // TODO: Maybe should resolve a DateTime serializer/deserializer and wrap?
-
-    let serializer =
-        let schema =
-            let isAdjustedToUtc = true
-            let unit = TimeUnit.Microseconds
-            ValueTypeSchema.dateTime isAdjustedToUtc unit
-        let getDataValue (value: Expression) =
-            Expression.Property(value, "UtcDateTime")
+    let createSerializer settings =
+        let dateTimeSerializer = Serializer.resolve typeof<DateTime> settings
+        let unwrapValue (dateTimeOffset: Expression) =
+            // dateTimeOffset.UtcDateTime
+            Expression.Property(dateTimeOffset, utcDateTimeProperty)
             :> Expression
-        Serializer.atomic schema dotnetType dataDotnetType getDataValue
+        Serializer.wrapAs dotnetType dateTimeSerializer unwrapValue
 
-    let requiredDeserializer =
-        let schema =
-            let isAdjustedToUtc = true
-            let unit = TimeUnit.Microseconds
-            ValueTypeSchema.dateTime isAdjustedToUtc unit
-        let createFromDataValue (dateTime: Expression) =
-            Expression.New(
-                typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |]),
-                dateTime)
+    let createDeserializer sourceSchema settings =
+        let dateTimeOptionDeserializer =
+            Deserializer.resolve sourceSchema dateTimeOptionInfo.Type settings
+        let wrapValue (dateTimeOption: Expression) =
+            // if dateTimeOption.IsNone then
+            //     raise SerializationException(...)
+            // DateTimeOffset(dateTimeOption.Value)
+            Expression.Block(
+                Expression.IfThen(
+                    dateTimeOptionInfo.IsNull dateTimeOption,
+                    Deserializer.throwNullValueEncounteredForNonNullableType dotnetType),
+                Expression.New(
+                    dateTimeConstructor,
+                    dateTimeOptionInfo.GetValue dateTimeOption))
             :> Expression
-        Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
-
-    let optionalDeserializer =
-        requiredDeserializer
-        |> Deserializer.optionalNonNullableTypeWrapper
+        Deserializer.wrapAs dotnetType dateTimeOptionDeserializer wrapValue
 
     static member Instance = DefaultDateTimeOffsetConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =
             if sourceType = dotnetType
-            then Option.Some serializer
+            then Option.Some (createSerializer settings)
             else Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
-            if targetType <> dotnetType
-            then Option.None
-            else
-                match sourceSchema.Type with
-                | ValueTypeSchema.DateTime dateTimeSchema
-                    when dateTimeSchema.IsAdjustedToUtc
-                        && dateTimeSchema.Unit = TimeUnit.Microseconds ->
-                    if sourceSchema.IsOptional
-                    then Option.Some optionalDeserializer
-                    else Option.Some requiredDeserializer
-                | _ -> Option.None
+            if targetType = dotnetType
+            then Option.Some (createDeserializer sourceSchema settings)
+            else Option.None

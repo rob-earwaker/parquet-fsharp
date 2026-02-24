@@ -10,6 +10,10 @@ type internal DefaultEnumConverter private () =
             :> Expression
         Serializer.wrapAs enumInfo.Type valueSerializer unwrapValue
 
+    // TODO: It's probably not worth the performance cost of wrapping everything
+    // as an option type to get better exception info! Applies to other wrapped
+    // types as well.
+
     let createDeserializer sourceSchema (enumInfo: EnumInfo) settings =
         let valueOptionDeserializer =
             Deserializer.resolve sourceSchema enumInfo.ValueOptionInfo.Type settings

@@ -118,9 +118,9 @@ module internal Serializer =
             // so probably will want to make the exception more generic to
             // avoid confusion if there is a converter registered to support the
             // specified type.
-            failwith <|
+            raise <| SerializationException(
                 "could not find converter to serialize type"
-                + $" '{sourceType.FullName}'")
+                + $" '{sourceType.FullName}'"))
 
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -248,9 +248,9 @@ module internal Deserializer =
             // so probably will want to make the exception more generic to
             // avoid confusion if there is a converter registered to support the
             // specified type.
-            failwith <|
+            raise <| SerializationException(
                 "could not find converter to deserialize from schema"
-                + $" '{sourceSchema}' to type '{targetType.FullName}'")
+                + $" '{sourceSchema}' to type '{targetType.FullName}'"))
 
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]

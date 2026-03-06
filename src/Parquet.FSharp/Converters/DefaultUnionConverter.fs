@@ -5,6 +5,9 @@ open System.Linq.Expressions
 // TODO: Should we have separate converters for the different union types? Seems
 // like they are fairly independent, particularly as common functionality lives in
 // the {UnionInfo} type(s).
+
+// TODO: Should single-field union cases be inlined?
+
 type internal DefaultUnionConverter private () =
     let createEnumUnionSerializer (unionInfo: UnionInfo) settings =
         let dotnetType = unionInfo.Type

@@ -70,11 +70,14 @@ type internal ValueSettings = {
     UnionCaseTypeFieldName: string }
 
 type internal IFieldSettingsPolicy =
+    // TODO: Maybe these should be functions?
+    // TODO: Should this be PropertyInfo instead? Consider unions carefully!
     abstract member RecordType : Type
     abstract member FieldName : string
     abstract member ApplyFieldSettings : fieldSettings:FieldSettings -> FieldSettings
 
 type internal IValueSettingsPolicy =
+    // TODO: Maybe these should be functions?
     abstract member ValueType : Type
     abstract member ApplyValueSettings : valueSettings:ValueSettings -> ValueSettings
 

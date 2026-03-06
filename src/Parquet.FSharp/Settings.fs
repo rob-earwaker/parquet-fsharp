@@ -102,8 +102,58 @@ module internal Settings =
         let fieldPolicies = fieldPolicy :: settings.FieldPolicies
         { settings with FieldPolicies = fieldPolicies }
 
-    //let resolveValueSettings ...
-    //let resolveFieldSettings ...
+    let resolveForValue (valueType: Type) (settings: Settings) =
+        let attributes =
+            valueType.GetCustomAttributes<ParquetValueAttribute>(``inherit`` = true)
+            |> List.ofSeq
+        let valuePolicies =
+            settings.ValuePolicies
+            |> List.filter (fun policy -> policy.ValueType = valueType)
+        // Start with the default settings.
+        ValueSettings.Default
+        // Apply attributes first to allow settings to be overridden at the
+        // serialization call-site. This ensures that serialization of types
+        // defined in third-party assemblies can be customized regardless of
+        // whether they have attributes.
+        // TODO: Does the order matter here? Easier to read with foldBack, so if
+        // order does matter then maybe best to reverse above.
+        |> List.foldBack
+            (fun (attribute: ParquetValueAttribute) -> attribute.ApplyValueSettings)
+            attributes
+        // Apply any configured policies. We want policies to apply in the order
+        // that they were added. Since policies are prepended when added, we
+        // apply them in reverse order.
+        |> List.foldBack
+            (fun (policy: IValueSettingsPolicy) -> policy.ApplyValueSettings)
+            valuePolicies
+
+    let resolveForField (recordType: Type) fieldName (settings: Settings) =
+        let field = recordType.GetProperty(fieldName)
+        let attributes =
+            field.GetCustomAttributes<ParquetFieldAttribute>(``inherit`` = true)
+            |> List.ofSeq
+        let fieldPolicies =
+            settings.FieldPolicies
+            |> List.filter (fun policy ->
+                policy.RecordType = recordType
+                && policy.FieldName = fieldName)
+        // Start with the default settings.
+        FieldSettings.Default
+        // Apply attributes first to allow settings to be overridden at the
+        // serialization call-site. This ensures that serialization of types
+        // defined in third-party assemblies can be customized regardless of
+        // whether they have attributes.
+        // TODO: Does the order matter here? Easier to read with foldBack, so if
+        // order does matter then maybe best to reverse above.
+        |> List.foldBack
+            (fun (attribute: ParquetFieldAttribute) -> attribute.ApplyFieldSettings)
+            attributes
+        // Apply any configured policies. We want policies to apply in the order
+        // that they were added. Since policies are prepended when added, we
+        // apply them in reverse order.
+        |> List.foldBack
+            (fun (policy: IFieldSettingsPolicy) -> policy.ApplyFieldSettings)
+            fieldPolicies
 
 [<AttributeUsage(AttributeTargets.Class ||| AttributeTargets.Struct)>]
 type internal ParquetValueAttribute() =

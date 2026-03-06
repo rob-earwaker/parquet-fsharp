@@ -27,6 +27,7 @@
     <Compile Include="Expression.fs" />
     <Compile Include="TypeInfo.fs" />
     <Compile Include="TypeDefinitions.fs" />
+    <Compile Include="Settings.fs" />
     <Compile Include="Converter.fs" />
     <Compile Include="Converters\DefaultBoolConverter.fs" />
     <Compile Include="Converters\DefaultInt8Converter.fs" />
@@ -54,7 +55,6 @@
     <Compile Include="Converters\DefaultUnionConverter.fs" />
     <Compile Include="Converters\DefaultOptionConverter.fs" />
     <Compile Include="Converters\DefaultNullableConverter.fs" />
-    <Compile Include="Settings.fs" />
     <Compile Include="Shredder.fs" />
     <Compile Include="Assembler.fs" />
     <Compile Include="ParquetSerializer.fs" />

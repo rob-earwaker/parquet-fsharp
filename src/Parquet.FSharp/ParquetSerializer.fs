@@ -6,10 +6,46 @@ open System.IO
 // TODO: Support for various serializer options in Parquet.Net.
 
 type ParquetSerializer =
+    static member private DefaultSettings = {
+        Settings.ValueConverters = [
+            DefaultBoolConverter.Instance
+            DefaultInt8Converter.Instance
+            DefaultInt16Converter.Instance
+            DefaultInt32Converter.Instance
+            DefaultInt64Converter.Instance
+            DefaultUInt8Converter.Instance
+            DefaultUInt16Converter.Instance
+            DefaultUInt32Converter.Instance
+            DefaultUInt64Converter.Instance
+            DefaultFloat32Converter.Instance
+            DefaultFloat64Converter.Instance
+            DefaultDecimalConverter.Instance
+            DefaultGuidConverter.Instance
+            DefaultEnumConverter.Instance
+            DefaultTimeSpanConverter.Instance
+            DefaultDateTimeConverter.Instance
+            DefaultDateTimeOffsetConverter.Instance
+            DefaultStringConverter.Instance
+            // This must come before the generic array type since byte arrays
+            // are supported as a primitive type in Parquet and are therefore
+            // handled as atomic values rather than lists.
+            DefaultByteArrayConverter.Instance
+            DefaultListConverter.Instance
+            DefaultArray1dConverter.Instance
+            DefaultResizeArrayConverter.Instance
+            DefaultRecordConverter.Instance
+            // This must come before the generic union type since option types
+            // are handled in a special way.
+            DefaultOptionConverter.Instance
+            DefaultNullableConverter.Instance
+            DefaultUnionConverter.Instance ]
+        Settings.ValuePolicies = []
+        Settings.FieldPolicies = [] }
+
     /// Asynchronously serialize a sequence of records to a stream.
     static member AsyncSerialize<'Record>(records: 'Record seq, stream: Stream) =
         async {
-            let settings = Settings.Default
+            let settings = ParquetSerializer.DefaultSettings
             let shredder = Shredder<'Record>(settings)
             let parquetNetSchema = RootSchema.toParquetNet shredder.Schema
             let! cancellationToken = Async.CancellationToken
@@ -47,7 +83,7 @@ type ParquetSerializer =
     /// Asynchronously deserialize an array of records from a stream.
     static member AsyncDeserialize<'Record>(stream: Stream) =
         async {
-            let settings = Settings.Default
+            let settings = ParquetSerializer.DefaultSettings
             let! cancellationToken = Async.CancellationToken
             use! fileReader =
                 ParquetReader.CreateAsync(

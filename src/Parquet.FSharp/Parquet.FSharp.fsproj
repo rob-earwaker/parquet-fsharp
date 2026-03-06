@@ -54,6 +54,8 @@
     <Compile Include="Converters\DefaultUnionConverter.fs" />
     <Compile Include="Converters\DefaultOptionConverter.fs" />
     <Compile Include="Converters\DefaultNullableConverter.fs" />
+    <Compile Include="Settings.fs" />
+    <Compile Include="Attributes.fs" />
     <Compile Include="Shredder.fs" />
     <Compile Include="Assembler.fs" />
     <Compile Include="ParquetSerializer.fs" />

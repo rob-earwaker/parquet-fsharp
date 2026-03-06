@@ -2,20 +2,20 @@ namespace rec Parquet.FSharp
 
 open System
 open System.Linq.Expressions
+open System.Reflection
 
 // TODO: Attribute ideas:
 //   - ParquetAttribute (base class)
 //
-//   - ParquetField(name: string, required: bool, optional: bool, allowNulls: bool)
+//   - ParquetField(name: string, required: bool, optional: bool, allowNullValues: bool)
 //   - ParquetDecimalField(<inherited>, scale: int, precision: int)
 //   - ParquetDateTimeField(<inherited>, isAdjustedToUtc: bool, unit: <enum TimeUnit>)
 //   - ParquetDateTimeOffsetField(<inherited>, unit: <enum TimeUnit>)
 //   - ParquetUnionField(<inherited>, enum: bool, caseTypeFieldName: string)
 
+//   - ParquetType(required: bool, optional: bool, allowNullValues: bool)
 //   - ParquetUnion(caseTypeFieldName: string)
 //   - ParquetUnionCase(typeName: string, dataFieldName: string)
-//   - ParquetRequired()
-//   - ParquetOptional(allowNulls: bool)
 
 // TODO: Types supported by Parquet.Net:
 
@@ -49,7 +49,30 @@ type SerializationException(message) =
     inherit Exception(message)
 
 type internal Settings = {
-    ValueConverters: IValueConverter[] }
+    ValueConverters: IValueConverter list
+    ValueSettingOverrides: (Type * (ValueSettings -> ValueSettings)) list
+    FieldSettingOverrides: (PropertyInfo * (FieldSettings -> FieldSettings)) list }
+
+type internal FieldSettings = {
+    NameOverride: string option
+    ValueSettings: ValueSettings }
+
+type internal ValueSettings = {
+    ForceOptional: bool
+    ForceRequired: bool
+    AllowNullValues: bool
+    DecimalScale: int
+    DecimalPrecision: int
+    UseLocalDateTime: bool
+    IgnoreDateTimeKind: bool
+    TimeUnit: TimeUnit
+    UnionCaseTypeFieldName: string }
+
+type internal IFieldSettingsModifier =
+    abstract member ModifyFieldSettings : fieldSettings:FieldSettings -> FieldSettings
+
+type internal IValueSettingsModifier =
+    abstract member ModifyValueSettings : valueSettings:ValueSettings -> ValueSettings
 
 type internal IValueConverter =
     abstract member TryCreateSerializer

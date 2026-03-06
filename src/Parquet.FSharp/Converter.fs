@@ -112,7 +112,7 @@ module internal Serializer =
 
     let resolve (sourceType: Type) (settings: Settings) =
         settings.ValueConverters
-        |> Array.tryPick _.TryCreateSerializer(sourceType, settings)
+        |> List.tryPick _.TryCreateSerializer(sourceType, settings)
         |> Option.defaultWith (fun () ->
             // TODO: This will likely end up depending on attributes as well,
             // so probably will want to make the exception more generic to
@@ -242,7 +242,7 @@ module internal Deserializer =
 
     let resolve sourceSchema targetType (settings: Settings) =
         settings.ValueConverters
-        |> Array.tryPick _.TryCreateDeserializer(sourceSchema, targetType, settings)
+        |> List.tryPick _.TryCreateDeserializer(sourceSchema, targetType, settings)
         |> Option.defaultWith (fun () ->
             // TODO: This will likely end up depending on attributes as well,
             // so probably will want to make the exception more generic to

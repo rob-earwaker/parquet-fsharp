@@ -50,8 +50,8 @@ type SerializationException(message) =
 
 type internal Settings = {
     ValueConverters: IValueConverter list
-    ValueSettingOverrides: (Type * (ValueSettings -> ValueSettings)) list
-    FieldSettingOverrides: (PropertyInfo * (FieldSettings -> FieldSettings)) list }
+    ValuePolicies: IValueSettingsPolicy list
+    FieldPolicies: IFieldSettingsPolicy list }
 
 type internal FieldSettings = {
     NameOverride: string option
@@ -65,14 +65,18 @@ type internal ValueSettings = {
     DecimalPrecision: int
     UseLocalDateTime: bool
     IgnoreDateTimeKind: bool
-    TimeUnit: TimeUnit
+    DateTimeUnit: TimeUnit
+    // TODO: Is this even necessary?
     UnionCaseTypeFieldName: string }
 
-type internal IFieldSettingsModifier =
-    abstract member ModifyFieldSettings : fieldSettings:FieldSettings -> FieldSettings
+type internal IFieldSettingsPolicy =
+    abstract member RecordType : Type
+    abstract member FieldName : string
+    abstract member ApplyFieldSettings : fieldSettings:FieldSettings -> FieldSettings
 
-type internal IValueSettingsModifier =
-    abstract member ModifyValueSettings : valueSettings:ValueSettings -> ValueSettings
+type internal IValueSettingsPolicy =
+    abstract member ValueType : Type
+    abstract member ApplyValueSettings : valueSettings:ValueSettings -> ValueSettings
 
 type internal IValueConverter =
     abstract member TryCreateSerializer

@@ -79,7 +79,7 @@ type internal IFieldSettingsPolicy =
     abstract member ApplyFieldSettings : fieldSettings:FieldSettings -> FieldSettings
 
 type internal IValueSettingsPolicy =
-    // TODO: Maybe these should be functions?
+    // TODO: Maybe this should be a function?
     abstract member ValueType : Type
     abstract member ApplyValueSettings : valueSettings:ValueSettings -> ValueSettings
 

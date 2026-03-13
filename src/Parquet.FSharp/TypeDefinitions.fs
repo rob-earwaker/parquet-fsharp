@@ -67,7 +67,9 @@ type internal ValueSettings = {
     IgnoreDateTimeKind: bool
     DateTimeUnit: TimeUnit
     // TODO: Is this even necessary?
-    UnionCaseTypeFieldName: string }
+    UnionCaseTypeFieldName: string
+    AlwaysIncludeUnionCaseTypeField: bool
+    AlwaysIncludeNestedUnionCaseRecord: bool }
 
 type internal IFieldSettingsPolicy =
     // TODO: Maybe these should be functions?

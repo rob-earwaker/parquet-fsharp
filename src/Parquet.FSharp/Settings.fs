@@ -39,7 +39,9 @@ module internal ValueSettings =
         ValueSettings.UseLocalDateTime = false
         ValueSettings.IgnoreDateTimeKind = false
         ValueSettings.DateTimeUnit = TimeUnit.Microseconds
-        ValueSettings.UnionCaseTypeFieldName = "Type" }
+        ValueSettings.UnionCaseTypeFieldName = "Type"
+        ValueSettings.AlwaysIncludeUnionCaseTypeField = false
+        ValueSettings.AlwaysIncludeNestedUnionCaseRecord = false }
 
     let forceOptional value (settings: ValueSettings) =
         { settings with ForceOptional = value }

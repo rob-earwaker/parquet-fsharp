@@ -1,16 +1,16 @@
 namespace Parquet.FSharp
 
 type internal DefaultNullableConverter private () =
-    let tryCreateSerializer (nullableInfo: NullableInfo) settings =
-        let valueSerializer = Serializer.resolve nullableInfo.ValueType settings
+    let tryCreateSerializer (optionInfo: OptionInfo) settings =
+        let valueSerializer = Serializer.resolve optionInfo.ValueType settings
         // Parquet doesn't support nested optional values, so if the value is
         // optional then we can't serialize it.
         if valueSerializer.IsOptional
         then Option.None
         else
-            let dotnetType = nullableInfo.Type
-            let isNull = nullableInfo.IsNull
-            let getValue = nullableInfo.GetValue
+            let dotnetType = optionInfo.Type
+            let isNull = optionInfo.IsNull
+            let getValue = optionInfo.GetValue
             Serializer.optional dotnetType valueSerializer isNull getValue
             |> Option.Some
 
@@ -20,31 +20,31 @@ type internal DefaultNullableConverter private () =
     // deserialize as {Nullable} values so that they can be assigned to the
     // target field.
     let createRequiredDeserializer
-        sourceSchema (nullableInfo: NullableInfo) settings =
-        let wrapValue = nullableInfo.CreateFromValue
+        sourceSchema (optionInfo: OptionInfo) settings =
+        let wrapValue = optionInfo.CreateFromValue
         // Resolve the value deserializer. The value schema is just the same as
         // the source schema since we're dealing with a required field value.
         let valueDeserializer =
-            Deserializer.resolve sourceSchema nullableInfo.ValueType settings
-        Deserializer.wrapAs nullableInfo.Type valueDeserializer wrapValue
+            Deserializer.resolve sourceSchema optionInfo.ValueType settings
+        Deserializer.wrapAs optionInfo.Type valueDeserializer wrapValue
 
     // Create a deserializer for an optional field value. In this situation we
     // need to wrap the value deserializer in an {OptionalDeserializer} to
     // handle NULL values. When we read a NULL value we create a NULL valued
     // {Nullable}. When we read a NOTNULL value we wrap it as a {Nullable}.
     let createOptionalDeserializer
-        (sourceSchema: ValueSchema) (nullableInfo: NullableInfo) settings =
+        (sourceSchema: ValueSchema) (optionInfo: OptionInfo) settings =
         // Resolve the value deserializer. Since we're dealing with an optional
         // field value and we're going to deal with this optionality by wrapping
         // the value deserializer in an {OptionalDeserializer}, we want to pass
         // down an equivalent non-optional value schema.
         let valueSchema = sourceSchema.MakeRequired()
         let valueDeserializer =
-            Deserializer.resolve valueSchema nullableInfo.ValueType settings
+            Deserializer.resolve valueSchema optionInfo.ValueType settings
         // Build the {OptionalDeserializer} wrapper.
-        let dotnetType = nullableInfo.Type
-        let createNull = nullableInfo.CreateNull
-        let createFromValue = nullableInfo.CreateFromValue
+        let dotnetType = optionInfo.Type
+        let createNull = optionInfo.CreateNull
+        let createFromValue = optionInfo.CreateFromValue
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
@@ -53,16 +53,16 @@ type internal DefaultNullableConverter private () =
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =
             match sourceType with
-            | DotnetType.Nullable nullableInfo ->
-                tryCreateSerializer nullableInfo settings
+            | DotnetType.Nullable optionInfo ->
+                tryCreateSerializer optionInfo settings
             | _ -> Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             match targetType with
-            | DotnetType.Nullable nullableInfo ->
+            | DotnetType.Nullable optionInfo ->
                 let deserializer =
                     if sourceSchema.IsOptional
-                    then createOptionalDeserializer sourceSchema nullableInfo settings
-                    else createRequiredDeserializer sourceSchema nullableInfo settings
+                    then createOptionalDeserializer sourceSchema optionInfo settings
+                    else createRequiredDeserializer sourceSchema optionInfo settings
                 Option.Some deserializer
             | _ -> Option.None

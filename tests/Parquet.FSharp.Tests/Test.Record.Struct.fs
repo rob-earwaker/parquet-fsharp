@@ -203,6 +203,37 @@ module ``serialize record struct with multiple fields`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
+module ``serialize record struct with mutable field`` =
+    type [<Struct>] Record = { mutable Field2: int }
+    type Input = { Field1: Record }
+    type Output = { Field1: Record }
+
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isRequired
+                Assert.Field.Type.hasNoValue
+                Assert.Field.LogicalType.hasNoValue
+                Assert.Field.ConvertedType.hasNoValue
+                Assert.Field.child [
+                    Assert.Field.nameEquals "Field2"
+                    Assert.Field.isRequired
+                    Assert.Field.Type.isInt32
+                    Assert.Field.LogicalType.isInteger 32 true
+                    Assert.Field.ConvertedType.isInt32
+                    Assert.Field.hasNoChildren ] ] ]
+
+    [<Fact>]
+    let ``value`` () =
+        let value = { Record.Field2 = 1 }
+        let inputRecords = [| { Input.Field1 = value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+
 module ``deserialize record struct with atomic field from required record`` =
     type [<Struct>] Record = { Field2: int }
     type Input = { Field1: Record }

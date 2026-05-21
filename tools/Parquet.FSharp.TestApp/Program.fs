@@ -31,9 +31,10 @@ type Message = {
     Source: string
     Level: float
     Alternative: Alternative
-(*    FileType: FileType*)
+    FileType: FileType
     Flag: Nullable<bool>
     Count: int option
+    Index: int voption
     Samples: int list
     Gps: Gps
     Values: Data[]
@@ -95,6 +96,11 @@ module Random =
         then Option.None
         else Option.Some (int ())
 
+    let intValueOption () =
+        if Random.NextDouble() >= 0.75
+        then ValueOption.None
+        else ValueOption.Some (int ())
+
     let array count (createItem: unit -> 'Item) =
         Array.init count (fun _ -> createItem ())
 
@@ -135,9 +141,10 @@ module Random =
           Message.Source = string ()
           Message.Level = float ()
           Message.Alternative = alternative ()
-         (* Message.FileType = fileType ()*)
+          Message.FileType = fileType ()
           Message.Flag = nullableBool ()
           Message.Count = intOption ()
+          Message.Index = intValueOption ()
           Message.Samples = list 5 int
           Message.Gps = gps ()
           Message.Values = array 3 data
@@ -145,7 +152,7 @@ module Random =
 
 [<EntryPoint>]
 let main _ =
-    let records = Array.init 10 (fun _ -> Random.message ())
+    let records = Array.init 100 (fun _ -> Random.message ())
     let filePath = @"..\..\..\..\..\data\data.parquet"
     // Write
     use writeStream = new MemoryStream()

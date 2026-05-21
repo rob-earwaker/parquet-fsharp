@@ -34,10 +34,11 @@ type ParquetSerializer =
             DefaultArray1dConverter.Instance
             DefaultResizeArrayConverter.Instance
             DefaultRecordConverter.Instance
-            // This must come before the generic union type since option types
-            // are handled in a special way.
             DefaultOptionConverter.Instance
+            DefaultValueOptionConverter.Instance
             DefaultNullableConverter.Instance
+            // This must come after the converters for more union types that are
+            // handled in a special way - options, value options and lists.
             DefaultUnionConverter.Instance ]
         Settings.ValuePolicies = []
         Settings.FieldPolicies = [] }

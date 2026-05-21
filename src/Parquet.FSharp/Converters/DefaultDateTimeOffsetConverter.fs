@@ -7,7 +7,7 @@ open System.Linq.Expressions
 type internal DefaultDateTimeOffsetConverter private () =
     let dotnetType = typeof<DateTimeOffset>
     let utcDateTimeProperty = typeof<DateTimeOffset>.GetProperty("UtcDateTime")
-    let dateTimeOptionInfo = OptionInfo.ofTypeCached typeof<DateTime option>
+    let dateTimeOptionInfo = OptionalInfo.ofOptionTypeCached typeof<DateTime option>
     let dateTimeConstructor = typeof<DateTimeOffset>.GetConstructor([| typeof<DateTime> |])
 
     let createSerializer settings =

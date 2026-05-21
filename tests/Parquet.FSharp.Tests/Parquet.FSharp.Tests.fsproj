@@ -46,6 +46,7 @@
     <Compile Include="Test.Record.fs" />
     <Compile Include="Test.Record.Struct.fs" />
     <Compile Include="Test.Option.fs" />
+    <Compile Include="Test.ValueOption.fs" />
     <Compile Include="Test.Nullable.fs" />
     <Compile Include="Test.Union.Enum.fs" />
     <Compile Include="Test.Union.SingleCase.fs" />
@@ -68,7 +69,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Update="FSharp.Core" Version="10.1.203" />
+    <PackageReference Update="FSharp.Core" Version="10.1.300" />
   </ItemGroup>
 
 </Project>

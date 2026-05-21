@@ -32,12 +32,13 @@ type SerializationException(message) =
 //     - string
 //     - Guid
 //     - byte[]
+//     - Enums
+//     - TimeSpan
 
 //   Not implemented:
 //     - BigInteger
 //     - DateOnly, TimeOnly
-//     - TimeSpan, Interval
-//     - Enums?
+//     - Interval
 
 // TODO: Replace 'failwith' with 'SerializationException'.
 

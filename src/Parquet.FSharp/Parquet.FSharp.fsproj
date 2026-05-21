@@ -52,6 +52,7 @@
     <Compile Include="Converters\DefaultRecordConverter.fs" />
     <Compile Include="Converters\DefaultUnionConverter.fs" />
     <Compile Include="Converters\DefaultOptionConverter.fs" />
+    <Compile Include="Converters\DefaultValueOptionConverter.fs" />
     <Compile Include="Converters\DefaultNullableConverter.fs" />
     <Compile Include="Shredder.fs" />
     <Compile Include="Assembler.fs" />

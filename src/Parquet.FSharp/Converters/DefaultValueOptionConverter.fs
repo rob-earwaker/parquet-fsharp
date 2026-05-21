@@ -1,10 +1,6 @@
 namespace Parquet.FSharp
 
-// TODO: This is almost identical to the ValueOption and Nullable converters, so
-// worth considering extracting the common functionality unless this changes
-// with the settings implementation.
-
-type internal DefaultOptionConverter private () =
+type internal DefaultValueOptionConverter private () =
     let tryCreateSerializer (optionalInfo: OptionalInfo) settings =
         let valueSerializer = Serializer.resolve optionalInfo.ValueType settings
         // Parquet doesn't support nested optional values, so if the value is
@@ -21,8 +17,8 @@ type internal DefaultOptionConverter private () =
     // Create a deserializer for a required field value. There's no need to wrap
     // the value deserializer in an {OptionalDeserializer} in this case since
     // there will never be any NULL values, but we do need to wrap any values we
-    // deserialize in {Option.Some} cases so that they can be assigned to the
-    // target option field.
+    // deserialize in {ValueOption.Some} cases so that they can be assigned to
+    // the target field.
     let createRequiredDeserializer
         sourceSchema (optionalInfo: OptionalInfo) settings =
         let wrapValue = optionalInfo.CreateFromValue
@@ -35,8 +31,8 @@ type internal DefaultOptionConverter private () =
     // Create a deserializer for an optional field value. In this situation we
     // need to wrap the value deserializer in an {OptionalDeserializer} to
     // handle NULL values. When we read a NULL value we convert it to the
-    // {Option.None} case. When we read a NOTNULL value we wrap it in the
-    // {Option.Some} case.
+    // {ValueOption.None} case. When we read a NOTNULL value we wrap it in the
+    // {ValueOption.Some} case.
     let createOptionalDeserializer
         (sourceSchema: ValueSchema) (optionalInfo: OptionalInfo) settings =
         // Resolve the value deserializer. Since we're dealing with an optional
@@ -53,18 +49,18 @@ type internal DefaultOptionConverter private () =
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
-    static member Instance = DefaultOptionConverter()
+    static member Instance = DefaultValueOptionConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =
             match sourceType with
-            | DotnetType.Option optionalInfo ->
+            | DotnetType.ValueOption optionalInfo ->
                 tryCreateSerializer optionalInfo settings
             | _ -> Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             match targetType with
-            | DotnetType.Option optionalInfo ->
+            | DotnetType.ValueOption optionalInfo ->
                 let deserializer =
                     if sourceSchema.IsOptional
                     then createOptionalDeserializer sourceSchema optionalInfo settings

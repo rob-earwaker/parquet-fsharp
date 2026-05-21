@@ -224,6 +224,31 @@ module internal OptionalInfo =
           OptionalInfo.CreateNull = createNull
           OptionalInfo.CreateFromValue = createFromValue }
 
+    let private ofValueOptionType (valueOptionType: Type) =
+        let valueType = valueOptionType.GetGenericArguments()[0]
+        let isNull =
+            let isNoneProperty = valueOptionType.GetProperty("IsNone")
+            fun (valueOption: Expression) ->
+                Expression.Property(valueOption, isNoneProperty)
+                :> Expression
+        let getValue =
+            let valueProperty = valueOptionType.GetProperty("Value")
+            fun valueOption ->
+                Expression.Property(valueOption, valueProperty)
+                :> Expression
+        let createNull = Expression.Property(null, valueOptionType, "None")
+        let createFromValue =
+            let createSomeMethod = valueOptionType.GetMethod("Some")
+            fun (value: Expression) ->
+                Expression.Call(createSomeMethod, value)
+                :> Expression
+        { OptionalInfo.Type = valueOptionType
+          OptionalInfo.ValueType = valueType
+          OptionalInfo.IsNull = isNull
+          OptionalInfo.GetValue = getValue
+          OptionalInfo.CreateNull = createNull
+          OptionalInfo.CreateFromValue = createFromValue }
+
     let private ofNullableType (nullableType: Type) =
         let valueType = Nullable.GetUnderlyingType(nullableType)
         let isNull =
@@ -251,6 +276,9 @@ module internal OptionalInfo =
 
     let ofOptionTypeCached optionType =
         Cache.GetOrCreate optionType ofOptionType
+
+    let ofValueOptionTypeCached valueOptionType =
+        Cache.GetOrCreate valueOptionType ofValueOptionType
 
     let ofNullableTypeCached nullableType =
         Cache.GetOrCreate nullableType ofNullableType
@@ -312,6 +340,11 @@ module internal DotnetType =
     let (|Option|_|) (dotnetType: Type) =
         if DotnetType.isGenericType<option<_>> dotnetType
         then Option.Some (OptionalInfo.ofOptionTypeCached dotnetType)
+        else Option.None
+
+    let (|ValueOption|_|) (dotnetType: Type) =
+        if DotnetType.isGenericType<voption<_>> dotnetType
+        then Option.Some (OptionalInfo.ofValueOptionTypeCached dotnetType)
         else Option.None
 
     let (|Nullable|_|) (dotnetType: Type) =

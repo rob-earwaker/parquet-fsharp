@@ -193,9 +193,9 @@ One of the advantages of Parquet being a columnar data format is that it's possi
 
 ### Optional Types
 
-Applies to: `'Value option`, `Nullable<'Value>`
+Applies to: `'Value option`, `'Value voption`, `Nullable<'Value>`
 
-Parquet supports both optional and required values. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types `'Value option`, or in some cases the `Nullable<'Value>` type. This makes optional values much more explicit and discoverable.
+Parquet supports both optional and required values. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types `'Value option` and `'Value voption`, or in some cases the `Nullable<'Value>` type. This makes optional values much more explicit and discoverable.
 
 Due to the above, the default approach for serialization of other supported types is to treat the values as required, even if they are implicitly nullable through being a reference type. This helps prevent null values from appearing when they aren't expected. Values can instead be serialized as optional values by wrapping them in one of the supported optional types.
 
@@ -318,7 +318,6 @@ The following types are not currently supported but will likely be added in the 
 - `BigInteger` (from **System.Numerics**)
 - Tuples
 - `'Element seq`
-- `'Value voption`
 - `Map<'Key, 'Value>`
 - `Dictionary<'Key, 'Value>`
 - Classes

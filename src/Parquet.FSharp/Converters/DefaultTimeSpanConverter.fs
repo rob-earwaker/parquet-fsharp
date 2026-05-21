@@ -6,7 +6,7 @@ open System.Linq.Expressions
 type internal DefaultTimeSpanConverter private () =
     let dotnetType = typeof<TimeSpan>
     let ticksProperty = typeof<TimeSpan>.GetProperty("Ticks")
-    let microsecondsOptionInfo = OptionInfo.ofOptionTypeCached typeof<int64 option>
+    let microsecondsOptionInfo = OptionalInfo.ofOptionTypeCached typeof<int64 option>
     let ticksConstructor = typeof<TimeSpan>.GetConstructor([| typeof<int64> |])
     let ticksPerMicrosecond = Expression.Constant(10L)
 

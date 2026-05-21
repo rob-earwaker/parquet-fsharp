@@ -9,7 +9,7 @@ open System.Reflection
 type internal EnumInfo = {
     Type: Type
     ValueType: Type
-    ValueOptionInfo: OptionInfo }
+    ValueOptionInfo: OptionalInfo }
 
 type internal FieldInfo = {
     Name: string
@@ -39,7 +39,7 @@ type internal UnionCaseInfo = {
     Fields: FieldInfo[]
     CreateFromFieldValues: Expression[] -> Expression }
 
-type internal OptionInfo = {
+type internal OptionalInfo = {
     Type: Type
     ValueType: Type
     IsNull: Expression -> Expression
@@ -74,7 +74,7 @@ module internal EnumInfo =
     let private ofType (enumType: Type) =
         let valueType = Enum.GetUnderlyingType(enumType)
         let valueOptionType = typedefof<option<_>>.MakeGenericType(valueType)
-        let valueOptionInfo = OptionInfo.ofOptionTypeCached valueOptionType
+        let valueOptionInfo = OptionalInfo.ofOptionTypeCached valueOptionType
         { EnumInfo.Type = enumType
           EnumInfo.ValueType = valueType
           EnumInfo.ValueOptionInfo = valueOptionInfo }
@@ -182,8 +182,8 @@ module internal UnionInfo =
     let ofTypeCached unionType =
         Cache.GetOrCreate unionType ofType
 
-module internal OptionInfo =
-    let private Cache = TypeInfoCache<OptionInfo>()
+module internal OptionalInfo =
+    let private Cache = TypeInfoCache<OptionalInfo>()
 
     let private OptionModuleType =
         Assembly.Load("FSharp.Core").GetTypes()
@@ -217,12 +217,12 @@ module internal OptionInfo =
             fun (value: Expression) ->
                 Expression.Call(constructorMethod, value)
                 :> Expression
-        { OptionInfo.Type = optionType
-          OptionInfo.ValueType = valueType
-          OptionInfo.IsNull = isNull
-          OptionInfo.GetValue = getValue
-          OptionInfo.CreateNull = createNull
-          OptionInfo.CreateFromValue = createFromValue }
+        { OptionalInfo.Type = optionType
+          OptionalInfo.ValueType = valueType
+          OptionalInfo.IsNull = isNull
+          OptionalInfo.GetValue = getValue
+          OptionalInfo.CreateNull = createNull
+          OptionalInfo.CreateFromValue = createFromValue }
 
     let private ofNullableType (nullableType: Type) =
         let valueType = Nullable.GetUnderlyingType(nullableType)
@@ -242,12 +242,12 @@ module internal OptionInfo =
             fun (value: Expression) ->
                 Expression.New(constructor, value)
                 :> Expression
-        { OptionInfo.Type = nullableType
-          OptionInfo.ValueType = valueType
-          OptionInfo.IsNull = isNull
-          OptionInfo.GetValue = getValue
-          OptionInfo.CreateNull = createNull
-          OptionInfo.CreateFromValue = createFromValue }
+        { OptionalInfo.Type = nullableType
+          OptionalInfo.ValueType = valueType
+          OptionalInfo.IsNull = isNull
+          OptionalInfo.GetValue = getValue
+          OptionalInfo.CreateNull = createNull
+          OptionalInfo.CreateFromValue = createFromValue }
 
     let ofOptionTypeCached optionType =
         Cache.GetOrCreate optionType ofOptionType
@@ -311,12 +311,12 @@ module internal DotnetType =
 
     let (|Option|_|) (dotnetType: Type) =
         if DotnetType.isGenericType<option<_>> dotnetType
-        then Option.Some (OptionInfo.ofOptionTypeCached dotnetType)
+        then Option.Some (OptionalInfo.ofOptionTypeCached dotnetType)
         else Option.None
 
     let (|Nullable|_|) (dotnetType: Type) =
         if DotnetType.isGenericType<Nullable<_>> dotnetType
-        then Option.Some (OptionInfo.ofNullableTypeCached dotnetType)
+        then Option.Some (OptionalInfo.ofNullableTypeCached dotnetType)
         else Option.None
 
     let (|Array1d|_|) (dotnetType: Type) =

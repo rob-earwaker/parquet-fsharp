@@ -12,6 +12,7 @@ type internal EnumInfo = {
     ValueOptionInfo: OptionalInfo }
 
 type internal FieldInfo = {
+    Field: PropertyInfo
     Name: string
     Type: Type
     GetValue: Expression -> Expression }
@@ -92,7 +93,8 @@ module internal RecordInfo =
                 let getValue (record: Expression) =
                     Expression.Property(record, field)
                     :> Expression
-                { FieldInfo.Name = field.Name
+                { FieldInfo.Field = field
+                  FieldInfo.Name = field.Name
                   FieldInfo.Type = field.PropertyType
                   FieldInfo.GetValue = getValue })
         let createFromFieldValues =
@@ -127,7 +129,8 @@ module internal UnionInfo =
                                 let unionCase = Expression.Convert(union, unionCaseType)
                                 Expression.Property(unionCase, field)
                                 :> Expression
-                        { FieldInfo.Name = field.Name
+                        { FieldInfo.Field = field
+                          FieldInfo.Name = field.Name
                           FieldInfo.Type = field.PropertyType
                           FieldInfo.GetValue = getValue })
                 let createFromFieldValues =

@@ -6,14 +6,14 @@ open System
 type internal RootSchema = {
     Fields: FieldSchema[] }
 
-type internal FieldSchema = {
+type FieldSchema = {
     Name: string
     Value: ValueSchema }
     with
     override this.ToString() =
         $"{this.Name}: {this.Value}"
 
-type internal ValueSchema = {
+type ValueSchema = {
     IsOptional: bool
     Type: ValueTypeSchema }
     with
@@ -27,7 +27,7 @@ type internal ValueSchema = {
         let optionality = if this.IsOptional then "optional" else "required"
         $"{optionality} {string this.Type}"
 
-type internal ValueTypeSchema =
+type ValueTypeSchema =
     // TODO: Maybe these should just capture the Parquet.Net fields?
     | Primitive of PrimitiveTypeSchema
     | DateTime of DateTimeTypeSchema
@@ -41,14 +41,14 @@ type internal ValueTypeSchema =
         | ValueTypeSchema.List list -> string list
         | ValueTypeSchema.Record record -> string record
 
-type internal PrimitiveTypeSchema = {
+type PrimitiveTypeSchema = {
     DataDotnetType: Type }
     with
     override this.ToString() =
         // TODO: Could enumerate all primitive types here to make it nicer.
         this.DataDotnetType.Name.ToLower()
 
-type internal DateTimeTypeSchema = {
+type DateTimeTypeSchema = {
     IsAdjustedToUtc: bool
     Unit: TimeUnit }
     with
@@ -56,7 +56,7 @@ type internal DateTimeTypeSchema = {
         let kind = if this.IsAdjustedToUtc then "utc" else "local"
         $"datetime[{kind}, {this.Unit}]"
 
-type internal TimeUnit =
+type TimeUnit =
     | Milliseconds
     | Microseconds
     | Nanoseconds
@@ -67,13 +67,13 @@ type internal TimeUnit =
         | TimeUnit.Microseconds -> "us"
         | TimeUnit.Nanoseconds -> "ns"
 
-type internal ListTypeSchema = {
+type ListTypeSchema = {
     Element: ValueSchema }
     with
     override this.ToString() =
         $"[ {this.Element} ]"
 
-type internal RecordTypeSchema = {
+type RecordTypeSchema = {
     Fields: FieldSchema[] }
     with
     override this.ToString() =

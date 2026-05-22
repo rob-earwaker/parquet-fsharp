@@ -3,82 +3,42 @@ namespace rec Parquet.FSharp
 open System
 open System.Reflection
 
-type internal DelegateFieldSettingsPolicy(recordType, fieldName, applyFieldSettings) =
-    member val RecordType = recordType with get
-    member val FieldName = fieldName with get
-
-    member this.ApplyFieldSettings(fieldSettings) =
-        applyFieldSettings fieldSettings
-
+type internal DelegateFieldSettingsPolicy(isValidFor, applyFieldSettings) =
     interface IFieldSettingsPolicy with
-        member this.RecordType = this.RecordType
-        member this.FieldName = this.FieldName
-        member this.ApplyFieldSettings(fieldSettings) =
-            this.ApplyFieldSettings(fieldSettings)
+        member this.IsValidFor(field) = isValidFor field
+        member this.ApplyFieldSettings(fieldSettings) = applyFieldSettings fieldSettings
 
-type internal DelegateValueSettingsPolicy(valueType, applyValueSettings) =
-    member val ValueType = valueType with get
-
-    member this.ApplyValueSettings(valueSettings) =
-        applyValueSettings valueSettings
-
+type internal DelegateValueSettingsPolicy(isValidFor, applyValueSettings) =
     interface IValueSettingsPolicy with
-        member this.ValueType = this.ValueType
-        member this.ApplyValueSettings(valueSettings) =
-            this.ApplyValueSettings(valueSettings)
+        member this.IsValidFor(valueType) = isValidFor valueType
+        member this.ApplyValueSettings(valueSettings) = applyValueSettings valueSettings
 
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal ValueSettings =
-    let Default = {
-        ValueSettings.ForceOptional = false
-        ValueSettings.ForceRequired = false
-        ValueSettings.AllowNullValues = false
-        ValueSettings.DecimalScale = 18
-        ValueSettings.DecimalPrecision = 38
-        ValueSettings.UseLocalDateTime = false
-        ValueSettings.IgnoreDateTimeKind = false
-        ValueSettings.DateTimeUnit = TimeUnit.Microseconds
-        ValueSettings.UnionCaseTypeFieldName = "Type"
-        ValueSettings.AlwaysIncludeUnionCaseTypeField = false
-        ValueSettings.AlwaysIncludeNestedUnionCaseRecord = false }
+    let Default = { ValueSettings.Converter = Option.None }
 
-    let forceOptional value (settings: ValueSettings) =
-        { settings with ForceOptional = value }
+    let converterOption converter (settings: ValueSettings) =
+        { settings with Converter = converter }
 
-    let forceRequired value (settings: ValueSettings) =
-        { settings with ForceRequired = value }
-
-    let allowNullValues value (settings: ValueSettings) =
-        { settings with AllowNullValues = value }
-
-    let useLocalDateTime value (settings: ValueSettings) =
-        { settings with UseLocalDateTime = value }
-
-    let ignoreDateTimeKind value (settings: ValueSettings) =
-        { settings with IgnoreDateTimeKind = value }
-
-    let dateTimeUnit value (settings: ValueSettings) =
-        { settings with DateTimeUnit = value }
-
-    let unionCaseTypeFieldName value (settings: ValueSettings) =
-        { settings with UnionCaseTypeFieldName = value }
+    let converter converter (settings: ValueSettings) =
+        converterOption (Option.Some converter) settings
 
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal FieldSettings =
     let Default = {
-        FieldSettings.NameOverride = Option.None
+        FieldSettings.Name = Option.None
         FieldSettings.ValueSettings = ValueSettings.Default }
 
-    let nameOverride value (settings: FieldSettings) =
-        { settings with NameOverride = value }
+    let nameOption name (settings: FieldSettings) =
+        { settings with Name = name }
 
-    let nameOverrideValue value settings =
-        nameOverride (Option.Some value) settings
+    let name name settings =
+        nameOption (Option.Some name) settings
 
-    let valueSettings value (settings: FieldSettings) =
-        { settings with ValueSettings = value }
+    let valueSettings valueSettings (settings: FieldSettings) =
+        { settings with ValueSettings = valueSettings }
 
     let updateValueSettings update (settings: FieldSettings) =
         { settings with ValueSettings = update settings.ValueSettings }
@@ -92,14 +52,16 @@ module internal Settings =
 
     let overrideForValues valueType applyValueSettings (settings: Settings) =
         let valuePolicy =
-            DelegateValueSettingsPolicy(valueType, applyValueSettings)
+            let isValidFor = fun valueType' -> valueType' = valueType
+            DelegateValueSettingsPolicy(isValidFor, applyValueSettings)
             :> IValueSettingsPolicy
         let valuePolicies = valuePolicy :: settings.ValuePolicies
         { settings with ValuePolicies = valuePolicies }
 
-    let overrideForField recordType fieldName applyFieldSettings (settings: Settings) =
+    let overrideForField field applyFieldSettings (settings: Settings) =
         let fieldPolicy =
-            DelegateFieldSettingsPolicy(recordType, fieldName, applyFieldSettings)
+            let isValidFor = fun field' -> field' = field
+            DelegateFieldSettingsPolicy(isValidFor, applyFieldSettings)
             :> IFieldSettingsPolicy
         let fieldPolicies = fieldPolicy :: settings.FieldPolicies
         { settings with FieldPolicies = fieldPolicies }
@@ -110,7 +72,7 @@ module internal Settings =
             |> List.ofSeq
         let valuePolicies =
             settings.ValuePolicies
-            |> List.filter (fun policy -> policy.ValueType = valueType)
+            |> List.filter (fun policy -> policy.IsValidFor(valueType))
         // Start with the default settings.
         ValueSettings.Default
         // Apply attributes first to allow settings to be overridden at the
@@ -129,16 +91,13 @@ module internal Settings =
             (fun (policy: IValueSettingsPolicy) -> policy.ApplyValueSettings)
             valuePolicies
 
-    let resolveForField (recordType: Type) fieldName (settings: Settings) =
-        let field = recordType.GetProperty(fieldName)
+    let resolveForField (field: PropertyInfo) (settings: Settings) =
         let attributes =
             field.GetCustomAttributes<ParquetFieldAttribute>(``inherit`` = true)
             |> List.ofSeq
         let fieldPolicies =
             settings.FieldPolicies
-            |> List.filter (fun policy ->
-                policy.RecordType = recordType
-                && policy.FieldName = fieldName)
+            |> List.filter (fun policy -> policy.IsValidFor(field))
         // Start with the default settings.
         FieldSettings.Default
         // Apply attributes first to allow settings to be overridden at the
@@ -157,56 +116,14 @@ module internal Settings =
             (fun (policy: IFieldSettingsPolicy) -> policy.ApplyFieldSettings)
             fieldPolicies
 
+[<AbstractClass>]
 [<AttributeUsage(AttributeTargets.Class ||| AttributeTargets.Struct)>]
-type internal ParquetValueAttribute() =
+type ParquetValueAttribute() =
     inherit Attribute()
-
-    let mutable optional = Option<bool>.None
-    let mutable required = Option<bool>.None
-    let mutable allowNulls = Option<bool>.None
-
-    member this.Optional
-        with set value =
-            optional <- Option.Some value
-
-    member this.Required
-        with set value =
-            required <- Option.Some value
-
-    member this.AllowNulls
-        with set value =
-            allowNulls <- Option.Some value
-
     abstract member ApplyValueSettings : valueSettings:ValueSettings -> ValueSettings
 
-    default this.ApplyValueSettings(valueSettings) =
-        let forceOptional = optional |> Option.defaultValue valueSettings.ForceOptional
-        let forceRequired = required |> Option.defaultValue valueSettings.ForceRequired
-        let allowNullValues = allowNulls |> Option.defaultValue valueSettings.AllowNullValues
-        valueSettings
-        |> ValueSettings.forceOptional forceOptional
-        |> ValueSettings.forceRequired forceRequired
-        |> ValueSettings.allowNullValues allowNullValues
-
-type internal ParquetUnionAttribute() =
-    inherit ParquetValueAttribute()
-
-    let mutable caseTypeFieldName = Option<string>.None
-
-    member this.CaseTypeFieldName
-        with set value =
-            caseTypeFieldName <- Option.Some value
-
-    override this.ApplyValueSettings(valueSettings) =
-        let valueSettings = base.ApplyValueSettings(valueSettings)
-        let unionCaseTypeFieldName =
-            caseTypeFieldName
-            |> Option.defaultValue valueSettings.UnionCaseTypeFieldName
-        valueSettings
-        |> ValueSettings.unionCaseTypeFieldName unionCaseTypeFieldName
-
 [<AttributeUsage(AttributeTargets.Property)>]
-type internal ParquetFieldAttribute() =
+type ParquetFieldAttribute() =
     inherit ParquetValueAttribute()
 
     let mutable name = Option<string>.None
@@ -215,37 +132,11 @@ type internal ParquetFieldAttribute() =
         with set value =
             name <- Option.Some value
 
-    member this.ApplyFieldSettings(fieldSettings) =
-        let nameOverride = name |> Option.orElse fieldSettings.NameOverride
-        fieldSettings
-        |> FieldSettings.nameOverride nameOverride
-        |> FieldSettings.updateValueSettings this.ApplyValueSettings
-
-type internal ParquetDateTimeFieldAttribute() =
-    inherit ParquetFieldAttribute()
-
-    let mutable local = Option<bool>.None
-    let mutable ignoreKind = Option<bool>.None
-    let mutable unit = Option<TimeUnit>.None
-
-    member this.Local
-        with set value =
-            local <- Option.Some value
-
-    member this.IgnoreKind
-        with set value =
-            ignoreKind <- Option.Some value
-
-    member this.Unit
-        with set value =
-            unit <- Option.Some value
-
     override this.ApplyValueSettings(valueSettings) =
-        let valueSettings = base.ApplyValueSettings(valueSettings)
-        let useLocalDateTime = local |> Option.defaultValue valueSettings.UseLocalDateTime
-        let ignoreDateTimeKind = ignoreKind |> Option.defaultValue valueSettings.IgnoreDateTimeKind
-        let dateTimeUnit = unit |> Option.defaultValue valueSettings.DateTimeUnit
         valueSettings
-        |> ValueSettings.useLocalDateTime useLocalDateTime
-        |> ValueSettings.ignoreDateTimeKind ignoreDateTimeKind
-        |> ValueSettings.dateTimeUnit dateTimeUnit
+
+    member this.ApplyFieldSettings(fieldSettings) =
+        let name = name |> Option.orElse fieldSettings.Name
+        fieldSettings
+        |> FieldSettings.nameOption name
+        |> FieldSettings.updateValueSettings this.ApplyValueSettings

@@ -39,7 +39,7 @@ type ParquetSerializer =
             DefaultNullableConverter.Instance
             // This must come after the converters for more union types that are
             // handled in a special way - options, value options and lists.
-            DefaultUnionConverter.Instance ]
+            DefaultUnionConverter.Default ]
         Settings.ValuePolicies = []
         Settings.FieldPolicies = [] }
 

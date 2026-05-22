@@ -8,7 +8,13 @@ open System.Linq.Expressions
 
 // TODO: Should single-field union cases be inlined?
 
-type internal DefaultUnionConverter private () =
+type internal UnionConverterSettings = {
+    CaseTypeFieldName: string }
+    with
+    static member val Default = {
+        UnionConverterSettings.CaseTypeFieldName = "Type" }
+
+type internal DefaultUnionConverter(converterSettings: UnionConverterSettings) =
     let createEnumUnionSerializer (unionInfo: UnionInfo) settings =
         let dotnetType = unionInfo.Type
         let caseNameSerializer = Serializer.resolve typeof<string> settings
@@ -61,7 +67,7 @@ type internal DefaultUnionConverter private () =
         // there must always be a case name present. We therefore model this
         // as a non-optional string value.
         let typeFieldSerializer =
-            let name = "Type"
+            let name = converterSettings.CaseTypeFieldName
             let valueSerializer = Serializer.resolve typeof<string> settings
             let getValue = unionInfo.GetCaseName
             FieldSerializer.create name valueSerializer getValue
@@ -193,7 +199,7 @@ type internal DefaultUnionConverter private () =
                 |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
             // The 'Type' field holds the case name as a string.
             let typeFieldDeserializer =
-                let name = "Type"
+                let name = converterSettings.CaseTypeFieldName
                 recordSchema.Fields
                 |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = name)
                 |> Option.map (fun fieldSchema ->
@@ -268,7 +274,8 @@ type internal DefaultUnionConverter private () =
                 Option.Some deserializer
         | _ -> Option.None
 
-    static member Instance = DefaultUnionConverter()
+    // TODO: Make sure we use member val across all converters.
+    static member val Default = DefaultUnionConverter(UnionConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

@@ -110,17 +110,27 @@ module internal Serializer =
         let getValue = id
         Serializer.optional dotnetType valueSerializer isNull getValue
 
+    // TODO: Should this live in Settings.fs?
     let resolve (sourceType: Type) (settings: Settings) =
-        settings.ValueConverters
-        |> List.tryPick _.TryCreateSerializer(sourceType, settings)
-        |> Option.defaultWith (fun () ->
-            // TODO: This will likely end up depending on attributes as well,
-            // so probably will want to make the exception more generic to
-            // avoid confusion if there is a converter registered to support the
-            // specified type.
-            raise <| SerializationException(
-                "could not find converter to serialize type"
-                + $" '{sourceType.FullName}'"))
+        let valueSettings = Settings.resolveForValue sourceType settings
+        match valueSettings.Converter with
+        | Option.Some converter ->
+            converter.TryCreateSerializer(sourceType, settings)
+            |> Option.defaultWith (fun () ->
+                raise <| SerializationException(
+                    $"could not create serializer for type '{sourceType.FullName}'"
+                    + $" using configured converter '%O{converter}'"))
+        | Option.None ->
+            settings.ValueConverters
+            |> List.tryPick _.TryCreateSerializer(sourceType, settings)
+            |> Option.defaultWith (fun () ->
+                // TODO: This will likely end up depending on attributes as well,
+                // so probably will want to make the exception more generic to
+                // avoid confusion if there is a converter registered to support the
+                // specified type.
+                raise <| SerializationException(
+                    "could not find converter to serialize type"
+                    + $" '{sourceType.FullName}'"))
 
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -263,7 +273,9 @@ module internal FieldSerializer =
           FieldSerializer.GetValue = getValue }
 
     let ofField (field: FieldInfo) settings =
-        let name = field.Name
+        let fieldSettings = Settings.resolveForField field.Field settings
+        let name = fieldSettings.Name |> Option.defaultValue field.Name
+        // TODO: Resolve value settings here and pass into Serializer.resolve instead?
         let valueSerializer = Serializer.resolve field.Type settings
         let getValue = field.GetValue
         create name valueSerializer getValue

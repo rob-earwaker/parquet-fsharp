@@ -49,48 +49,35 @@ open System.Reflection
 type SerializationException(message) =
     inherit Exception(message)
 
-type internal Settings = {
+// TODO: Add UnionCasePolicies?
+type Settings = {
     ValueConverters: IValueConverter list
-    ValuePolicies: IValueSettingsPolicy list
-    FieldPolicies: IFieldSettingsPolicy list }
+    FieldPolicies: IFieldSettingsPolicy list
+    ValuePolicies: IValueSettingsPolicy list }
 
-type internal FieldSettings = {
-    NameOverride: string option
+type FieldSettings = {
+    Name: string option
     ValueSettings: ValueSettings }
 
-type internal ValueSettings = {
-    ForceOptional: bool
-    ForceRequired: bool
-    AllowNullValues: bool
-    DecimalScale: int
-    DecimalPrecision: int
-    UseLocalDateTime: bool
-    IgnoreDateTimeKind: bool
-    DateTimeUnit: TimeUnit
-    // TODO: Is this even necessary?
-    UnionCaseTypeFieldName: string
-    AlwaysIncludeUnionCaseTypeField: bool
-    AlwaysIncludeNestedUnionCaseRecord: bool }
+// TODO: Add ListElementSettings?
+type ValueSettings = {
+    Converter: IValueConverter option }
 
-type internal IFieldSettingsPolicy =
-    // TODO: Maybe these should be functions?
-    // TODO: Should this be PropertyInfo instead? Consider unions carefully!
-    abstract member RecordType : Type
-    abstract member FieldName : string
+type IFieldSettingsPolicy =
+    abstract member IsValidFor : field:PropertyInfo -> bool
     abstract member ApplyFieldSettings : fieldSettings:FieldSettings -> FieldSettings
 
-type internal IValueSettingsPolicy =
-    // TODO: Maybe this should be a function?
-    abstract member ValueType : Type
+type IValueSettingsPolicy =
+    abstract member IsValidFor : valueType:Type -> bool
     abstract member ApplyValueSettings : valueSettings:ValueSettings -> ValueSettings
 
-type internal IValueConverter =
+type IValueConverter =
     abstract member TryCreateSerializer
         : sourceType:Type * settings:Settings -> Serializer option
     abstract member TryCreateDeserializer
         : sourceSchema:ValueSchema * targetType:Type * settings:Settings -> Deserializer option
 
-type internal Serializer =
+type Serializer =
     | Atomic of AtomicSerializer
     | List of ListSerializer
     | Record of RecordSerializer
@@ -110,37 +97,37 @@ type internal Serializer =
         | Serializer.Record recordSerializer -> recordSerializer.DotnetType
         | Serializer.Optional optionalSerializer -> optionalSerializer.DotnetType
 
-type internal AtomicSerializer = {
+type AtomicSerializer = {
     Schema: ValueSchema
     DotnetType: Type
     DataDotnetType: Type
     GetDataValue: Expression -> Expression }
 
-type internal ListSerializer = {
+type ListSerializer = {
     Schema: ValueSchema
     DotnetType: Type
     ElementSerializer: Serializer
     GetEnumerator: Expression -> Expression }
 
-type internal FieldSerializer = {
+type FieldSerializer = {
     Schema: FieldSchema
     Name: string
     ValueSerializer: Serializer
     GetValue: Expression -> Expression }
 
-type internal RecordSerializer = {
+type RecordSerializer = {
     Schema: ValueSchema
     DotnetType: Type
     FieldSerializers: FieldSerializer[] }
 
-type internal OptionalSerializer = {
+type OptionalSerializer = {
     Schema: ValueSchema
     DotnetType: Type
     ValueSerializer: Serializer
     IsNull: Expression -> Expression
     GetValue: Expression -> Expression }
 
-type internal Deserializer =
+type Deserializer =
     | Atomic of AtomicDeserializer
     | List of ListDeserializer
     | Record of RecordDeserializer
@@ -160,31 +147,31 @@ type internal Deserializer =
         | Deserializer.Record recordDeserializer -> recordDeserializer.DotnetType
         | Deserializer.Optional optionalDeserializer -> optionalDeserializer.DotnetType
 
-type internal AtomicDeserializer = {
+type AtomicDeserializer = {
     Schema: ValueSchema
     DotnetType: Type
     DataDotnetType: Type
     CreateFromDataValue: Expression -> Expression }
 
-type internal ListDeserializer = {
+type ListDeserializer = {
     Schema: ValueSchema
     DotnetType: Type
     ElementDeserializer: Deserializer
     CreateEmpty: Expression
     CreateFromElementValues: Expression -> Expression }
 
-type internal FieldDeserializer = {
+type FieldDeserializer = {
     Schema: FieldSchema
     Name: string
     ValueDeserializer: Deserializer }
 
-type internal RecordDeserializer = {
+type RecordDeserializer = {
     Schema: ValueSchema
     DotnetType: Type
     FieldDeserializers: FieldDeserializer[]
     CreateFromFieldValues: Expression[] -> Expression }
 
-type internal OptionalDeserializer = {
+type OptionalDeserializer = {
     Schema: ValueSchema
     DotnetType: Type
     ValueDeserializer: Deserializer

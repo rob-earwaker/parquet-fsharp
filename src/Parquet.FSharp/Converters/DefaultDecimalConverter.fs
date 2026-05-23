@@ -23,7 +23,7 @@ type internal DefaultDecimalConverter private () =
         createRequiredDeserializer dataDotnetType
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Instance = DefaultDecimalConverter()
+    static member val Default = DefaultDecimalConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

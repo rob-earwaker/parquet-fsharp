@@ -50,7 +50,7 @@ type internal DefaultArray1dConverter private () =
         createRequiredDeserializer schema dotnetType settings
         |> Deserializer.optionalNullableTypeWrapper
 
-    static member val Instance = DefaultArray1dConverter()
+    static member val Default = DefaultArray1dConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

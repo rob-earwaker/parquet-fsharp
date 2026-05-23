@@ -23,7 +23,7 @@ type internal DefaultFloat32Converter private () =
         createRequiredDeserializer dataDotnetType
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Instance = DefaultFloat32Converter()
+    static member val Default = DefaultFloat32Converter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

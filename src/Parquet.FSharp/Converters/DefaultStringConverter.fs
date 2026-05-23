@@ -30,7 +30,7 @@ type internal DefaultStringConverter private () =
         requiredDeserializer
         |> Deserializer.optionalNullableTypeWrapper
 
-    static member val Instance = DefaultStringConverter()
+    static member val Default = DefaultStringConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

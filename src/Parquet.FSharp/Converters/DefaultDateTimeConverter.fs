@@ -69,7 +69,7 @@ type internal DefaultDateTimeConverter private () =
         requiredDeserializer
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Instance = DefaultDateTimeConverter()
+    static member val Default = DefaultDateTimeConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

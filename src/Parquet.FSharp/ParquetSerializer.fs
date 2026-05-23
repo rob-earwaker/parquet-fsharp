@@ -8,35 +8,35 @@ open System.IO
 type ParquetSerializer =
     static member private DefaultSettings = {
         Settings.ValueConverters = [
-            DefaultBoolConverter.Instance
-            DefaultInt8Converter.Instance
-            DefaultInt16Converter.Instance
-            DefaultInt32Converter.Instance
-            DefaultInt64Converter.Instance
-            DefaultUInt8Converter.Instance
-            DefaultUInt16Converter.Instance
-            DefaultUInt32Converter.Instance
-            DefaultUInt64Converter.Instance
-            DefaultFloat32Converter.Instance
-            DefaultFloat64Converter.Instance
-            DefaultDecimalConverter.Instance
-            DefaultGuidConverter.Instance
-            DefaultEnumConverter.Instance
-            DefaultTimeSpanConverter.Instance
-            DefaultDateTimeConverter.Instance
-            DefaultDateTimeOffsetConverter.Instance
-            DefaultStringConverter.Instance
+            DefaultBoolConverter.Default
+            DefaultInt8Converter.Default
+            DefaultInt16Converter.Default
+            DefaultInt32Converter.Default
+            DefaultInt64Converter.Default
+            DefaultUInt8Converter.Default
+            DefaultUInt16Converter.Default
+            DefaultUInt32Converter.Default
+            DefaultUInt64Converter.Default
+            DefaultFloat32Converter.Default
+            DefaultFloat64Converter.Default
+            DefaultDecimalConverter.Default
+            DefaultGuidConverter.Default
+            DefaultEnumConverter.Default
+            DefaultTimeSpanConverter.Default
+            DefaultDateTimeConverter.Default
+            DefaultDateTimeOffsetConverter.Default
+            DefaultStringConverter.Default
             // This must come before the generic array type since byte arrays
             // are supported as a primitive type in Parquet and are therefore
             // handled as atomic values rather than lists.
-            DefaultByteArrayConverter.Instance
-            DefaultListConverter.Instance
-            DefaultArray1dConverter.Instance
-            DefaultResizeArrayConverter.Instance
-            DefaultRecordConverter.Instance
-            DefaultOptionConverter.Instance
-            DefaultValueOptionConverter.Instance
-            DefaultNullableConverter.Instance
+            DefaultByteArrayConverter.Default
+            DefaultListConverter.Default
+            DefaultArray1dConverter.Default
+            DefaultResizeArrayConverter.Default
+            DefaultRecordConverter.Default
+            DefaultOptionConverter.Default
+            DefaultValueOptionConverter.Default
+            DefaultNullableConverter.Default
             // This must come after the converters for more union types that are
             // handled in a special way - options, value options and lists.
             DefaultUnionConverter.Default ]

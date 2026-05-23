@@ -24,7 +24,7 @@ type internal DefaultInt16Converter private () =
         createRequiredDeserializer dataDotnetType
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Instance = DefaultInt16Converter()
+    static member val Default = DefaultInt16Converter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

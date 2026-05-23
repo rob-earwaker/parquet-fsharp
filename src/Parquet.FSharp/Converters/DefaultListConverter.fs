@@ -50,7 +50,7 @@ type internal DefaultListConverter private () =
         createRequiredDeserializer schema dotnetType settings
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Instance = DefaultListConverter()
+    static member val Default = DefaultListConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

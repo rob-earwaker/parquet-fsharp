@@ -18,7 +18,7 @@ type internal DefaultUInt8Converter private () =
         requiredDeserializer
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Instance = DefaultUInt8Converter()
+    static member val Default = DefaultUInt8Converter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

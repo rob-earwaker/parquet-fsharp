@@ -46,7 +46,7 @@ type internal DefaultResizeArrayConverter private () =
         createRequiredDeserializer schema dotnetType settings
         |> Deserializer.optionalNullableTypeWrapper
 
-    static member val Instance = DefaultResizeArrayConverter()
+    static member val Default = DefaultResizeArrayConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

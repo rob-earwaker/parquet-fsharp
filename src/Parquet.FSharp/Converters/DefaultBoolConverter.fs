@@ -18,7 +18,7 @@ type internal DefaultBoolConverter private () =
         requiredDeserializer
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member Instance = DefaultBoolConverter()
+    static member val Instance = DefaultBoolConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

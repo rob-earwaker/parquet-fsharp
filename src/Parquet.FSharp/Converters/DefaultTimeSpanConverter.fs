@@ -39,7 +39,7 @@ type internal DefaultTimeSpanConverter private () =
             :> Expression
         Deserializer.wrapAs dotnetType microsecondsOptionDeserializer wrapValue
 
-    static member Instance = DefaultTimeSpanConverter()
+    static member val Instance = DefaultTimeSpanConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

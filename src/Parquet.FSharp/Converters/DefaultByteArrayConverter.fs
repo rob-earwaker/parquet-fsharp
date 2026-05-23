@@ -30,7 +30,7 @@ type internal DefaultByteArrayConverter private () =
         requiredDeserializer
         |> Deserializer.optionalNullableTypeWrapper
 
-    static member Instance = DefaultByteArrayConverter()
+    static member val Instance = DefaultByteArrayConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

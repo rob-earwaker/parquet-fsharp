@@ -35,7 +35,7 @@ type internal DefaultDateTimeOffsetConverter private () =
             :> Expression
         Deserializer.wrapAs dotnetType dateTimeOptionDeserializer wrapValue
 
-    static member Instance = DefaultDateTimeOffsetConverter()
+    static member val Instance = DefaultDateTimeOffsetConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

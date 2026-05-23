@@ -26,7 +26,7 @@ type internal DefaultEnumConverter private () =
             :> Expression
         Deserializer.wrapAs enumInfo.Type valueOptionDeserializer wrapValue
 
-    static member Instance = DefaultEnumConverter()
+    static member val Instance = DefaultEnumConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

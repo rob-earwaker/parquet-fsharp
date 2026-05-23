@@ -20,7 +20,7 @@ type internal DefaultGuidConverter private () =
         requiredDeserializer
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member Instance = DefaultGuidConverter()
+    static member val Instance = DefaultGuidConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

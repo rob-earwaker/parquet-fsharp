@@ -53,7 +53,7 @@ type internal DefaultOptionConverter private () =
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
-    static member Instance = DefaultOptionConverter()
+    static member val Instance = DefaultOptionConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

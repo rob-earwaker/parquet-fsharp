@@ -28,7 +28,7 @@ type internal DefaultRecordConverter private () =
         tryCreateRequiredDeserializer recordSchema recordInfo settings
         |> Option.map Deserializer.optionalNonNullableTypeWrapper
 
-    static member Instance = DefaultRecordConverter()
+    static member val Instance = DefaultRecordConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

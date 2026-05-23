@@ -274,7 +274,6 @@ type internal DefaultUnionConverter(converterSettings: UnionConverterSettings) =
                 Option.Some deserializer
         | _ -> Option.None
 
-    // TODO: Make sure we use member val across all converters.
     static member val Default = DefaultUnionConverter(UnionConverterSettings.Default)
 
     interface IValueConverter with

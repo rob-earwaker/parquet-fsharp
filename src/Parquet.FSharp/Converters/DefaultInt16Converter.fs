@@ -2,7 +2,7 @@ namespace Parquet.FSharp
 
 open System.Linq.Expressions
 
-type internal DefaultInt16Converter private () =
+type internal Int16Converter private () =
     let dotnetType = typeof<int16>
 
     // TODO: Could support serializing as smaller integer type using an attribute.
@@ -24,7 +24,7 @@ type internal DefaultInt16Converter private () =
         createRequiredDeserializer dataDotnetType
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Default = DefaultInt16Converter()
+    static member val Default = Int16Converter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

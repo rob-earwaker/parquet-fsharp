@@ -2,7 +2,7 @@ namespace Parquet.FSharp
 
 open System.Linq.Expressions
 
-type internal DefaultStringConverter private () =
+type internal StringConverter private () =
     let dotnetType = typeof<string>
     let dataDotnetType = dotnetType
 
@@ -30,7 +30,7 @@ type internal DefaultStringConverter private () =
         requiredDeserializer
         |> Deserializer.optionalNullableTypeWrapper
 
-    static member val Default = DefaultStringConverter()
+    static member val Default = StringConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

@@ -1,6 +1,6 @@
 namespace Parquet.FSharp
 
-type internal DefaultBoolConverter private () =
+type internal BoolConverter private () =
     let dotnetType = typeof<bool>
     let dataDotnetType = dotnetType
 
@@ -18,7 +18,7 @@ type internal DefaultBoolConverter private () =
         requiredDeserializer
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Default = DefaultBoolConverter()
+    static member val Default = BoolConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

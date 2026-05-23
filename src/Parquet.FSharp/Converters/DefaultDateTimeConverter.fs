@@ -28,7 +28,7 @@ open System.Linq.Expressions
 //   => serialization ignores Kind, truncates to <resolution>
 //   => deserialization assumes Local
 
-type internal DefaultDateTimeConverter private () =
+type internal DateTimeConverter private () =
     let dotnetType = typeof<DateTime>
     let dataDotnetType = dotnetType
 
@@ -69,7 +69,7 @@ type internal DefaultDateTimeConverter private () =
         requiredDeserializer
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Default = DefaultDateTimeConverter()
+    static member val Default = DateTimeConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

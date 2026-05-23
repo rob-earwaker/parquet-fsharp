@@ -4,7 +4,7 @@ open System
 open System.Collections.Generic
 open System.Linq.Expressions
 
-type internal DefaultListConverter private () =
+type internal ListConverter private () =
     let isListType = DotnetType.isGenericType<list<_>>
 
     let createSerializer (dotnetType: Type) settings =
@@ -50,7 +50,7 @@ type internal DefaultListConverter private () =
         createRequiredDeserializer schema dotnetType settings
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Default = DefaultListConverter()
+    static member val Default = ListConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

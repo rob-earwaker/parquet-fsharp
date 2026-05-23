@@ -4,7 +4,7 @@ open System
 open System.Collections.Generic
 open System.Linq.Expressions
 
-type internal DefaultResizeArrayConverter private () =
+type internal ResizeArrayConverter private () =
     let isResizeArrayType = DotnetType.isGenericType<ResizeArray<_>>
 
     let createSerializer (dotnetType: Type) settings =
@@ -46,7 +46,7 @@ type internal DefaultResizeArrayConverter private () =
         createRequiredDeserializer schema dotnetType settings
         |> Deserializer.optionalNullableTypeWrapper
 
-    static member val Default = DefaultResizeArrayConverter()
+    static member val Default = ResizeArrayConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

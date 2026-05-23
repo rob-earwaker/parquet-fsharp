@@ -2,7 +2,7 @@ namespace Parquet.FSharp
 
 open System
 
-type internal DefaultGuidConverter private () =
+type internal GuidConverter private () =
     let dotnetType = typeof<Guid>
     let dataDotnetType = dotnetType
 
@@ -20,7 +20,7 @@ type internal DefaultGuidConverter private () =
         requiredDeserializer
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Default = DefaultGuidConverter()
+    static member val Default = GuidConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

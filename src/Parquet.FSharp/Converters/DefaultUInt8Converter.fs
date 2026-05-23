@@ -1,6 +1,6 @@
 namespace Parquet.FSharp
 
-type internal DefaultUInt8Converter private () =
+type internal UInt8Converter private () =
     let dotnetType = typeof<uint8>
     let dataDotnetType = dotnetType
     
@@ -18,7 +18,7 @@ type internal DefaultUInt8Converter private () =
         requiredDeserializer
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Default = DefaultUInt8Converter()
+    static member val Default = UInt8Converter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

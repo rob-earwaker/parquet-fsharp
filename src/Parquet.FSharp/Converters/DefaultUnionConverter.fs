@@ -14,7 +14,7 @@ type internal UnionConverterSettings = {
     static member val Default = {
         UnionConverterSettings.CaseTypeFieldName = "Type" }
 
-type internal DefaultUnionConverter(converterSettings: UnionConverterSettings) =
+type internal UnionConverter(converterSettings: UnionConverterSettings) =
     let createEnumUnionSerializer (unionInfo: UnionInfo) settings =
         let dotnetType = unionInfo.Type
         let caseNameSerializer = Serializer.resolve typeof<string> settings
@@ -274,7 +274,7 @@ type internal DefaultUnionConverter(converterSettings: UnionConverterSettings) =
                 Option.Some deserializer
         | _ -> Option.None
 
-    static member val Default = DefaultUnionConverter(UnionConverterSettings.Default)
+    static member val Default = UnionConverter(UnionConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

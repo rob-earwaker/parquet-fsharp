@@ -12,7 +12,7 @@ type ParquetUnionAttribute() =
 
     override this.ApplyValueSettings(valueSettings) =
         let converter =
-            DefaultUnionConverter {
+            UnionConverter {
                 CaseTypeFieldName = this.CaseTypeFieldName }
         valueSettings |> ValueSettings.converter converter
 
@@ -25,7 +25,7 @@ type ParquetUnionFieldAttribute() =
 
     override this.ApplyValueSettings(valueSettings) =
         let converter =
-            DefaultUnionConverter {
+            UnionConverter {
                 CaseTypeFieldName = this.CaseTypeFieldName }
         valueSettings |> ValueSettings.converter converter
 

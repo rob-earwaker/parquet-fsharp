@@ -2,7 +2,7 @@ namespace Parquet.FSharp
 
 open System.Linq.Expressions
 
-type internal DefaultDecimalConverter private () =
+type internal DecimalConverter private () =
     let dotnetType = typeof<decimal>
 
     let serializer =
@@ -23,7 +23,7 @@ type internal DefaultDecimalConverter private () =
         createRequiredDeserializer dataDotnetType
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Default = DefaultDecimalConverter()
+    static member val Default = DecimalConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

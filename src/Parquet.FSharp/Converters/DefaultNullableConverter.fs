@@ -1,6 +1,6 @@
 namespace Parquet.FSharp
 
-type internal DefaultNullableConverter private () =
+type internal NullableConverter private () =
     let tryCreateSerializer (optionalInfo: OptionalInfo) settings =
         let valueSerializer = Serializer.resolve optionalInfo.ValueType settings
         // Parquet doesn't support nested optional values, so if the value is
@@ -48,7 +48,7 @@ type internal DefaultNullableConverter private () =
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
-    static member val Default = DefaultNullableConverter()
+    static member val Default = NullableConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

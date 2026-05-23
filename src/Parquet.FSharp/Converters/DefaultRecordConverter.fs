@@ -1,6 +1,6 @@
 namespace Parquet.FSharp
 
-type internal DefaultRecordConverter private () =
+type internal RecordConverter private () =
     let createSerializer (recordInfo: RecordInfo) settings =
         let fieldSerializers =
             recordInfo.Fields
@@ -28,7 +28,7 @@ type internal DefaultRecordConverter private () =
         tryCreateRequiredDeserializer recordSchema recordInfo settings
         |> Option.map Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Default = DefaultRecordConverter()
+    static member val Default = RecordConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

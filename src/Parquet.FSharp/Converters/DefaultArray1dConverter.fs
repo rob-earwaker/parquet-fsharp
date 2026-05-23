@@ -4,7 +4,7 @@ open System
 open System.Collections.Generic
 open System.Linq.Expressions
 
-type internal DefaultArray1dConverter private () =
+type internal Array1dConverter private () =
     let isArray1dType (dotnetType: Type) =
         dotnetType.IsArray
         && dotnetType.GetArrayRank() = 1
@@ -50,7 +50,7 @@ type internal DefaultArray1dConverter private () =
         createRequiredDeserializer schema dotnetType settings
         |> Deserializer.optionalNullableTypeWrapper
 
-    static member val Default = DefaultArray1dConverter()
+    static member val Default = Array1dConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

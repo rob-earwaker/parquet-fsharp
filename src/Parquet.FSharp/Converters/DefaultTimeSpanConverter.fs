@@ -3,7 +3,7 @@ namespace Parquet.FSharp
 open System
 open System.Linq.Expressions
 
-type internal DefaultTimeSpanConverter private () =
+type internal TimeSpanConverter private () =
     let dotnetType = typeof<TimeSpan>
     let ticksProperty = typeof<TimeSpan>.GetProperty("Ticks")
     let microsecondsOptionInfo = OptionalInfo.ofOptionTypeCached typeof<int64 option>
@@ -39,7 +39,7 @@ type internal DefaultTimeSpanConverter private () =
             :> Expression
         Deserializer.wrapAs dotnetType microsecondsOptionDeserializer wrapValue
 
-    static member val Default = DefaultTimeSpanConverter()
+    static member val Default = TimeSpanConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

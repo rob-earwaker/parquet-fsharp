@@ -2,7 +2,7 @@ namespace Parquet.FSharp
 
 open System.Linq.Expressions
 
-type internal DefaultEnumConverter private () =
+type internal EnumConverter private () =
     let createSerializer (enumInfo: EnumInfo) settings =
         let valueSerializer = Serializer.resolve enumInfo.ValueType settings
         let unwrapValue (enum: Expression) =
@@ -26,7 +26,7 @@ type internal DefaultEnumConverter private () =
             :> Expression
         Deserializer.wrapAs enumInfo.Type valueOptionDeserializer wrapValue
 
-    static member val Default = DefaultEnumConverter()
+    static member val Default = EnumConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

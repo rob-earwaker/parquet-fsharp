@@ -2,7 +2,7 @@ namespace Parquet.FSharp
 
 open System.Linq.Expressions
 
-type internal DefaultByteArrayConverter private () =
+type internal ByteArrayConverter private () =
     let dotnetType = typeof<byte[]>
     let dataDotnetType = dotnetType
 
@@ -30,7 +30,7 @@ type internal DefaultByteArrayConverter private () =
         requiredDeserializer
         |> Deserializer.optionalNullableTypeWrapper
 
-    static member val Default = DefaultByteArrayConverter()
+    static member val Default = ByteArrayConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

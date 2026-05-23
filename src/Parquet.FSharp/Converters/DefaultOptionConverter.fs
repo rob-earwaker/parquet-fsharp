@@ -4,7 +4,7 @@ namespace Parquet.FSharp
 // worth considering extracting the common functionality unless this changes
 // with the settings implementation.
 
-type internal DefaultOptionConverter private () =
+type internal OptionConverter private () =
     let tryCreateSerializer (optionalInfo: OptionalInfo) settings =
         let valueSerializer = Serializer.resolve optionalInfo.ValueType settings
         // Parquet doesn't support nested optional values, so if the value is
@@ -53,7 +53,7 @@ type internal DefaultOptionConverter private () =
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
-    static member val Default = DefaultOptionConverter()
+    static member val Default = OptionConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

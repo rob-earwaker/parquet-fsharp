@@ -4,7 +4,7 @@ open System
 open System.Linq.Expressions
 
 // TODO: Handle UTC vs Local for both serialization and deserialization.
-type internal DefaultDateTimeOffsetConverter private () =
+type internal DateTimeOffsetConverter private () =
     let dotnetType = typeof<DateTimeOffset>
     let utcDateTimeProperty = typeof<DateTimeOffset>.GetProperty("UtcDateTime")
     let dateTimeOptionInfo = OptionalInfo.ofOptionTypeCached typeof<DateTime option>
@@ -35,7 +35,7 @@ type internal DefaultDateTimeOffsetConverter private () =
             :> Expression
         Deserializer.wrapAs dotnetType dateTimeOptionDeserializer wrapValue
 
-    static member val Default = DefaultDateTimeOffsetConverter()
+    static member val Default = DateTimeOffsetConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

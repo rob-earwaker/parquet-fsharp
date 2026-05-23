@@ -111,15 +111,15 @@ module internal Serializer =
         Serializer.optional dotnetType valueSerializer isNull getValue
 
     // TODO: Should this live in Settings.fs?
-    let resolve (sourceType: Type) (settings: Settings) =
-        let valueSettings = Settings.resolveForValue sourceType settings
+    let resolveWithValueSettings
+        (sourceType: Type) (valueSettings: ValueSettings) (settings: Settings) =
         match valueSettings.Converter with
-        | Option.Some converter ->
-            converter.TryCreateSerializer(sourceType, settings)
+        | Option.Some assignedConverter ->
+            assignedConverter.TryCreateSerializer(sourceType, settings)
             |> Option.defaultWith (fun () ->
                 raise <| SerializationException(
                     $"could not create serializer for type '{sourceType.FullName}'"
-                    + $" using configured converter '%O{converter}'"))
+                    + $" using assigned converter '%O{assignedConverter}'"))
         | Option.None ->
             settings.ValueConverters
             |> List.tryPick _.TryCreateSerializer(sourceType, settings)
@@ -131,6 +131,11 @@ module internal Serializer =
                 raise <| SerializationException(
                     "could not find converter to serialize type"
                     + $" '{sourceType.FullName}'"))
+
+    // TODO: Should this live in Settings.fs?
+    let resolve sourceType settings =
+        let valueSettings = Settings.resolveForValue sourceType settings
+        resolveWithValueSettings sourceType valueSettings settings
 
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -275,8 +280,9 @@ module internal FieldSerializer =
     let ofField (field: FieldInfo) settings =
         let fieldSettings = Settings.resolveForField field.Field settings
         let name = fieldSettings.Name |> Option.defaultValue field.Name
-        // TODO: Resolve value settings here and pass into Serializer.resolve instead?
-        let valueSerializer = Serializer.resolve field.Type settings
+        let valueSerializer =
+            Serializer.resolveWithValueSettings
+                field.Type fieldSettings.ValueSettings settings
         let getValue = field.GetValue
         create name valueSerializer getValue
 

@@ -16,13 +16,22 @@ type internal DelegateValueSettingsPolicy(isValidFor, applyValueSettings) =
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal ValueSettings =
-    let Default = { ValueSettings.Converter = Option.None }
+    let Default = {
+        ValueSettings.Converter = Option.None
+        ValueSettings.ListElementSettings = ValueSettings.Default
+        ValueSettings.OptionalValueSettings = ValueSettings.Default }
 
     let converterOption converter (settings: ValueSettings) =
         { settings with Converter = converter }
 
     let converter converter (settings: ValueSettings) =
         converterOption (Option.Some converter) settings
+
+    let updateListElementSettings update (settings: ValueSettings) =
+        { settings with ListElementSettings = update settings.ListElementSettings }
+
+    let updateOptionalValueSettings update (settings: ValueSettings) =
+        { settings with OptionalValueSettings = update settings.OptionalValueSettings }
 
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -67,7 +76,7 @@ module internal Settings =
         { settings with FieldPolicies = fieldPolicies }
 
     let resolveForValue (valueType: Type) (settings: Settings) =
-        let attributes =
+        let valueAttributes =
             valueType.GetCustomAttributes<ParquetValueAttribute>(``inherit`` = true)
             |> List.ofSeq
         let valuePolicies =
@@ -83,7 +92,7 @@ module internal Settings =
         // order does matter then maybe best to reverse above.
         |> List.foldBack
             (fun (attribute: ParquetValueAttribute) -> attribute.ApplyValueSettings)
-            attributes
+            valueAttributes
         // Apply any configured policies. We want policies to apply in the order
         // that they were added. Since policies are prepended when added, we
         // apply them in reverse order.
@@ -91,8 +100,9 @@ module internal Settings =
             (fun (policy: IValueSettingsPolicy) -> policy.ApplyValueSettings)
             valuePolicies
 
-    let resolveForField (field: PropertyInfo) (settings: Settings) =
-        let attributes =
+    let resolveForField (field: PropertyInfo) settings =
+        let valueSettings = Settings.resolveForValue field.PropertyType settings
+        let fieldAttributes =
             field.GetCustomAttributes<ParquetFieldAttribute>(``inherit`` = true)
             |> List.ofSeq
         let fieldPolicies =
@@ -100,6 +110,10 @@ module internal Settings =
             |> List.filter (fun policy -> policy.IsValidFor(field))
         // Start with the default settings.
         FieldSettings.Default
+        // Apply resolved value settings based on the value type. This will
+        // include settings from attributes applied to the field value's type
+        // and settings from value policies.
+        |> FieldSettings.valueSettings valueSettings
         // Apply attributes first to allow settings to be overridden at the
         // serialization call-site. This ensures that serialization of types
         // defined in third-party assemblies can be customized regardless of
@@ -108,7 +122,7 @@ module internal Settings =
         // order does matter then maybe best to reverse above.
         |> List.foldBack
             (fun (attribute: ParquetFieldAttribute) -> attribute.ApplyFieldSettings)
-            attributes
+            fieldAttributes
         // Apply any configured policies. We want policies to apply in the order
         // that they were added. Since policies are prepended when added, we
         // apply them in reverse order.

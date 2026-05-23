@@ -59,9 +59,10 @@ type FieldSettings = {
     Name: string option
     ValueSettings: ValueSettings }
 
-// TODO: Add ListElementSettings?
 type ValueSettings = {
-    Converter: IValueConverter option }
+    Converter: IValueConverter option
+    ListElementSettings: ValueSettings
+    OptionalValueSettings: ValueSettings }
 
 type IFieldSettingsPolicy =
     abstract member IsValidFor : field:PropertyInfo -> bool

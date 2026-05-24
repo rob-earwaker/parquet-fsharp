@@ -16,6 +16,19 @@ type ParquetUnionAttribute() =
                 CaseTypeFieldName = this.CaseTypeFieldName }
         valueSettings |> ValueSettings.converter converter
 
+type ParquetBoolFieldAttribute() =
+    inherit ParquetFieldAttribute()
+
+    let default' = BoolConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            BoolConverter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
 type ParquetUnionFieldAttribute() =
     inherit ParquetFieldAttribute()
 

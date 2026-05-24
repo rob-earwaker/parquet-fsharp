@@ -98,13 +98,7 @@ module internal Serializer =
                 + " by default"))
         :> Expression
 
-    let referenceTypeWrapper (valueSerializer: Serializer) =
-        let dotnetType = valueSerializer.DotnetType
-        let isNull = Expression.IsNull
-        let getValue = id
-        Serializer.optional dotnetType valueSerializer isNull getValue
-
-    let nonNullableReferenceTypeWrapper (valueSerializer: Serializer) =
+    let optionalNonNullableTypeWrapper (valueSerializer: Serializer) =
         let dotnetType = valueSerializer.DotnetType
         let isNull = fun value -> Expression.False
         let getValue = id
@@ -217,13 +211,6 @@ module internal Deserializer =
                 wrapValue optional
             Deserializer.optional
                 dotnetType valueDeserializer createNull createFromValue
-
-    let referenceTypeWrapper (valueDeserializer: Deserializer) =
-        let dotnetType = valueDeserializer.DotnetType
-        let createNull = Expression.Null(dotnetType)
-        let createFromValue = id
-        Deserializer.optional
-            dotnetType valueDeserializer createNull createFromValue
 
     let throwNullValueEncounteredForNonNullableType (dotnetType: Type) =
         Expression.Block(

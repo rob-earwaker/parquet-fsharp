@@ -5,7 +5,7 @@ open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
-module ``serialize bool`` =
+module ``serialize bool as required bool`` =
     type Input = { Field1: bool }
     type Output = { Field1: bool }
 
@@ -30,6 +30,31 @@ module ``serialize bool`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
+module ``serialize bool as optional bool`` =
+    type Input = { [<ParquetBoolField(Optional = true)>] Field1: bool }
+    type Output = { Field1: bool option }
+
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isOptional
+                Assert.Field.Type.isBool
+                Assert.Field.LogicalType.hasNoValue
+                Assert.Field.ConvertedType.hasNoValue
+                Assert.Field.hasNoChildren ] ]
+
+    [<Theory>]
+    [<InlineData(false)>]
+    [<InlineData( true)>]
+    let ``value`` value =
+        let inputRecords = [| { Input.Field1 = value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
+
 module ``deserialize bool from required bool`` =
     type Input = { Field1: bool }
     type Output = { Field1: bool }
@@ -45,7 +70,7 @@ module ``deserialize bool from required bool`` =
 
 module ``deserialize bool from optional bool`` =
     type Input = { Field1: bool option }
-    type Output = { Field1: bool }
+    type Output = { [<ParquetBoolField(Optional = true)>] Field1: bool }
 
     [<Fact>]
     let ``null value`` () =

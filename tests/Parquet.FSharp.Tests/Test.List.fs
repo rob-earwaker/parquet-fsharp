@@ -5,6 +5,8 @@ open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
+// TODO: Add tests for serializing null values?
+
 module ``serialize list with atomic elements`` =
     type Input = { Field1: int list }
     type Output = { Field1: int list }
@@ -192,8 +194,49 @@ module ``serialize list with optional elements`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
+
+module ``serialize list as optional`` =
+    type Input = { [<ParquetListField(Optional = true)>] Field1: int list }
+    type Output = { Field1: int list option }
+
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isOptional
+                Assert.Field.Type.hasNoValue
+                Assert.Field.LogicalType.isList
+                Assert.Field.ConvertedType.isList
+                Assert.Field.child [
+                    Assert.Field.nameEquals "list"
+                    Assert.Field.isRepeated
+                    Assert.Field.Type.hasNoValue
+                    Assert.Field.LogicalType.hasNoValue
+                    Assert.Field.ConvertedType.hasNoValue
+                    Assert.Field.child [
+                        Assert.Field.nameEquals "element"
+                        Assert.Field.isRequired
+                        Assert.Field.Type.isInt32
+                        Assert.Field.LogicalType.isInteger 32 true
+                        Assert.Field.ConvertedType.isInt32
+                        Assert.Field.hasNoChildren ] ] ] ]
+
+    let Value = [|
+        [| box<int list> (**) [] (**) |]
+        [| box<int list> (**) [ 1 ] (**) |]
+        [| box<int list> (**) [ 1; 2; 3 ] (**) |] |]
+
+    [<Theory>]
+    [<MemberData(nameof Value)>]
+    let ``value`` value =
+        let inputRecords = [| { Input.Field1 = value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
         
-module ``deserialize list with atomic elements from required list with atomic elements`` =
+module ``deserialize list with atomic elements`` =
     type Input = { Field1: int list }
     type Output = { Field1: int list }
 
@@ -210,9 +253,9 @@ module ``deserialize list with atomic elements from required list with atomic el
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize list with atomic elements from optional list with atomic elements`` =
+module ``deserialize list with atomic elements as optional`` =
     type Input = { Field1: int list option }
-    type Output = { Field1: int list }
+    type Output = { [<ParquetListField(Optional = true)>] Field1: int list }
 
     [<Fact>]
     let ``null value`` () =
@@ -238,7 +281,7 @@ module ``deserialize list with atomic elements from optional list with atomic el
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize list with list elements from required list with list elements`` =
+module ``deserialize list with list elements`` =
     type Input = { Field1: int list list }
     type Output = { Field1: int list list }
 
@@ -257,9 +300,9 @@ module ``deserialize list with list elements from required list with list elemen
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize list with list elements from optional list with list elements`` =
+module ``deserialize list with list elements as optional`` =
     type Input = { Field1: int list list option }
-    type Output = { Field1: int list list }
+    type Output = { [<ParquetListField(Optional = true)>] Field1: int list list }
 
     [<Fact>]
     let ``null value`` () =
@@ -287,7 +330,7 @@ module ``deserialize list with list elements from optional list with list elemen
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize list with record elements from required list with record elements`` =
+module ``deserialize list with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list }
     type Output = { Field1: Record list }
@@ -305,10 +348,10 @@ module ``deserialize list with record elements from required list with record el
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize list with record elements from optional list with record elements`` =
+module ``deserialize list with record elements as optional`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list option }
-    type Output = { Field1: Record list }
+    type Output = { [<ParquetListField(Optional = true)>] Field1: Record list }
 
     [<Fact>]
     let ``null value`` () =
@@ -334,7 +377,7 @@ module ``deserialize list with record elements from optional list with record el
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize list with optional elements from required list with optional elements`` =
+module ``deserialize list with optional elements`` =
     type Input = { Field1: int option list }
     type Output = { Field1: int option list }
 
@@ -354,9 +397,9 @@ module ``deserialize list with optional elements from required list with optiona
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
         
-module ``deserialize list with optional elements from optional list with optional elements`` =
+module ``deserialize list with optional elements as optional`` =
     type Input = { Field1: int option list option }
-    type Output = { Field1: int option list }
+    type Output = { [<ParquetListField(Optional = true)>] Field1: int option list }
 
     [<Fact>]
     let ``null value`` () =

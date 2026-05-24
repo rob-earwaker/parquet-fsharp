@@ -39,8 +39,8 @@ module ``serialize 1d array with atomic elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int array>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<int array>.FullName}' for which nulls are not"
+                    + " allowed by default" @>)
 
     let NonNull = [|
         [| box<int[]> (**) [||] (**) |]
@@ -103,8 +103,8 @@ module ``serialize 1d array with list elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int list array>.FullName}' which is not"
-                    + " treated as nullable by default" @>)
+                    + $" '{typeof<int list array>.FullName}' for which nulls"
+                    + " are not allowed by default" @>)
 
     let NonNull = [|
         [| box<int list array> (**) [||] (**) |]
@@ -164,8 +164,8 @@ module ``serialize 1d array with record elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<Record array>.FullName}' which is not treated"
-                    + " as nullable by default" @>)
+                    + $" '{typeof<Record array>.FullName}' for which nulls are"
+                    + " not allowed by default" @>)
 
     let NonNull = [|
         [| box<Record array> (**) [||] (**) |]
@@ -216,8 +216,8 @@ module ``serialize 1d array with optional elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int option array>.FullName}' which is not"
-                    + " treated as nullable by default" @>)
+                    + $" '{typeof<int option array>.FullName}' for which nulls"
+                    + " are not allowed by default" @>)
 
     let NonNull = [|
         [| box<int option array> (**) [||] (**) |]

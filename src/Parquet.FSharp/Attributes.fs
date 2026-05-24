@@ -29,6 +29,21 @@ type ParquetBoolFieldAttribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
+type ParquetListFieldAttribute() =
+    inherit ParquetFieldAttribute()
+
+    let default' = ListConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+    member val AllowNulls = default'.AllowNulls with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            ListConverter {
+                Optional = this.Optional
+                AllowNulls = this.AllowNulls }
+        valueSettings |> ValueSettings.converter converter
+
 type ParquetUnionFieldAttribute() =
     inherit ParquetFieldAttribute()
 

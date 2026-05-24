@@ -28,8 +28,8 @@ module ``serialize byte array`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<byte[]>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<byte[]>.FullName}' for which nulls are not"
+                    + " allowed by default" @>)
 
     [<Theory>]
     [<InlineData("")>] // Empty

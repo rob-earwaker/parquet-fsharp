@@ -4,13 +4,23 @@ open System
 open System.Collections.Generic
 open System.Linq.Expressions
 
-type internal ListConverter private () =
+type internal ListConverterSettings = {
+    Optional: bool
+    AllowNulls: bool }
+    with
+    static member val Default = {
+        ListConverterSettings.Optional = false
+        ListConverterSettings.AllowNulls = false }
+
+type internal ListConverter(converterSettings: ListConverterSettings) =
     let isListType = DotnetType.isGenericType<list<_>>
 
-    let createSerializer (dotnetType: Type) settings =
+    let createRequiredSerializer (dotnetType: Type) settings =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
         let elementSerializer = Serializer.resolve elementDotnetType settings
         let getEnumerator (list: Expression) =
+            // if isNull list then
+            //     raise SerializationException(...)
             // let enumerable = list :> IEnumerable<'Element>
             // enumerable.GetEnumerator()
             let enumerable =
@@ -19,10 +29,15 @@ type internal ListConverter private () =
                     "enumerable")
             Expression.Block(
                 [ enumerable ],
+                Serializer.throwIfNull list,
                 Expression.Assign(enumerable, Expression.Convert(list, enumerable.Type)),
                 Expression.Call(enumerable, "GetEnumerator", []))
             :> Expression
         Serializer.list dotnetType elementSerializer getEnumerator
+
+    let createOptionalSerializer dotnetType settings =
+        createRequiredSerializer dotnetType settings
+        |> Serializer.optionalNullableTypeWrapper converterSettings.AllowNulls
 
     // Deserializer for required values, i.e. those that will never have null
     // values according to the source schema.
@@ -50,13 +65,16 @@ type internal ListConverter private () =
         createRequiredDeserializer schema dotnetType settings
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Default = ListConverter()
+    static member val Default = ListConverter(ListConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =
-            if isListType sourceType
-            then Option.Some (createSerializer sourceType settings)
-            else Option.None
+            if not (isListType sourceType)
+            then Option.None
+            else
+                if converterSettings.Optional
+                then Option.Some (createOptionalSerializer sourceType settings)
+                else Option.Some (createRequiredSerializer sourceType settings)
 
         member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if not (isListType targetType)
@@ -64,7 +82,9 @@ type internal ListConverter private () =
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.List listSchema ->
-                    if sourceSchema.IsOptional
+                    if sourceSchema.IsOptional && converterSettings.Optional
                     then Option.Some (createOptionalDeserializer listSchema targetType settings)
-                    else Option.Some (createRequiredDeserializer listSchema targetType settings)
+                    elif not sourceSchema.IsOptional && not converterSettings.Optional
+                    then Option.Some (createRequiredDeserializer listSchema targetType settings)
+                    else Option.None
                 | _ -> Option.None

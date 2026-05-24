@@ -27,8 +27,8 @@ module ``serialize string`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<string>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<string>.FullName}' for which nulls are not"
+                    + " allowed by default" @>)
 
     [<Theory>]
     [<InlineData("")>]

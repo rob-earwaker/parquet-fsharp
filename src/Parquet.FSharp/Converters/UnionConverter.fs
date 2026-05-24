@@ -138,10 +138,7 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
             let fieldDeserializers =
                 unionCase.Fields
                 |> Array.choose (fun fieldInfo ->
-                    recordSchema.Fields
-                    |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = fieldInfo.Name)
-                    |> Option.map (fun fieldSchema ->
-                        FieldDeserializer.ofField fieldSchema.Value fieldInfo settings))
+                    FieldDeserializer.tryOfField recordSchema fieldInfo settings)
             let createFromFieldValues = unionCase.CreateFromFieldValues
             if fieldDeserializers.Length < unionCase.Fields.Length
             then Option.None
@@ -166,10 +163,7 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
             let fieldDeserializers =
                 unionCase.Fields
                 |> Array.choose (fun fieldInfo ->
-                    schema.Fields
-                    |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = fieldInfo.Name)
-                    |> Option.map (fun fieldSchema ->
-                        FieldDeserializer.ofField fieldSchema.Value fieldInfo settings))
+                    FieldDeserializer.tryOfField schema fieldInfo settings)
             let createFromFieldValues = unionCase.CreateFromFieldValues
             if fieldDeserializers.Length < unionCase.Fields.Length
             then Option.None

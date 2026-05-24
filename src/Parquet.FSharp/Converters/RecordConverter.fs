@@ -8,15 +8,11 @@ type internal RecordConverter private () =
                 FieldSerializer.ofField fieldInfo settings)
         Serializer.record recordInfo.Type fieldSerializers
 
-    let tryCreateRequiredDeserializer
-        (recordSchema: RecordTypeSchema) (recordInfo: RecordInfo) settings =
+    let tryCreateRequiredDeserializer recordSchema (recordInfo: RecordInfo) settings =
         let fieldDeserializers =
             recordInfo.Fields
             |> Array.choose (fun fieldInfo ->
-                recordSchema.Fields
-                |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = fieldInfo.Name)
-                |> Option.map (fun fieldSchema ->
-                    FieldDeserializer.ofField fieldSchema.Value fieldInfo settings))
+                FieldDeserializer.tryOfField recordSchema fieldInfo settings)
         if fieldDeserializers.Length < recordInfo.Fields.Length
         then Option.None
         else

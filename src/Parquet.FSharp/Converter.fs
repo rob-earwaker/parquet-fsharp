@@ -111,15 +111,14 @@ module internal Serializer =
         Serializer.optional dotnetType valueSerializer isNull getValue
 
     // TODO: Should this live in Settings.fs?
-    let resolveWithValueSettings
-        (sourceType: Type) (valueSettings: ValueSettings) (settings: Settings) =
+    let resolveWithValueSettings sourceType (valueSettings: ValueSettings) settings =
         match valueSettings.Converter with
         | Option.Some assignedConverter ->
             assignedConverter.TryCreateSerializer(sourceType, settings)
             |> Option.defaultWith (fun () ->
                 raise <| SerializationException(
                     $"could not create serializer for type '{sourceType.FullName}'"
-                    + $" using assigned converter '%O{assignedConverter}'"))
+                    + $" using assigned converter '{assignedConverter}'"))
         | Option.None ->
             settings.ValueConverters
             |> List.tryPick _.TryCreateSerializer(sourceType, settings)
@@ -255,17 +254,32 @@ module internal Deserializer =
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
-    let resolve sourceSchema targetType (settings: Settings) =
-        settings.ValueConverters
-        |> List.tryPick _.TryCreateDeserializer(sourceSchema, targetType, settings)
-        |> Option.defaultWith (fun () ->
-            // TODO: This will likely end up depending on attributes as well,
-            // so probably will want to make the exception more generic to
-            // avoid confusion if there is a converter registered to support the
-            // specified type.
-            raise <| SerializationException(
-                "could not find converter to deserialize from schema"
-                + $" '{sourceSchema}' to type '{targetType.FullName}'"))
+    // TODO: Should this live in Settings.fs?
+    let resolveWithValueSettings sourceSchema targetType (valueSettings: ValueSettings) settings =
+        match valueSettings.Converter with
+        | Option.Some assignedConverter ->
+            assignedConverter.TryCreateDeserializer(sourceSchema, targetType, settings)
+            |> Option.defaultWith (fun () ->
+                raise <| SerializationException(
+                    $"could not create deserializer from schema '{sourceSchema}'"
+                    + $" to type '{targetType.FullName}' using assigned converter"
+                    + $" '{assignedConverter}'"))
+        | Option.None ->
+            settings.ValueConverters
+            |> List.tryPick _.TryCreateDeserializer(sourceSchema, targetType, settings)
+            |> Option.defaultWith (fun () ->
+                // TODO: This will likely end up depending on attributes as well,
+                // so probably will want to make the exception more generic to
+                // avoid confusion if there is a converter registered to support the
+                // specified type.
+                raise <| SerializationException(
+                    "could not find converter to deserialize from schema"
+                    + $" '{sourceSchema}' to type '{targetType.FullName}'"))
+
+    // TODO: Should this live in Settings.fs?
+    let resolve sourceSchema targetType settings =
+        let valueSettings = Settings.resolveForValue targetType settings
+        resolveWithValueSettings sourceSchema targetType valueSettings settings
 
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -295,7 +309,15 @@ module internal FieldDeserializer =
           FieldDeserializer.Name = name
           FieldDeserializer.ValueDeserializer = valueDeserializer }
 
-    let ofField schema (field: FieldInfo) settings =
-        let name = field.Name
-        let deserializer = Deserializer.resolve schema field.Type settings
-        create name deserializer
+    let tryOfField (recordSchema: RecordTypeSchema) (field: FieldInfo) settings =
+        let fieldSettings = Settings.resolveForField field.Field settings
+        // Override field name with configured name (if present) before looking
+        // for matching field in the schema.
+        let name = fieldSettings.Name |> Option.defaultValue field.Name
+        recordSchema.Fields
+        |> Array.tryFind _.Name.Equals(name)
+        |> Option.map (fun fieldSchema ->
+            let deserializer =
+                Deserializer.resolveWithValueSettings
+                    fieldSchema.Value field.Type fieldSettings.ValueSettings settings
+            create name deserializer)

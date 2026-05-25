@@ -5,7 +5,7 @@ open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
-module ``serialize { default }`` =
+module ``{ default } serialize`` =
     type Input = { Field1: bool }
     type Output = { Field1: bool }
 
@@ -30,7 +30,7 @@ module ``serialize { default }`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``serialize { optional: true }`` =
+module ``{ optional: true } serialize`` =
     type Input = { [<ParquetBoolField(Optional = true)>] Field1: bool }
     type Output = { Field1: bool option }
 
@@ -55,7 +55,7 @@ module ``serialize { optional: true }`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
-module ``deserialize from required { default }`` =
+module ``{ default } deserialize from required`` =
     type Input = { Field1: bool }
     type Output = { Field1: bool }
 
@@ -68,7 +68,7 @@ module ``deserialize from required { default }`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize from optional { optional: true }`` =
+module ``{ optional: true } deserialize`` =
     type Input = { Field1: bool option }
     type Output = { [<ParquetBoolField(Optional = true)>] Field1: bool }
 

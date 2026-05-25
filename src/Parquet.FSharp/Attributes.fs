@@ -1,8 +1,5 @@
 namespace Parquet.FSharp
 
-open System
-open System.Reflection
-
 type ParquetUnionAttribute() =
     inherit ParquetValueAttribute()
 
@@ -57,6 +54,19 @@ type ParquetUnionFieldAttribute() =
                 CaseTypeFieldName = this.CaseTypeFieldName }
         valueSettings |> ValueSettings.converter converter
 
+type ParquetOptionFieldAttribute() =
+    inherit ParquetFieldAttribute()
+
+    let default' = OptionConverterSettings.Default
+
+    member val Required = default'.Required with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            OptionConverter {
+                Required = this.Required }
+        valueSettings |> ValueSettings.converter converter
+
 //type internal ParquetDateTimeFieldAttribute() =
 //    inherit ParquetFieldAttribute()
 
@@ -85,35 +95,3 @@ type ParquetUnionFieldAttribute() =
 //        |> ValueSettings.useLocalDateTime useLocalDateTime
 //        |> ValueSettings.ignoreDateTimeKind ignoreDateTimeKind
 //        |> ValueSettings.dateTimeUnit dateTimeUnit
-
-//type internal ParquetOptionFieldAttribute() =
-//    inherit Attribute()
-
-//    // TODO: These are probably common across a lot of different converters. Maybe
-//    // still worth keeping them separate?
-//    let mutable optional = Option<bool>.None
-//    let mutable required = Option<bool>.None
-//    let mutable allowNull = Option<bool>.None
-
-//    member this.Optional
-//        with set value =
-//            optional <- Option.Some value
-
-//    member this.Required
-//        with set value =
-//            required <- Option.Some value
-
-//    member this.AllowNull
-//        with set value =
-//            allowNull <- Option.Some value
-
-//    abstract member ApplyValueSettings : valueSettings:ValueSettings -> ValueSettings
-
-//    default this.ApplyValueSettings(valueSettings) =
-//        let forceOptional = optional |> Option.defaultValue valueSettings.ForceOptional
-//        let forceRequired = required |> Option.defaultValue valueSettings.ForceRequired
-//        let allowNullValues = allowNull |> Option.defaultValue valueSettings.AllowNullValues
-//        valueSettings
-//        |> ValueSettings.forceOptional forceOptional
-//        |> ValueSettings.forceRequired forceRequired
-//        |> ValueSettings.allowNullValues allowNullValues

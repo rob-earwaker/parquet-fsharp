@@ -4,6 +4,9 @@ open System
 open System.Collections.Generic
 open System.Linq.Expressions
 
+// TODO: Should we allow invalid or non-sensical combinations, e.g. allow null
+// without optional?
+
 type internal ListConverterSettings = {
     Optional: bool
     AllowNull: bool }

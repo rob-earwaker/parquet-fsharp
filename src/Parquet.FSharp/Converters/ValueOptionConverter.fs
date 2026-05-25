@@ -14,20 +14,6 @@ type internal ValueOptionConverter private () =
             Serializer.optional dotnetType valueSerializer isNull getValue
             |> Option.Some
 
-    // Create a deserializer for a required field value. There's no need to wrap
-    // the value deserializer in an {OptionalDeserializer} in this case since
-    // there will never be any NULL values, but we do need to wrap any values we
-    // deserialize in {ValueOption.Some} cases so that they can be assigned to
-    // the target field.
-    let createRequiredDeserializer
-        sourceSchema (optionalInfo: OptionalInfo) settings =
-        let wrapValue = optionalInfo.CreateFromValue
-        // Resolve the value deserializer. The value schema is just the same as
-        // the source schema since we're dealing with a required field value.
-        let valueDeserializer =
-            Deserializer.resolve sourceSchema optionalInfo.ValueType settings
-        Deserializer.wrapAs optionalInfo.Type valueDeserializer wrapValue
-
     // Create a deserializer for an optional field value. In this situation we
     // need to wrap the value deserializer in an {OptionalDeserializer} to
     // handle NULL values. When we read a NULL value we convert it to the
@@ -48,6 +34,20 @@ type internal ValueOptionConverter private () =
         let createFromValue = optionalInfo.CreateFromValue
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
+
+    // Create a deserializer for a required field value. There's no need to wrap
+    // the value deserializer in an {OptionalDeserializer} in this case since
+    // there will never be any NULL values, but we do need to wrap any values we
+    // deserialize in {ValueOption.Some} cases so that they can be assigned to
+    // the target field.
+    let createRequiredDeserializer
+        sourceSchema (optionalInfo: OptionalInfo) settings =
+        let wrapValue = optionalInfo.CreateFromValue
+        // Resolve the value deserializer. The value schema is just the same as
+        // the source schema since we're dealing with a required field value.
+        let valueDeserializer =
+            Deserializer.resolve sourceSchema optionalInfo.ValueType settings
+        Deserializer.wrapAs optionalInfo.Type valueDeserializer wrapValue
 
     static member val Default = ValueOptionConverter()
 

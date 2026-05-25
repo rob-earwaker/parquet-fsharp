@@ -8,8 +8,7 @@ open System.Reflection
 
 type internal EnumInfo = {
     Type: Type
-    ValueType: Type
-    ValueOptionInfo: OptionalInfo }
+    ValueType: Type }
 
 type internal FieldInfo = {
     Field: PropertyInfo
@@ -74,11 +73,8 @@ module internal EnumInfo =
 
     let private ofType (enumType: Type) =
         let valueType = Enum.GetUnderlyingType(enumType)
-        let valueOptionType = typedefof<option<_>>.MakeGenericType(valueType)
-        let valueOptionInfo = OptionalInfo.ofOptionTypeCached valueOptionType
         { EnumInfo.Type = enumType
-          EnumInfo.ValueType = valueType
-          EnumInfo.ValueOptionInfo = valueOptionInfo }
+          EnumInfo.ValueType = valueType }
 
     let ofTypeCached enumType =
         Cache.GetOrCreate enumType ofType

@@ -5,49 +5,51 @@ open System.Linq.Expressions
 
 type internal TimeSpanConverter private () =
     let dotnetType = typeof<TimeSpan>
+    let dataDotnetType = typeof<int64>
     let ticksProperty = typeof<TimeSpan>.GetProperty("Ticks")
-    let microsecondsOptionInfo = OptionalInfo.ofOptionTypeCached typeof<int64 option>
     let ticksConstructor = typeof<TimeSpan>.GetConstructor([| typeof<int64> |])
     let ticksPerMicrosecond = Expression.Constant(10L)
 
-    let createSerializer settings =
-        let microsecondsSerializer = Serializer.resolve typeof<int64> settings
-        let unwrapValue (timeSpan: Expression) =
+    let serializer =
+        let schema = ValueTypeSchema.primitive dataDotnetType
+        let getDataValue (timeSpan: Expression) =
             // timeSpan.Ticks / ticksPerMicrosecond
             Expression.Divide(
                 Expression.Property(timeSpan, ticksProperty),
                 ticksPerMicrosecond)
             :> Expression
-        Serializer.wrapAs dotnetType microsecondsSerializer unwrapValue
+        Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
-    let createDeserializer sourceSchema settings =
-        let microsecondsOptionDeserializer =
-            Deserializer.resolve sourceSchema microsecondsOptionInfo.Type settings
-        let wrapValue (microsecondsOption: Expression) =
-            // if microsecondsOption.IsNone then
-            //     raise SerializationException(...)
-            // TimeSpan(microsecondsOption.Value * ticksPerMicrosecond)
-            Expression.Block(
-                Expression.IfThen(
-                    microsecondsOptionInfo.IsNull microsecondsOption,
-                    Deserializer.throwNullValueEncounteredForNonNullableType dotnetType),
-                Expression.New(
-                    ticksConstructor,
-                    Expression.Multiply(
-                        microsecondsOptionInfo.GetValue microsecondsOption,
-                        ticksPerMicrosecond)))
+    let requiredDeserializer =
+        let schema = ValueTypeSchema.primitive dataDotnetType
+        let createFromDataValue (microseconds: Expression) =
+            // TimeSpan(microseconds * ticksPerMicrosecond)
+            Expression.New(
+                ticksConstructor,
+                Expression.Multiply(microseconds, ticksPerMicrosecond))
             :> Expression
-        Deserializer.wrapAs dotnetType microsecondsOptionDeserializer wrapValue
+        Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
+
+    let optionalDeserializer =
+        requiredDeserializer
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     static member val Default = TimeSpanConverter()
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             if sourceType = dotnetType
-            then Option.Some (createSerializer settings)
+            then Option.Some serializer
             else Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
-            if targetType = dotnetType
-            then Option.Some (createDeserializer sourceSchema settings)
-            else Option.None
+            if targetType <> dotnetType
+            then Option.None
+            else
+                match sourceSchema.Type with
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = dataDotnetType ->
+                    if sourceSchema.IsOptional
+                    then Option.Some optionalDeserializer
+                    else Option.Some requiredDeserializer
+                | _ -> Option.None

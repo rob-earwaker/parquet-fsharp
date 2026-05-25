@@ -2,29 +2,35 @@ namespace Parquet.FSharp
 
 open System.Linq.Expressions
 
+// TODO: Add back support for conversions to other backing types, e.g.
+// enum<int16> serialized as int32.
+
 type internal EnumConverter private () =
-    let createSerializer (enumInfo: EnumInfo) settings =
-        let valueSerializer = Serializer.resolve enumInfo.ValueType settings
-        let unwrapValue (enum: Expression) =
+    let createSerializer (enumInfo: EnumInfo) =
+        let dotnetType = enumInfo.Type
+        // All enum value types are simple primitive atomic values (int8, int16,
+        // int32, int64, uint8, uint16, uint32, uint64).
+        let dataDotnetType = enumInfo.ValueType
+        let schema = ValueTypeSchema.primitive dataDotnetType
+        let getDataValue (enum: Expression) =
             Expression.Convert(enum, enumInfo.ValueType)
             :> Expression
-        Serializer.wrapAs enumInfo.Type valueSerializer unwrapValue
+        Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
-    // TODO: It's probably not worth the performance cost of wrapping everything
-    // as an option type to get better exception info! Applies to other wrapped
-    // types as well.
-
-    let createDeserializer sourceSchema (enumInfo: EnumInfo) settings =
-        let valueOptionDeserializer =
-            Deserializer.resolve sourceSchema enumInfo.ValueOptionInfo.Type settings
-        let wrapValue (valueOption: Expression) =
-            Expression.Block(
-                Expression.IfThen(
-                    enumInfo.ValueOptionInfo.IsNull valueOption,
-                    Deserializer.throwNullValueEncounteredForNonNullableType enumInfo.Type),
-                Expression.Convert(enumInfo.ValueOptionInfo.GetValue valueOption, enumInfo.Type))
+    let createRequiredDeserializer (enumInfo: EnumInfo) =
+        let dotnetType = enumInfo.Type
+        // All enum value types are simple primitive atomic values (int8, int16,
+        // int32, int64, uint8, uint16, uint32, uint64).
+        let dataDotnetType = enumInfo.ValueType
+        let schema = ValueTypeSchema.primitive dataDotnetType
+        let createFromDataValue (dataValue: Expression) =
+            Expression.Convert(dataValue, enumInfo.Type)
             :> Expression
-        Deserializer.wrapAs enumInfo.Type valueOptionDeserializer wrapValue
+        Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
+
+    let createOptionalDeserializer enumInfo =
+        createRequiredDeserializer enumInfo
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     static member val Default = EnumConverter()
 
@@ -32,11 +38,17 @@ type internal EnumConverter private () =
         member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             match sourceType with
             | DotnetType.Enum enumInfo ->
-                Option.Some (createSerializer enumInfo settings)
+                Option.Some (createSerializer enumInfo)
             | _ -> Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             match targetType with
             | DotnetType.Enum enumInfo ->
-                Option.Some (createDeserializer sourceSchema enumInfo settings)
+                match sourceSchema.Type with
+                | ValueTypeSchema.Primitive primitiveSchema
+                    when primitiveSchema.DataDotnetType = enumInfo.ValueType ->
+                    if sourceSchema.IsOptional
+                    then Option.Some (createOptionalDeserializer enumInfo)
+                    else Option.Some (createRequiredDeserializer enumInfo)
+                | _ -> Option.None
             | _ -> Option.None

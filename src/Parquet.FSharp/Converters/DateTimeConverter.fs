@@ -30,7 +30,7 @@ open System.Linq.Expressions
 
 type internal DateTimeConverter private () =
     let dotnetType = typeof<DateTime>
-    let dataDotnetType = dotnetType
+    let dataDotnetType = typeof<DateTime>
 
     let serializer =
         let schema =

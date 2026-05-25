@@ -91,8 +91,8 @@ module internal Serializer =
         let exnMessage =
             if allowNull
             then
-                "null value encountered during serialization of non-optional"
-                + $" value with type '{value.Type.FullName}'"
+                "null value encountered during serialization for type"
+                + $" '{value.Type.FullName}' which is not optional by default"
             else
                 "null value encountered during serialization for type"
                 + $" '{value.Type.FullName}' for which nulls are not allowed by"
@@ -231,17 +231,15 @@ module internal Deserializer =
             Deserializer.optional
                 dotnetType valueDeserializer createNull createFromValue
 
-    let throwNullValueEncounteredForNonNullableType (dotnetType: Type) =
-        Expression.Block(
-            Expression.FailWith<SerializationException>(
-                "null value encountered during deserialization for"
-                + $" non-nullable type '{dotnetType.FullName}'"),
-            Expression.Default(dotnetType))
-        :> Expression
-
     let optionalNonNullableTypeWrapper (valueDeserializer: Deserializer) =
         let dotnetType = valueDeserializer.DotnetType
-        let createNull = throwNullValueEncounteredForNonNullableType dotnetType
+        let createNull =
+            Expression.Block(
+                Expression.FailWith<SerializationException>(
+                    "null value encountered during deserialization for"
+                    + $" non-nullable type '{dotnetType.FullName}'"),
+                Expression.Default(dotnetType))
+            :> Expression
         let createFromValue = id
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue

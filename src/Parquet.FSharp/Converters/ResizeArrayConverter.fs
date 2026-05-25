@@ -4,7 +4,15 @@ open System
 open System.Collections.Generic
 open System.Linq.Expressions
 
-type internal ResizeArrayConverter private () =
+type internal ResizeArrayConverterSettings = {
+    Optional: bool
+    AllowNull: bool }
+    with
+    static member val Default = {
+        ResizeArrayConverterSettings.Optional = false
+        ResizeArrayConverterSettings.AllowNull = false }
+
+type internal ResizeArrayConverter(converterSettings: ResizeArrayConverterSettings) =
     let isResizeArrayType = DotnetType.isGenericType<ResizeArray<_>>
 
     let createSerializer (dotnetType: Type) settings =
@@ -21,7 +29,7 @@ type internal ResizeArrayConverter private () =
                     "enumerable")
             Expression.Block(
                 [ enumerable ],
-                Serializer.throwIfNull list,
+                Serializer.throwIfNull converterSettings.AllowNull list,
                 Expression.Assign(enumerable, Expression.Convert(list, enumerable.Type)),
                 Expression.Call(enumerable, "GetEnumerator", []))
             :> Expression
@@ -44,9 +52,9 @@ type internal ResizeArrayConverter private () =
     // be thrown if a null value is encountered in the data.
     let createOptionalDeserializer schema dotnetType settings =
         createRequiredDeserializer schema dotnetType settings
-        |> Deserializer.optionalNullableTypeWrapper
+        |> Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull
 
-    static member val Default = ResizeArrayConverter()
+    static member val Default = ResizeArrayConverter(ResizeArrayConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

@@ -6,11 +6,11 @@ open System.Linq.Expressions
 
 type internal ListConverterSettings = {
     Optional: bool
-    AllowNulls: bool }
+    AllowNull: bool }
     with
     static member val Default = {
         ListConverterSettings.Optional = false
-        ListConverterSettings.AllowNulls = false }
+        ListConverterSettings.AllowNull = false }
 
 type internal ListConverter(converterSettings: ListConverterSettings) =
     let isListType = DotnetType.isGenericType<list<_>>
@@ -29,7 +29,7 @@ type internal ListConverter(converterSettings: ListConverterSettings) =
                     "enumerable")
             Expression.Block(
                 [ enumerable ],
-                Serializer.throwIfNull list,
+                Serializer.throwIfNull converterSettings.AllowNull list,
                 Expression.Assign(enumerable, Expression.Convert(list, enumerable.Type)),
                 Expression.Call(enumerable, "GetEnumerator", []))
             :> Expression
@@ -37,7 +37,7 @@ type internal ListConverter(converterSettings: ListConverterSettings) =
 
     let createOptionalSerializer dotnetType settings =
         createRequiredSerializer dotnetType settings
-        |> Serializer.optionalNullableTypeWrapper converterSettings.AllowNulls
+        |> Serializer.optionalNullableTypeWrapper converterSettings.AllowNull
 
     // Deserializer for required values, i.e. those that will never have null
     // values according to the source schema.
@@ -63,7 +63,7 @@ type internal ListConverter(converterSettings: ListConverterSettings) =
     // be thrown if a null value is encountered in the data.
     let createOptionalDeserializer schema dotnetType settings =
         createRequiredDeserializer schema dotnetType settings
-        |> Deserializer.optionalNonNullableTypeWrapper
+        |> Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull
 
     static member val Default = ListConverter(ListConverterSettings.Default)
 

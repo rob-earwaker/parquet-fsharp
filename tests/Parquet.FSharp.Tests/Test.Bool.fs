@@ -30,7 +30,7 @@ module ``{ default } serialize`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``{ optional: true } serialize`` =
+module ``{ optional=true } serialize`` =
     type Input = { [<ParquetBoolField(Optional = true)>] Field1: bool }
     type Output = { Field1: bool option }
 
@@ -68,7 +68,7 @@ module ``{ default } deserialize from required`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``{ optional: true } deserialize`` =
+module ``{ optional=true } deserialize`` =
     type Input = { Field1: bool option }
     type Output = { [<ParquetBoolField(Optional = true)>] Field1: bool }
 

@@ -2,7 +2,15 @@ namespace Parquet.FSharp
 
 open System.Linq.Expressions
 
-type internal ByteArrayConverter private () =
+type internal ByteArrayConverterSettings = {
+    Optional: bool
+    AllowNull: bool }
+    with
+    static member val Default = {
+        ByteArrayConverterSettings.Optional = false
+        ByteArrayConverterSettings.AllowNull = false }
+
+type internal ByteArrayConverter(converterSettings: ByteArrayConverterSettings) =
     let dotnetType = typeof<byte[]>
     let dataDotnetType = dotnetType
 
@@ -10,7 +18,7 @@ type internal ByteArrayConverter private () =
         let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue (value: Expression) =
             Expression.Block(
-                Serializer.throwIfNull value,
+                Serializer.throwIfNull converterSettings.AllowNull value,
                 value)
             :> Expression
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
@@ -28,9 +36,9 @@ type internal ByteArrayConverter private () =
     // be thrown if a null value is encountered in the data.
     let optionalDeserializer =
         requiredDeserializer
-        |> Deserializer.optionalNullableTypeWrapper
+        |> Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull
 
-    static member val Default = ByteArrayConverter()
+    static member val Default = ByteArrayConverter(ByteArrayConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

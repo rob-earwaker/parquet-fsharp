@@ -75,8 +75,8 @@ module ``deserialize string from optional string`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<string>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<string>.FullName}' for which nulls are not"
+                    + " allowed by default" @>)
 
     [<Theory>]
     [<InlineData("")>]

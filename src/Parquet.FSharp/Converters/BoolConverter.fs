@@ -18,7 +18,8 @@ type internal BoolConverter(converterSettings: BoolConverterSettings) =
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let optionalSerializer =
-        Serializer.optionalNonNullableTypeWrapper requiredSerializer
+        requiredSerializer
+        |> Serializer.optionalNonNullableTypeWrapper
 
     let requiredDeserializer =
         let schema = ValueTypeSchema.primitive dataDotnetType
@@ -26,7 +27,8 @@ type internal BoolConverter(converterSettings: BoolConverterSettings) =
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
     let optionalDeserializer =
-        Deserializer.optionalNonNullableTypeWrapper requiredDeserializer
+        requiredDeserializer
+        |> Deserializer.optionalNonNullableTypeWrapper
 
     static member val Default = BoolConverter(BoolConverterSettings.Default)
 

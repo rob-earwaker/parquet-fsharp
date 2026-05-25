@@ -88,12 +88,12 @@ module ``deserialize enum union with single case from optional string`` =
             (fun exn ->
                 <@ exn.Message =
                     // TODO: In the future we could resolve the case name
-                    // deserializer with 'AllowNulls' and detect null when
+                    // deserializer with 'AllowNull' and detect null when
                     // mapping from string to case name for a better exception
                     // message.
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<string>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<string>.FullName}' for which nulls are not"
+                    + " allowed by default" @>)
 
     [<Fact>]
     let ``non-null value`` () =
@@ -134,12 +134,12 @@ module ``deserialize enum union with multiple cases from optional string`` =
             (fun exn ->
                 <@ exn.Message =
                     // TODO: In the future we could resolve the case name
-                    // deserializer with 'AllowNulls' and detect null when
+                    // deserializer with 'AllowNull' and detect null when
                     // mapping from string to case name for a better exception
                     // message.
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<string>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<string>.FullName}' for which nulls are not"
+                    + " allowed by default" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box "Case1"; (* outputValue *) box Union.Case1 |]
@@ -189,12 +189,12 @@ module ``deserialize enum union from optional string with unknown case name`` =
             (fun exn ->
                 <@ exn.Message =
                     // TODO: In the future we could resolve the case name
-                    // deserializer with 'AllowNulls' and detect null when
+                    // deserializer with 'AllowNull' and detect null when
                     // mapping from string to case name for a better exception
                     // message.
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<string>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<string>.FullName}' for which nulls are not"
+                    + " allowed by default" @>)
 
     [<Theory>]
     [<InlineData("Unknown")>]

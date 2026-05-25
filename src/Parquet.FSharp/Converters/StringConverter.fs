@@ -2,7 +2,15 @@ namespace Parquet.FSharp
 
 open System.Linq.Expressions
 
-type internal StringConverter private () =
+type internal StringConverterSettings = {
+    Optional: bool
+    AllowNull: bool }
+    with
+    static member val Default = {
+        StringConverterSettings.Optional = false
+        StringConverterSettings.AllowNull = false }
+
+type internal StringConverter(converterSettings: StringConverterSettings) =
     let dotnetType = typeof<string>
     let dataDotnetType = dotnetType
 
@@ -10,7 +18,7 @@ type internal StringConverter private () =
         let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue (value: Expression) =
             Expression.Block(
-                Serializer.throwIfNull value,
+                Serializer.throwIfNull converterSettings.AllowNull value,
                 value)
             :> Expression
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
@@ -28,9 +36,9 @@ type internal StringConverter private () =
     // be thrown if a null value is encountered in the data.
     let optionalDeserializer =
         requiredDeserializer
-        |> Deserializer.optionalNullableTypeWrapper
+        |> Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull
 
-    static member val Default = StringConverter()
+    static member val Default = StringConverter(StringConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

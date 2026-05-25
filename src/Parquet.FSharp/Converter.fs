@@ -87,15 +87,19 @@ module internal Serializer =
                 optionalSerializer.GetValue unwrappedOptional
             Serializer.optional dotnetType valueSerializer isNull getValue
 
-    let throwIfNull (value: Expression) =
-        // if isNull value then
-        //     raise SerializationException(...)
+    let throwIfNull allowNull (value: Expression) =
+        let exnMessage =
+            if allowNull
+            then
+                "null value encountered during serialization of non-optional"
+                + $" value with type '{value.Type.FullName}'"
+            else
+                "null value encountered during serialization for type"
+                + $" '{value.Type.FullName}' for which nulls are not allowed by"
+                + " default"
         Expression.IfThen(
             Expression.IsNull(value),
-            Expression.FailWith<SerializationException>(
-                "null value encountered during serialization for type"
-                + $" '{value.Type.FullName}' for which nulls are not"
-                + " allowed by default"))
+            Expression.FailWith<SerializationException>(exnMessage))
         :> Expression
 
     let optionalNonNullableTypeWrapper (valueSerializer: Serializer) =
@@ -104,7 +108,7 @@ module internal Serializer =
         let getValue = id
         Serializer.optional dotnetType valueSerializer isNull getValue
 
-    let optionalNullableTypeWrapper allowNulls (valueSerializer: Serializer) =
+    let optionalNullableTypeWrapper allowNull (valueSerializer: Serializer) =
         let dotnetType = valueSerializer.DotnetType
         // If nulls are allowed then we check for null to ensure that any null
         // values are written as NULL. If nulls are not allowed then we always
@@ -113,7 +117,7 @@ module internal Serializer =
         // serializer, which should check for null given that this is a nullable
         // type.
         let isNull =
-            if allowNulls
+            if allowNull
             then Expression.IsNull
             else fun value -> Expression.False
         let getValue = id
@@ -242,17 +246,19 @@ module internal Deserializer =
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
-    // TODO: Add argument allowNulls?
-    let optionalNullableTypeWrapper (valueDeserializer: Deserializer) =
+    let optionalNullableTypeWrapper allowNull (valueDeserializer: Deserializer) =
         let dotnetType = valueDeserializer.DotnetType
         let createNull =
-            Expression.Block(
-                Expression.FailWith<SerializationException>(
-                    "null value encountered during deserialization for type"
-                    + $" '{dotnetType.FullName}' which is not treated as"
-                    + " nullable by default"),
-                Expression.Default(dotnetType))
-            :> Expression
+            if allowNull
+            then Expression.Null(dotnetType)
+            else
+                Expression.Block(
+                    Expression.FailWith<SerializationException>(
+                        "null value encountered during deserialization for type"
+                        + $" '{dotnetType.FullName}' for which nulls are not"
+                        + " allowed by default"),
+                    Expression.Default(dotnetType))
+                :> Expression
         let createFromValue = id
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue

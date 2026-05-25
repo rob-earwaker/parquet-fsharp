@@ -35,13 +35,13 @@ type ParquetListFieldAttribute() =
     let default' = ListConverterSettings.Default
 
     member val Optional = default'.Optional with get, set
-    member val AllowNulls = default'.AllowNulls with get, set
+    member val AllowNull = default'.AllowNull with get, set
 
     override this.ApplyValueSettings(valueSettings) =
         let converter =
             ListConverter {
                 Optional = this.Optional
-                AllowNulls = this.AllowNulls }
+                AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
 type ParquetUnionFieldAttribute() =
@@ -93,7 +93,7 @@ type ParquetUnionFieldAttribute() =
 //    // still worth keeping them separate?
 //    let mutable optional = Option<bool>.None
 //    let mutable required = Option<bool>.None
-//    let mutable allowNulls = Option<bool>.None
+//    let mutable allowNull = Option<bool>.None
 
 //    member this.Optional
 //        with set value =
@@ -103,16 +103,16 @@ type ParquetUnionFieldAttribute() =
 //        with set value =
 //            required <- Option.Some value
 
-//    member this.AllowNulls
+//    member this.AllowNull
 //        with set value =
-//            allowNulls <- Option.Some value
+//            allowNull <- Option.Some value
 
 //    abstract member ApplyValueSettings : valueSettings:ValueSettings -> ValueSettings
 
 //    default this.ApplyValueSettings(valueSettings) =
 //        let forceOptional = optional |> Option.defaultValue valueSettings.ForceOptional
 //        let forceRequired = required |> Option.defaultValue valueSettings.ForceRequired
-//        let allowNullValues = allowNulls |> Option.defaultValue valueSettings.AllowNullValues
+//        let allowNullValues = allowNull |> Option.defaultValue valueSettings.AllowNullValues
 //        valueSettings
 //        |> ValueSettings.forceOptional forceOptional
 //        |> ValueSettings.forceRequired forceRequired

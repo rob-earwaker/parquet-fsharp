@@ -272,8 +272,8 @@ module ``deserialize 1d array with atomic elements from optional list with atomi
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<int array>.FullName}' which is not treated as"
-                    + " nullable by default" @>)
+                    + $" '{typeof<int array>.FullName}' for which nulls are not"
+                    + " allowed by default" @>)
 
     let NonNullValue = [|
         [| box<int list> (* inputValue *) [] (**);
@@ -334,8 +334,8 @@ module ``deserialize 1d array with list elements from optional list with list el
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<int list array>.FullName}' which is not"
-                    + " treated as nullable by default" @>)
+                    + $" '{typeof<int list array>.FullName}' for which nulls"
+                    + " are not allowed by default" @>)
 
     let NonNullValue = [|
         [| box<int list list> (* inputValue *) [] (**);
@@ -398,8 +398,8 @@ module ``deserialize 1d array with record elements from optional list with recor
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<Record array>.FullName}' which is not treated"
-                    + " as nullable by default" @>)
+                    + $" '{typeof<Record array>.FullName}' for which nulls are"
+                    + " not allowed by default" @>)
 
     let NonNullValue = [|
         [| box<Record list> (* inputValue *) [] (**);
@@ -463,8 +463,8 @@ module ``deserialize 1d array with optional elements from optional list with opt
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<int option array>.FullName}' which is not"
-                    + " treated as nullable by default" @>)
+                    + $" '{typeof<int option array>.FullName}' for which nulls"
+                    + " are not allowed by default" @>)
 
     let NonNullValue = [|
         [| box<int option list> (* inputValue *) [] (**);

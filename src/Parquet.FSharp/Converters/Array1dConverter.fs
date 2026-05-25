@@ -4,7 +4,15 @@ open System
 open System.Collections.Generic
 open System.Linq.Expressions
 
-type internal Array1dConverter private () =
+type internal Array1dConverterSettings = {
+    Optional: bool
+    AllowNull: bool }
+    with
+    static member val Default = {
+        Array1dConverterSettings.Optional = false
+        Array1dConverterSettings.AllowNull = false }
+
+type internal Array1dConverter(converterSettings: Array1dConverterSettings) =
     let isArray1dType (dotnetType: Type) =
         dotnetType.IsArray
         && dotnetType.GetArrayRank() = 1
@@ -23,7 +31,7 @@ type internal Array1dConverter private () =
                     "enumerable")
             Expression.Block(
                 [ enumerable ],
-                Serializer.throwIfNull array,
+                Serializer.throwIfNull converterSettings.AllowNull array,
                 Expression.Assign(enumerable, Expression.Convert(array, enumerable.Type)),
                 Expression.Call(enumerable, "GetEnumerator", []))
             :> Expression
@@ -48,9 +56,9 @@ type internal Array1dConverter private () =
     // be thrown if a null value is encountered in the data.
     let createOptionalDeserializer schema dotnetType settings =
         createRequiredDeserializer schema dotnetType settings
-        |> Deserializer.optionalNullableTypeWrapper
+        |> Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull
 
-    static member val Default = Array1dConverter()
+    static member val Default = Array1dConverter(Array1dConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, settings) =

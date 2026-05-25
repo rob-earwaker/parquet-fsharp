@@ -277,8 +277,8 @@ module ``deserialize resize array with atomic elements from optional list with a
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<ResizeArray<int>>.FullName}' which is not"
-                    + " treated as nullable by default" @>)
+                    + $" '{typeof<ResizeArray<int>>.FullName}' for which nulls"
+                    + " are not allowed by default" @>)
 
     let NonNullValue = [|
         [| box<int list> (* inputValue *) [] (**);
@@ -341,8 +341,8 @@ module ``deserialize resize array with list elements from optional list with lis
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<ResizeArray<int list>>.FullName}' which is"
-                    + " not treated as nullable by default" @>)
+                    + $" '{typeof<ResizeArray<int list>>.FullName}' for which"
+                    + " nulls are not allowed by default" @>)
 
     let NonNullValue = [|
         [| box<int list list> (* inputValue *) [] (**);
@@ -407,8 +407,8 @@ module ``deserialize resize array with record elements from optional list with r
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<ResizeArray<Record>>.FullName}' which is not"
-                    + " treated as nullable by default" @>)
+                    + $" '{typeof<ResizeArray<Record>>.FullName}' for which"
+                    + " nulls are not allowed by default" @>)
 
     let NonNullValue = [|
         [| box<Record list> (* inputValue *) [] (**);
@@ -474,8 +474,8 @@ module ``deserialize resize array with optional elements from optional list with
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<ResizeArray<int option>>.FullName}' which is"
-                    + " not treated as nullable by default" @>)
+                    + $" '{typeof<ResizeArray<int option>>.FullName}' for which"
+                    + " nulls are not allowed by default" @>)
 
     let NonNullValue = [|
         [| box<int option list> (* inputValue *) [] (**);

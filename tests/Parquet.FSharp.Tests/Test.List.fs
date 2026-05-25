@@ -5,7 +5,7 @@ open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
-module ``serialize list with atomic elements`` =
+module ``serialize with atomic elements { default }`` =
     type Input = { Field1: int list }
     type Output = { Field1: int list }
 
@@ -57,7 +57,7 @@ module ``serialize list with atomic elements`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``serialize list with list elements`` =
+module ``serialize with list elements { default }`` =
     type Input = { Field1: int list list }
     type Output = { Field1: int list list }
 
@@ -123,7 +123,7 @@ module ``serialize list with list elements`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``serialize list with record elements`` =
+module ``serialize with record elements { default }`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list }
     type Output = { Field1: Record list }
@@ -182,7 +182,7 @@ module ``serialize list with record elements`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``serialize list with optional elements`` =
+module ``serialize with optional elements { default }`` =
     type Input = { Field1: int option list }
     type Output = { Field1: int option list }
 
@@ -237,7 +237,7 @@ module ``serialize list with optional elements`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``serialize list as optional`` =
+module ``serialize { optional: true }`` =
     type Input = { [<ParquetListField(Optional = true)>] Field1: int list }
     type Output = { Field1: int list option }
 
@@ -289,7 +289,7 @@ module ``serialize list as optional`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
-module ``deserialize list with atomic elements`` =
+module ``deserialize required with atomic elements { default }`` =
     type Input = { Field1: int list }
     type Output = { Field1: int list }
 
@@ -306,7 +306,7 @@ module ``deserialize list with atomic elements`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize list with list elements`` =
+module ``deserialize required with list elements { default }`` =
     type Input = { Field1: int list list }
     type Output = { Field1: int list list }
 
@@ -325,7 +325,7 @@ module ``deserialize list with list elements`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize list with record elements`` =
+module ``deserialize with record elements { default }`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list }
     type Output = { Field1: Record list }
@@ -343,7 +343,7 @@ module ``deserialize list with record elements`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize list with optional elements`` =
+module ``deserialize required with optional elements { default }`` =
     type Input = { Field1: int option list }
     type Output = { Field1: int option list }
 
@@ -363,7 +363,7 @@ module ``deserialize list with optional elements`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize list as optional`` =
+module ``deserialize { optional: true }`` =
     type Input = { Field1: int list option }
     type Output = { [<ParquetListField(Optional = true)>] Field1: int list }
 

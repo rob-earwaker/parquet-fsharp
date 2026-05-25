@@ -5,6 +5,9 @@ open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
+// TODO: Add tests for serializing null values
+// TODO: Add tests for struct unions
+
 module ``serialize enum union with single case`` =
     type Union = Case1
     type Input = { Field1: Union }

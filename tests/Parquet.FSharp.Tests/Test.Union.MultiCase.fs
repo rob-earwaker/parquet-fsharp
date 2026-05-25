@@ -5,6 +5,9 @@ open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
+// TODO: Add tests for serializing null values
+// TODO: Add tests for struct unions
+
 module ``serialize multi case union with atomic field`` =
     type Union = Case1 | Case2 of field2:int
     type Case2Record = { field2: int }

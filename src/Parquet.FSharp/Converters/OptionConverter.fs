@@ -56,7 +56,7 @@ type internal OptionConverter private () =
     static member val Default = OptionConverter()
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             match sourceType with
             | DotnetType.Option optionalInfo ->
                 tryCreateSerializer optionalInfo settings

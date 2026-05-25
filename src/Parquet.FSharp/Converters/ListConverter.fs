@@ -68,7 +68,7 @@ type internal ListConverter(converterSettings: ListConverterSettings) =
     static member val Default = ListConverter(ListConverterSettings.Default)
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             if not (isListType sourceType)
             then Option.None
             else

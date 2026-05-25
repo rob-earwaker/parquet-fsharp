@@ -127,14 +127,14 @@ module internal Serializer =
     let resolveWithValueSettings sourceType (valueSettings: ValueSettings) settings =
         match valueSettings.Converter with
         | Option.Some assignedConverter ->
-            assignedConverter.TryCreateSerializer(sourceType, settings)
+            assignedConverter.TryCreateSerializer(sourceType, valueSettings, settings)
             |> Option.defaultWith (fun () ->
                 raise <| SerializationException(
                     $"could not create serializer for type '{sourceType.FullName}'"
                     + $" using assigned converter '{assignedConverter}'"))
         | Option.None ->
             settings.ValueConverters
-            |> List.tryPick _.TryCreateSerializer(sourceType, settings)
+            |> List.tryPick _.TryCreateSerializer(sourceType, valueSettings, settings)
             |> Option.defaultWith (fun () ->
                 // TODO: This will likely end up depending on attributes as well,
                 // so probably will want to make the exception more generic to

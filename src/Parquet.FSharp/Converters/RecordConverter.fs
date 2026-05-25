@@ -27,7 +27,7 @@ type internal RecordConverter private () =
     static member val Default = RecordConverter()
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             match sourceType with
             | DotnetType.Record recordInfo ->
                 Option.Some (createSerializer recordInfo settings)

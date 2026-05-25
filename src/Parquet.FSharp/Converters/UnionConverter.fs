@@ -271,7 +271,7 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
     static member val Default = UnionConverter(UnionConverterSettings.Default)
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             match sourceType with
             | DotnetType.Union unionInfo ->
                 let serializer =

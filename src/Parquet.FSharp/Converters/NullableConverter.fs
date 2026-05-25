@@ -51,7 +51,7 @@ type internal NullableConverter private () =
     static member val Default = NullableConverter()
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             match sourceType with
             | DotnetType.Nullable optionalInfo ->
                 tryCreateSerializer optionalInfo settings

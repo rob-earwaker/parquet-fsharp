@@ -61,7 +61,7 @@ type internal Array1dConverter(converterSettings: Array1dConverterSettings) =
     static member val Default = Array1dConverter(Array1dConverterSettings.Default)
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             if isArray1dType sourceType
             then Option.Some (createSerializer sourceType settings)
             else Option.None

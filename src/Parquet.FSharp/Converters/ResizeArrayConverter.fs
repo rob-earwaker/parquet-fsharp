@@ -57,7 +57,7 @@ type internal ResizeArrayConverter(converterSettings: ResizeArrayConverterSettin
     static member val Default = ResizeArrayConverter(ResizeArrayConverterSettings.Default)
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             if isResizeArrayType sourceType
             then Option.Some (createSerializer sourceType settings)
             else Option.None

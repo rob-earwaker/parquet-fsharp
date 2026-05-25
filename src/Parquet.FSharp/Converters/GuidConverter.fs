@@ -23,7 +23,7 @@ type internal GuidConverter private () =
     static member val Default = GuidConverter()
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None

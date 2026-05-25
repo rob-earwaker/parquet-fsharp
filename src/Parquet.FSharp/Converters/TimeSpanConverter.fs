@@ -42,7 +42,7 @@ type internal TimeSpanConverter private () =
     static member val Default = TimeSpanConverter()
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             if sourceType = dotnetType
             then Option.Some (createSerializer settings)
             else Option.None

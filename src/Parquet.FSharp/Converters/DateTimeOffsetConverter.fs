@@ -38,7 +38,7 @@ type internal DateTimeOffsetConverter private () =
     static member val Default = DateTimeOffsetConverter()
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             if sourceType = dotnetType
             then Option.Some (createSerializer settings)
             else Option.None

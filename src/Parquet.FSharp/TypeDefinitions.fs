@@ -74,9 +74,11 @@ type IValueSettingsPolicy =
 
 type IValueConverter =
     abstract member TryCreateSerializer
-        : sourceType:Type * settings:Settings -> Serializer option
+        : sourceType:Type * valueSettings:ValueSettings * settings:Settings
+        -> Serializer option
     abstract member TryCreateDeserializer
-        : sourceSchema:ValueSchema * targetType:Type * settings:Settings -> Deserializer option
+        : sourceSchema:ValueSchema * targetType:Type * settings:Settings
+        -> Deserializer option
 
 type Serializer =
     | Atomic of AtomicSerializer

@@ -26,7 +26,7 @@ type internal UInt64Converter private () =
     static member val Default = UInt64Converter()
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None

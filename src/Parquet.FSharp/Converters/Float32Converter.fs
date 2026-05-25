@@ -26,7 +26,7 @@ type internal Float32Converter private () =
     static member val Default = Float32Converter()
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None

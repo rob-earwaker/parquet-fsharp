@@ -33,7 +33,7 @@ type internal BoolConverter(converterSettings: BoolConverterSettings) =
     static member val Default = BoolConverter(BoolConverterSettings.Default)
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             if sourceType <> dotnetType
             then Option.None
             else

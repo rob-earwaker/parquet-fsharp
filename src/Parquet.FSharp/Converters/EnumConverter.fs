@@ -29,7 +29,7 @@ type internal EnumConverter private () =
     static member val Default = EnumConverter()
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             match sourceType with
             | DotnetType.Enum enumInfo ->
                 Option.Some (createSerializer enumInfo settings)

@@ -41,7 +41,7 @@ type internal ByteArrayConverter(converterSettings: ByteArrayConverterSettings) 
     static member val Default = ByteArrayConverter(ByteArrayConverterSettings.Default)
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, settings) =
+        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
             if sourceType = dotnetType
             then Option.Some serializer
             else Option.None

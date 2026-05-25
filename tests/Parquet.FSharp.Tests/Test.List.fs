@@ -5,8 +5,6 @@ open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
-// TODO: Add tests for serializing null values?
-
 module ``serialize list with atomic elements`` =
     type Input = { Field1: int list }
     type Output = { Field1: int list }
@@ -33,14 +31,25 @@ module ``serialize list with atomic elements`` =
                         Assert.Field.ConvertedType.isInt32
                         Assert.Field.hasNoChildren ] ] ] ]
 
-    let Value = [|
+    [<Fact>]
+    let ``null`` () =
+        let inputRecords = [| { Input.Field1 = Unchecked.defaultof<int list> } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "null value encountered during serialization for type"
+                    + $" '{typeof<int list>.FullName}' for which nulls are not"
+                    + " allowed by default" @>)
+
+    let NonNull = [|
         [| box<int list> (**) [] (**) |]
         [| box<int list> (**) [ 1 ] (**) |]
         [| box<int list> (**) [ 1; 2; 3 ] (**) |] |]
 
     [<Theory>]
-    [<MemberData(nameof Value)>]
-    let ``value`` value =
+    [<MemberData(nameof NonNull)>]
+    let ``non-null`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
@@ -86,7 +95,18 @@ module ``serialize list with list elements`` =
                                 Assert.Field.ConvertedType.isInt32
                                 Assert.Field.hasNoChildren ] ] ] ] ] ]
 
-    let Value = [|
+    [<Fact>]
+    let ``null`` () =
+        let inputRecords = [| { Input.Field1 = Unchecked.defaultof<int list list> } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "null value encountered during serialization for type"
+                    + $" '{typeof<int list list>.FullName}' for which nulls are"
+                    + " not allowed by default" @>)
+
+    let NonNull = [|
         [| box<int list list> (**) [] (**) |]
         [| box<int list list> (**) [ [] ] (**) |]
         [| box<int list list> (**) [ [ 1; 2; 3 ] ] (**) |]
@@ -94,8 +114,8 @@ module ``serialize list with list elements`` =
         [| box<int list list> (**) [ [ 1 ]; []; [ 2; 3; 4 ] ] (**) |] |]
 
     [<Theory>]
-    [<MemberData(nameof Value)>]
-    let ``value`` value =
+    [<MemberData(nameof NonNull)>]
+    let ``non-null`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
@@ -136,14 +156,25 @@ module ``serialize list with record elements`` =
                             Assert.Field.ConvertedType.isInt32
                             Assert.Field.hasNoChildren ] ] ] ] ]
 
-    let Value = [|
+    [<Fact>]
+    let ``null`` () =
+        let inputRecords = [| { Input.Field1 = Unchecked.defaultof<Record list> } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "null value encountered during serialization for type"
+                    + $" '{typeof<Record list>.FullName}' for which nulls are"
+                    + " not allowed by default" @>)
+
+    let NonNull = [|
         [| box<Record list> (**) [] (**) |]
         [| box<Record list> (**) [ { Field2 = 1 } ] (**) |]
         [| box<Record list> (**) [ { Field2 = 1 }; { Field2 = 2 } ] (**) |] |]
 
     [<Theory>]
-    [<MemberData(nameof Value)>]
-    let ``value`` value =
+    [<MemberData(nameof NonNull)>]
+    let ``non-null`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
@@ -177,7 +208,18 @@ module ``serialize list with optional elements`` =
                         Assert.Field.ConvertedType.isInt32
                         Assert.Field.hasNoChildren ] ] ] ]
 
-    let Value = [|
+    [<Fact>]
+    let ``null`` () =
+        let inputRecords = [| { Input.Field1 = Unchecked.defaultof<int option list> } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "null value encountered during serialization for type"
+                    + $" '{typeof<int option list>.FullName}' for which nulls"
+                    + " are not allowed by default" @>)
+
+    let NonNull = [|
         [| box<int option list> (**) [] (**) |]
         [| box<int option list> (**) [ Option.None ] (**) |]
         [| box<int option list> (**) [ Option.Some 1 ] (**) |]
@@ -186,8 +228,8 @@ module ``serialize list with optional elements`` =
         [| box<int option list> (**) [ Option.Some 1; Option.Some 2 ] (**) |] |]
 
     [<Theory>]
-    [<MemberData(nameof Value)>]
-    let ``value`` value =
+    [<MemberData(nameof NonNull)>]
+    let ``non-null`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
@@ -221,21 +263,32 @@ module ``serialize list as optional`` =
                         Assert.Field.ConvertedType.isInt32
                         Assert.Field.hasNoChildren ] ] ] ]
 
-    let Value = [|
+    [<Fact>]
+    let ``null`` () =
+        let inputRecords = [| { Input.Field1 = Unchecked.defaultof<int list> } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "null value encountered during serialization for type"
+                    + $" '{typeof<int list>.FullName}' for which nulls are not"
+                    + " allowed by default" @>)
+
+    let NonNull = [|
         [| box<int list> (**) [] (**) |]
         [| box<int list> (**) [ 1 ] (**) |]
         [| box<int list> (**) [ 1; 2; 3 ] (**) |] |]
 
     [<Theory>]
-    [<MemberData(nameof Value)>]
-    let ``value`` value =
+    [<MemberData(nameof NonNull)>]
+    let ``non-null`` value =
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
-        
+
 module ``deserialize list with atomic elements`` =
     type Input = { Field1: int list }
     type Output = { Field1: int list }
@@ -252,35 +305,7 @@ module ``deserialize list with atomic elements`` =
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
-        
-module ``deserialize list with atomic elements as optional`` =
-    type Input = { Field1: int list option }
-    type Output = { [<ParquetListField(Optional = true)>] Field1: int list }
 
-    [<Fact>]
-    let ``null value`` () =
-        let inputRecords = [| { Input.Field1 = Option.None } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        raisesWith<SerializationException>
-            <@ ParquetSerializer.Deserialize<Output>(bytes) @>
-            (fun exn ->
-                <@ exn.Message =
-                    "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int list>.FullName}'" @>)
-
-    let NonNullValue = [|
-        [| box<int list> (**) [] (**) |]
-        [| box<int list> (**) [ 1 ] (**) |]
-        [| box<int list> (**) [ 1; 2; 3 ] (**) |] |]
-
-    [<Theory>]
-    [<MemberData(nameof NonNullValue)>]
-    let ``non-null value`` value =
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
-        
 module ``deserialize list with list elements`` =
     type Input = { Field1: int list list }
     type Output = { Field1: int list list }
@@ -299,37 +324,7 @@ module ``deserialize list with list elements`` =
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
-        
-module ``deserialize list with list elements as optional`` =
-    type Input = { Field1: int list list option }
-    type Output = { [<ParquetListField(Optional = true)>] Field1: int list list }
 
-    [<Fact>]
-    let ``null value`` () =
-        let inputRecords = [| { Input.Field1 = Option.None } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        raisesWith<SerializationException>
-            <@ ParquetSerializer.Deserialize<Output>(bytes) @>
-            (fun exn ->
-                <@ exn.Message =
-                    "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int list list>.FullName}'" @>)
-
-    let NonNullValue = [|
-        [| box<int list list> (**) [] (**) |]
-        [| box<int list list> (**) [ [] ] (**) |]
-        [| box<int list list> (**) [ [ 1; 2; 3 ] ] (**) |]
-        [| box<int list list> (**) [ []; []; [] ] (**) |]
-        [| box<int list list> (**) [ [ 1 ]; []; [ 2; 3; 4 ] ] (**) |] |]
-
-    [<Theory>]
-    [<MemberData(nameof NonNullValue)>]
-    let ``non-null value`` value =
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
-        
 module ``deserialize list with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list }
@@ -347,36 +342,7 @@ module ``deserialize list with record elements`` =
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
-        
-module ``deserialize list with record elements as optional`` =
-    type Record = { Field2: int }
-    type Input = { Field1: Record list option }
-    type Output = { [<ParquetListField(Optional = true)>] Field1: Record list }
 
-    [<Fact>]
-    let ``null value`` () =
-        let inputRecords = [| { Input.Field1 = Option.None } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        raisesWith<SerializationException>
-            <@ ParquetSerializer.Deserialize<Output>(bytes) @>
-            (fun exn ->
-                <@ exn.Message =
-                    "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Record list>.FullName}'" @>)
-
-    let NonNullValue = [|
-        [| box<Record list> (**) [] (**) |]
-        [| box<Record list> (**) [ { Field2 = 1 } ] (**) |]
-        [| box<Record list> (**) [ { Field2 = 1 }; { Field2 = 2 } ] (**) |] |]
-
-    [<Theory>]
-    [<MemberData(nameof NonNullValue)>]
-    let ``non-null value`` value =
-        let inputRecords = [| { Input.Field1 = Option.Some value } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = value } |] @>
-        
 module ``deserialize list with optional elements`` =
     type Input = { Field1: int option list }
     type Output = { Field1: int option list }
@@ -396,10 +362,10 @@ module ``deserialize list with optional elements`` =
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
-        
-module ``deserialize list with optional elements as optional`` =
-    type Input = { Field1: int option list option }
-    type Output = { [<ParquetListField(Optional = true)>] Field1: int option list }
+
+module ``deserialize list as optional`` =
+    type Input = { Field1: int list option }
+    type Output = { [<ParquetListField(Optional = true)>] Field1: int list }
 
     [<Fact>]
     let ``null value`` () =
@@ -410,15 +376,12 @@ module ``deserialize list with optional elements as optional`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int option list>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int list>.FullName}'" @>)
 
     let NonNullValue = [|
-        [| box<int option list> (**) [] (**) |]
-        [| box<int option list> (**) [ Option.None ] (**) |]
-        [| box<int option list> (**) [ Option.Some 1 ] (**) |]
-        [| box<int option list> (**) [ Option.None; Option.None; Option.None ] (**) |]
-        [| box<int option list> (**) [ Option.Some 1; Option.None; Option.Some 3 ] (**) |]
-        [| box<int option list> (**) [ Option.Some 1; Option.Some 2 ] (**) |] |]
+        [| box<int list> (**) [] (**) |]
+        [| box<int list> (**) [ 1 ] (**) |]
+        [| box<int list> (**) [ 1; 2; 3 ] (**) |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNullValue)>]

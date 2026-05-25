@@ -19,7 +19,7 @@ type ValueSchema = {
     with
     member this.MakeOptional() =
         { this with IsOptional = true }
-        
+
     member this.MakeRequired() =
         { this with IsOptional = false }
 
@@ -83,7 +83,7 @@ type RecordTypeSchema = {
 module internal ValueTypeSchema =
     let primitive dataDotnetType =
         ValueTypeSchema.Primitive { DataDotnetType = dataDotnetType }
-        
+
     let dateTime isAdjustedToUtc unit =
         ValueTypeSchema.DateTime {
             IsAdjustedToUtc = isAdjustedToUtc

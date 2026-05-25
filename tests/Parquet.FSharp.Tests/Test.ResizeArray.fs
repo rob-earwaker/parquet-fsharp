@@ -240,7 +240,7 @@ module ``serialize resize array with optional elements`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         let expectedRecords = [| { Output.Field1 = value } |]
         Assert.seqEqual expectedRecords outputRecords
-        
+
 module ``deserialize resize array with atomic elements from required list with atomic elements`` =
     type Input = { Field1: int list }
     type Output = { Field1: ResizeArray<int> }
@@ -263,7 +263,7 @@ module ``deserialize resize array with atomic elements from required list with a
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         let expectedRecords = [| { Output.Field1 = outputValue } |]
         Assert.seqEqual expectedRecords outputRecords
-        
+
 module ``deserialize resize array with atomic elements from optional list with atomic elements`` =
     type Input = { Field1: int list option }
     type Output = { Field1: ResizeArray<int> }
@@ -298,7 +298,7 @@ module ``deserialize resize array with atomic elements from optional list with a
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         let expectedRecords = [| { Output.Field1 = outputValue } |]
         Assert.seqEqual expectedRecords outputRecords
-        
+
 module ``deserialize resize array with list elements from required list with list elements`` =
     type Input = { Field1: int list list }
     type Output = { Field1: ResizeArray<int list> }
@@ -327,7 +327,7 @@ module ``deserialize resize array with list elements from required list with lis
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         let expectedRecords = [| { Output.Field1 = outputValue } |]
         Assert.seqEqual expectedRecords outputRecords
-        
+
 module ``deserialize resize array with list elements from optional list with list elements`` =
     type Input = { Field1: int list list option }
     type Output = { Field1: ResizeArray<int list> }
@@ -368,7 +368,7 @@ module ``deserialize resize array with list elements from optional list with lis
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         let expectedRecords = [| { Output.Field1 = outputValue } |]
         Assert.seqEqual expectedRecords outputRecords
-        
+
 module ``deserialize resize array with record elements from required list with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list }
@@ -392,7 +392,7 @@ module ``deserialize resize array with record elements from required list with r
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         let expectedRecords = [| { Output.Field1 = outputValue } |]
         Assert.seqEqual expectedRecords outputRecords
-        
+
 module ``deserialize resize array with record elements from optional list with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list option }
@@ -428,7 +428,7 @@ module ``deserialize resize array with record elements from optional list with r
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         let expectedRecords = [| { Output.Field1 = outputValue } |]
         Assert.seqEqual expectedRecords outputRecords
-        
+
 module ``deserialize resize array with optional elements from required list with optional elements`` =
     type Input = { Field1: int option list }
     type Output = { Field1: ResizeArray<int option> }
@@ -460,7 +460,7 @@ module ``deserialize resize array with optional elements from required list with
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         let expectedRecords = [| { Output.Field1 = outputValue } |]
         Assert.seqEqual expectedRecords outputRecords
-        
+
 module ``deserialize resize array with optional elements from optional list with optional elements`` =
     type Input = { Field1: int option list option }
     type Output = { Field1: ResizeArray<int option> }

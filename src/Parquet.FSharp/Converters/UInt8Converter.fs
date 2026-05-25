@@ -3,7 +3,7 @@ namespace Parquet.FSharp
 type internal UInt8Converter private () =
     let dotnetType = typeof<uint8>
     let dataDotnetType = dotnetType
-    
+
     let serializer =
         let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id

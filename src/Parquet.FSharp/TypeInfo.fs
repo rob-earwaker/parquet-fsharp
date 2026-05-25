@@ -331,7 +331,7 @@ module internal DotnetType =
     let isGenericType<'GenericType> (dotnetType: Type) =
         dotnetType.IsGenericType
         && dotnetType.GetGenericTypeDefinition() = typedefof<'GenericType>
-    
+
     let private ActivePatternGenericTypeMatch<'GenericType> (dotnetType: Type) =
         if isGenericType<'GenericType> dotnetType
         then Option.Some ()

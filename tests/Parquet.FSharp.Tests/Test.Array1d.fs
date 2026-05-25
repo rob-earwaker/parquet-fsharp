@@ -236,7 +236,7 @@ module ``serialize 1d array with optional elements`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
-        
+
 module ``deserialize 1d array with atomic elements from required list with atomic elements`` =
     type Input = { Field1: int list }
     type Output = { Field1: int array }
@@ -258,7 +258,7 @@ module ``deserialize 1d array with atomic elements from required list with atomi
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
-        
+
 module ``deserialize 1d array with atomic elements from optional list with atomic elements`` =
     type Input = { Field1: int list option }
     type Output = { Field1: int array }
@@ -292,7 +292,7 @@ module ``deserialize 1d array with atomic elements from optional list with atomi
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
-        
+
 module ``deserialize 1d array with list elements from required list with list elements`` =
     type Input = { Field1: int list list }
     type Output = { Field1: int list array }
@@ -320,7 +320,7 @@ module ``deserialize 1d array with list elements from required list with list el
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
-        
+
 module ``deserialize 1d array with list elements from optional list with list elements`` =
     type Input = { Field1: int list list option }
     type Output = { Field1: int list array }
@@ -360,7 +360,7 @@ module ``deserialize 1d array with list elements from optional list with list el
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
-        
+
 module ``deserialize 1d array with record elements from required list with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list }
@@ -383,7 +383,7 @@ module ``deserialize 1d array with record elements from required list with recor
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
-        
+
 module ``deserialize 1d array with record elements from optional list with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list option }
@@ -418,7 +418,7 @@ module ``deserialize 1d array with record elements from optional list with recor
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
-        
+
 module ``deserialize 1d array with optional elements from required list with optional elements`` =
     type Input = { Field1: int option list }
     type Output = { Field1: int option array }
@@ -449,7 +449,7 @@ module ``deserialize 1d array with optional elements from required list with opt
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
-        
+
 module ``deserialize 1d array with optional elements from optional list with optional elements`` =
     type Input = { Field1: int option list option }
     type Output = { Field1: int option array }

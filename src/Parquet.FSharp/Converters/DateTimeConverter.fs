@@ -29,10 +29,12 @@ open System.Linq.Expressions
 //   => deserialization assumes Local
 
 type internal DateTimeConverterSettings = {
-    Optional: bool }
+    Optional: bool
+    Unit: TimeUnit }
     with
     static member val Default = {
-        DateTimeConverterSettings.Optional = false }
+        DateTimeConverterSettings.Optional = false
+        DateTimeConverterSettings.Unit = TimeUnit.Microseconds }
 
 type internal DateTimeConverter(converterSettings: DateTimeConverterSettings) =
     let dotnetType = typeof<DateTime>
@@ -41,7 +43,7 @@ type internal DateTimeConverter(converterSettings: DateTimeConverterSettings) =
     let requiredSerializer =
         let schema =
             let isAdjustedToUtc = true
-            let unit = TimeUnit.Microseconds
+            let unit = converterSettings.Unit
             ValueTypeSchema.dateTime isAdjustedToUtc unit
         let getDataValue (dateTime: Expression) =
             // if dateTime.Kind <> DateTimeKind.Utc then
@@ -70,7 +72,7 @@ type internal DateTimeConverter(converterSettings: DateTimeConverterSettings) =
     let requiredDeserializer =
         let schema =
             let isAdjustedToUtc = true
-            let unit = TimeUnit.Microseconds
+            let unit = converterSettings.Unit
             ValueTypeSchema.dateTime isAdjustedToUtc unit
         let createFromDataValue = id
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
@@ -97,7 +99,7 @@ type internal DateTimeConverter(converterSettings: DateTimeConverterSettings) =
                 match sourceSchema.Type with
                 | ValueTypeSchema.DateTime dateTimeSchema
                     when dateTimeSchema.IsAdjustedToUtc
-                        && dateTimeSchema.Unit = TimeUnit.Microseconds ->
+                        && dateTimeSchema.Unit = converterSettings.Unit ->
                     if sourceSchema.IsOptional && converterSettings.Optional
                     then Option.Some optionalDeserializer
                     elif not sourceSchema.IsOptional && not converterSettings.Optional

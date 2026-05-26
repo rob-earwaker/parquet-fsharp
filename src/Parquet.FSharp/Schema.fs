@@ -54,18 +54,18 @@ type DateTimeTypeSchema = {
     with
     override this.ToString() =
         let kind = if this.IsAdjustedToUtc then "utc" else "local"
-        $"datetime[{kind}, {this.Unit}]"
+        let unit =
+            match this.Unit with
+            | TimeUnit.Milliseconds -> "ms"
+            | TimeUnit.Microseconds -> "us"
+            | TimeUnit.Nanoseconds -> "ns"
+            | _ -> "??"
+        $"datetime[{kind}, {unit}]"
 
 type TimeUnit =
-    | Milliseconds
-    | Microseconds
-    | Nanoseconds
-    with
-    override this.ToString() =
-        match this with
-        | TimeUnit.Milliseconds -> "ms"
-        | TimeUnit.Microseconds -> "us"
-        | TimeUnit.Nanoseconds -> "ns"
+    | Milliseconds = 0
+    | Microseconds = 1
+    | Nanoseconds = 2
 
 type ListTypeSchema = {
     Element: ValueSchema }
@@ -111,7 +111,8 @@ module internal ValueSchema =
                     match dateTimeField.Unit with
                     | DateTimeTimeUnit.Millis -> TimeUnit.Milliseconds
                     | DateTimeTimeUnit.Micros -> TimeUnit.Microseconds
-                    | _ -> TimeUnit.Nanoseconds
+                    | DateTimeTimeUnit.Nanos -> TimeUnit.Nanoseconds
+                    | unit -> failwith $"unsupported {nameof DateTimeTimeUnit} '{unit}'"
                 ValueTypeSchema.dateTime isAdjustedToUtc unit
             | :? DataField as dataField ->
                 let dataDotnetType = dataField.ClrType
@@ -150,11 +151,17 @@ module internal ValueSchema =
         | ValueTypeSchema.Primitive primitive ->
             DataField(fieldName, primitive.DataDotnetType, valueSchema.IsOptional)
         | ValueTypeSchema.DateTime dateTime ->
+            let unit =
+                match dateTime.Unit with
+                | TimeUnit.Milliseconds -> DateTimeTimeUnit.Millis
+                | TimeUnit.Microseconds -> DateTimeTimeUnit.Micros
+                | TimeUnit.Nanoseconds -> DateTimeTimeUnit.Nanos
+                | unit -> failwith $"unsupported {nameof TimeUnit} '{unit}'"
             DateTimeDataField(
                 fieldName,
                 DateTimeFormat.Timestamp,
                 dateTime.IsAdjustedToUtc,
-                Nullable(DateTimeTimeUnit.Micros),
+                Nullable(unit),
                 valueSchema.IsOptional)
         | ValueTypeSchema.List list ->
             let element = toParquetNet ListField.ElementName list.Element

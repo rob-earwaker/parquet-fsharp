@@ -32,11 +32,13 @@ type ParquetDateTimeFieldAttribute() =
     let default' = DateTimeConverterSettings.Default
 
     member val Optional = default'.Optional with get, set
+    member val Unit = default'.Unit with get, set
 
     override this.ApplyValueSettings(valueSettings) =
         let converter =
             DateTimeConverter {
-                Optional = this.Optional }
+                Optional = this.Optional
+                Unit = this.Unit }
         valueSettings |> ValueSettings.converter converter
 
 type ParquetListFieldAttribute() =

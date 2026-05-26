@@ -28,11 +28,17 @@ open System.Linq.Expressions
 //   => serialization ignores Kind, truncates to <resolution>
 //   => deserialization assumes Local
 
-type internal DateTimeConverter private () =
+type internal DateTimeConverterSettings = {
+    Optional: bool }
+    with
+    static member val Default = {
+        DateTimeConverterSettings.Optional = false }
+
+type internal DateTimeConverter(converterSettings: DateTimeConverterSettings) =
     let dotnetType = typeof<DateTime>
     let dataDotnetType = typeof<DateTime>
 
-    let serializer =
+    let requiredSerializer =
         let schema =
             let isAdjustedToUtc = true
             let unit = TimeUnit.Microseconds
@@ -57,6 +63,10 @@ type internal DateTimeConverter private () =
             :> Expression
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
+    let optionalSerializer =
+        requiredSerializer
+        |> Serializer.optionalNonNullableTypeWrapper
+
     let requiredDeserializer =
         let schema =
             let isAdjustedToUtc = true
@@ -69,13 +79,16 @@ type internal DateTimeConverter private () =
         requiredDeserializer
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Default = DateTimeConverter()
+    static member val Default = DateTimeConverter(DateTimeConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceType, valueSettings, settings) =
-            if sourceType = dotnetType
-            then Option.Some serializer
-            else Option.None
+            if sourceType <> dotnetType
+            then Option.None
+            else
+                if converterSettings.Optional
+                then option.Some optionalSerializer
+                else Option.Some requiredSerializer
 
         member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
             if targetType <> dotnetType
@@ -85,7 +98,9 @@ type internal DateTimeConverter private () =
                 | ValueTypeSchema.DateTime dateTimeSchema
                     when dateTimeSchema.IsAdjustedToUtc
                         && dateTimeSchema.Unit = TimeUnit.Microseconds ->
-                    if sourceSchema.IsOptional
+                    if sourceSchema.IsOptional && converterSettings.Optional
                     then Option.Some optionalDeserializer
-                    else Option.Some requiredDeserializer
+                    elif not sourceSchema.IsOptional && not converterSettings.Optional
+                    then Option.Some requiredDeserializer
+                    else Option.None
                 | _ -> Option.None

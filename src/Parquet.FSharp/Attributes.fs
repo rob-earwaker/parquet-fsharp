@@ -26,6 +26,19 @@ type ParquetBoolFieldAttribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
+type ParquetDateTimeFieldAttribute() =
+    inherit ParquetFieldAttribute()
+
+    let default' = DateTimeConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            DateTimeConverter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
 type ParquetListFieldAttribute() =
     inherit ParquetFieldAttribute()
 

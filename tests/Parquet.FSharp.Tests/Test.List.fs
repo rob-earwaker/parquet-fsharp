@@ -42,6 +42,8 @@ module ``{ default } serialize with atomic elements`` =
                     + $" '{typeof<int list>.FullName}' for which nulls are not"
                     + " allowed by default" @>)
 
+    // TODO: These are common across a lot of tests in this file. Can we just re-use?
+    // Same for other files!
     let NonNull = [|
         [| box<int list> (**) [] (**) |]
         [| box<int list> (**) [ 1 ] (**) |]

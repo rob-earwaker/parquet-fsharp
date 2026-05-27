@@ -92,7 +92,7 @@ type internal DateTimeConverter(converterSettings: DateTimeConverterSettings) =
                 then option.Some optionalSerializer
                 else Option.Some requiredSerializer
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
             if targetType <> dotnetType
             then Option.None
             else

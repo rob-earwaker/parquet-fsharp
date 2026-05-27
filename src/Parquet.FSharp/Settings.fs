@@ -76,8 +76,8 @@ module internal Settings =
         { settings with FieldPolicies = fieldPolicies }
 
     let resolveForValue (valueType: Type) (settings: Settings) =
-        let valueAttributes =
-            valueType.GetCustomAttributes<ParquetValueAttribute>(``inherit`` = true)
+        let valueSettingsAttributes =
+            valueType.GetCustomAttributes<ParquetValueSettingsAttribute>(``inherit`` = true)
             |> List.ofSeq
         let valuePolicies =
             settings.ValuePolicies
@@ -91,8 +91,8 @@ module internal Settings =
         // TODO: Does the order matter here? Easier to read with foldBack, so if
         // order does matter then maybe best to reverse above.
         |> List.foldBack
-            (fun (attribute: ParquetValueAttribute) -> attribute.ApplyValueSettings)
-            valueAttributes
+            (fun (attribute: ParquetValueSettingsAttribute) -> attribute.ApplyValueSettings)
+            valueSettingsAttributes
         // Apply any configured policies. We want policies to apply in the order
         // that they were added. Since policies are prepended when added, we
         // apply them in reverse order.
@@ -102,8 +102,8 @@ module internal Settings =
 
     let resolveForField (field: PropertyInfo) settings =
         let valueSettings = Settings.resolveForValue field.PropertyType settings
-        let fieldAttributes =
-            field.GetCustomAttributes<ParquetFieldAttribute>(``inherit`` = true)
+        let fieldSettingsAttributes =
+            field.GetCustomAttributes<ParquetFieldSettingsAttribute>(``inherit`` = true)
             |> List.ofSeq
         let fieldPolicies =
             settings.FieldPolicies
@@ -121,8 +121,8 @@ module internal Settings =
         // TODO: Does the order matter here? Easier to read with foldBack, so if
         // order does matter then maybe best to reverse above.
         |> List.foldBack
-            (fun (attribute: ParquetFieldAttribute) -> attribute.ApplyFieldSettings)
-            fieldAttributes
+            (fun (attribute: ParquetFieldSettingsAttribute) -> attribute.ApplyFieldSettings)
+            fieldSettingsAttributes
         // Apply any configured policies. We want policies to apply in the order
         // that they were added. Since policies are prepended when added, we
         // apply them in reverse order.
@@ -132,13 +132,18 @@ module internal Settings =
 
 [<AbstractClass>]
 [<AttributeUsage(AttributeTargets.Class ||| AttributeTargets.Struct)>]
-type ParquetValueAttribute() =
+type ParquetValueSettingsAttribute() =
     inherit Attribute()
     abstract member ApplyValueSettings : valueSettings:ValueSettings -> ValueSettings
 
+[<AbstractClass>]
 [<AttributeUsage(AttributeTargets.Property)>]
+type ParquetFieldSettingsAttribute() =
+    inherit Attribute()
+    abstract member ApplyFieldSettings : fieldSettings:FieldSettings -> FieldSettings
+
 type ParquetFieldAttribute() =
-    inherit ParquetValueAttribute()
+    inherit ParquetFieldSettingsAttribute()
 
     let mutable name = Option<string>.None
 
@@ -146,11 +151,26 @@ type ParquetFieldAttribute() =
         with set value =
             name <- Option.Some value
 
-    override this.ApplyValueSettings(valueSettings) =
+    abstract member ApplyValueSettings : valueSettings:ValueSettings -> ValueSettings
+
+    default this.ApplyValueSettings(valueSettings) =
         valueSettings
 
-    member this.ApplyFieldSettings(fieldSettings) =
+    override this.ApplyFieldSettings(fieldSettings) =
         let name = name |> Option.orElse fieldSettings.Name
         fieldSettings
         |> FieldSettings.nameOption name
+        // TODO: Naming - 'update' vs 'apply'
         |> FieldSettings.updateValueSettings this.ApplyValueSettings
+
+[<AbstractClass>]
+type ParquetOptionalValueAttribute() =
+    inherit ParquetFieldSettingsAttribute()
+
+    abstract member ApplyOptionalValueSettings : valueSettings:ValueSettings -> ValueSettings
+
+    override this.ApplyFieldSettings(fieldSettings) =
+        fieldSettings
+        |> FieldSettings.updateValueSettings (fun valueSettings ->
+            valueSettings
+            |> ValueSettings.updateOptionalValueSettings this.ApplyOptionalValueSettings)

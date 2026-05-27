@@ -149,7 +149,7 @@ module ``{ required=true } serialize with atomic value`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int option>.FullName}' which has been"
+                    + $" '{typeof<int option>}' which has been"
                     + " configured as required" @>)
 
     [<Fact>]
@@ -195,7 +195,7 @@ module ``{ required=true } serialize with list value`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int list option>.FullName}' which has been"
+                    + $" '{typeof<int list option>}' which has been"
                     + " configured as required" @>)
 
     let Some = [|
@@ -242,7 +242,7 @@ module ``{ required=true } serialize with record value`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<Record option>.FullName}' which has been"
+                    + $" '{typeof<Record option>}' which has been"
                     + " configured as required" @>)
 
     [<Fact>]
@@ -277,7 +277,7 @@ module ``{ required=true } serialize with optional value`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int option option>.FullName}' which has been"
+                    + $" '{typeof<int option option>}' which has been"
                     + " configured as required" @>)
 
     let Some = [|

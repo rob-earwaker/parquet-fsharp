@@ -27,7 +27,7 @@ module ``serialize string`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<string>.FullName}' for which nulls are not"
+                    + $" '{typeof<string>}' for which nulls are not"
                     + " allowed by default" @>)
 
     [<Theory>]
@@ -75,7 +75,7 @@ module ``deserialize string from optional string`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<string>.FullName}' for which nulls are not"
+                    + $" '{typeof<string>}' for which nulls are not"
                     + " allowed by default" @>)
 
     [<Theory>]

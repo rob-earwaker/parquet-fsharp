@@ -81,7 +81,7 @@ module ``{ optional=true } deserialize`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<bool>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<bool>}'" @>)
 
     [<Theory>]
     [<InlineData(false)>]

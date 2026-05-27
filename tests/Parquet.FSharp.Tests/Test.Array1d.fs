@@ -39,7 +39,7 @@ module ``serialize 1d array with atomic elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int array>.FullName}' for which nulls are not"
+                    + $" '{typeof<int array>}' for which nulls are not"
                     + " allowed by default" @>)
 
     let NonNull = [|
@@ -103,7 +103,7 @@ module ``serialize 1d array with list elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int list array>.FullName}' for which nulls"
+                    + $" '{typeof<int list array>}' for which nulls"
                     + " are not allowed by default" @>)
 
     let NonNull = [|
@@ -164,7 +164,7 @@ module ``serialize 1d array with record elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<Record array>.FullName}' for which nulls are"
+                    + $" '{typeof<Record array>}' for which nulls are"
                     + " not allowed by default" @>)
 
     let NonNull = [|
@@ -216,7 +216,7 @@ module ``serialize 1d array with optional elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int option array>.FullName}' for which nulls"
+                    + $" '{typeof<int option array>}' for which nulls"
                     + " are not allowed by default" @>)
 
     let NonNull = [|
@@ -272,7 +272,7 @@ module ``deserialize 1d array with atomic elements from optional list with atomi
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<int array>.FullName}' for which nulls are not"
+                    + $" '{typeof<int array>}' for which nulls are not"
                     + " allowed by default" @>)
 
     let NonNullValue = [|
@@ -334,7 +334,7 @@ module ``deserialize 1d array with list elements from optional list with list el
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<int list array>.FullName}' for which nulls"
+                    + $" '{typeof<int list array>}' for which nulls"
                     + " are not allowed by default" @>)
 
     let NonNullValue = [|
@@ -398,7 +398,7 @@ module ``deserialize 1d array with record elements from optional list with recor
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<Record array>.FullName}' for which nulls are"
+                    + $" '{typeof<Record array>}' for which nulls are"
                     + " not allowed by default" @>)
 
     let NonNullValue = [|
@@ -463,7 +463,7 @@ module ``deserialize 1d array with optional elements from optional list with opt
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<int option array>.FullName}' for which nulls"
+                    + $" '{typeof<int option array>}' for which nulls"
                     + " are not allowed by default" @>)
 
     let NonNullValue = [|

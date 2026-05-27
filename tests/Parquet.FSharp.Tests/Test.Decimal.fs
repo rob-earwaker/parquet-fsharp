@@ -75,7 +75,7 @@ module ``deserialize decimal from optional decimal`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<decimal>}'" @>)
 
     let NonNullValue = [|
         [| box -99999999999999999999.999999990000000000M |]
@@ -127,7 +127,7 @@ module ``deserialize decimal from optional int64`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<decimal>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box Int64.MinValue; (* outputValue *) box -9223372036854775808.0M |]
@@ -176,7 +176,7 @@ module ``deserialize decimal from optional int32`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<decimal>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box Int32.MinValue; (* outputValue *) box -2147483648.0M |]
@@ -225,7 +225,7 @@ module ``deserialize decimal from optional int16`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<decimal>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box Int16.MinValue; (* outputValue *) box -32768.0M |]
@@ -274,7 +274,7 @@ module ``deserialize decimal from optional int8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<decimal>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box SByte.MinValue; (* outputValue *) box -128.0M |]
@@ -321,7 +321,7 @@ module ``deserialize decimal from optional uint64`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<decimal>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box UInt64.MinValue; (* outputValue *) box                    0.0M |]
@@ -366,7 +366,7 @@ module ``deserialize decimal from optional uint32`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<decimal>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box UInt32.MinValue; (* outputValue *) box          0.0M |]
@@ -411,7 +411,7 @@ module ``deserialize decimal from optional uint16`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<decimal>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box UInt16.MinValue; (* outputValue *) box     0.0M |]
@@ -456,7 +456,7 @@ module ``deserialize decimal from optional uint8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<decimal>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<decimal>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box Byte.MinValue; (* outputValue *) box   0.0M |]

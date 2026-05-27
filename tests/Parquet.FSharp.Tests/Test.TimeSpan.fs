@@ -135,7 +135,7 @@ module ``deserialize time span from optional int64`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<TimeSpan>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<TimeSpan>}'" @>)
 
     [<Theory>]
     [<InlineData(-922337203685477580L)>] // Min value (truncated to micros)

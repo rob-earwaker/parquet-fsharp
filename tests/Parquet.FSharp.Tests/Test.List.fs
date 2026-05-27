@@ -39,7 +39,7 @@ module ``{ default } serialize with atomic elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int list>.FullName}' for which nulls are not"
+                    + $" '{typeof<int list>}' for which nulls are not"
                     + " allowed by default" @>)
 
     // TODO: These are common across a lot of tests in this file. Can we just re-use?
@@ -105,7 +105,7 @@ module ``{ default } serialize with list elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int list list>.FullName}' for which nulls are"
+                    + $" '{typeof<int list list>}' for which nulls are"
                     + " not allowed by default" @>)
 
     let NonNull = [|
@@ -166,7 +166,7 @@ module ``{ default } serialize with record elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<Record list>.FullName}' for which nulls are"
+                    + $" '{typeof<Record list>}' for which nulls are"
                     + " not allowed by default" @>)
 
     let NonNull = [|
@@ -218,7 +218,7 @@ module ``{ default } serialize with optional elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int option list>.FullName}' for which nulls"
+                    + $" '{typeof<int option list>}' for which nulls"
                     + " are not allowed by default" @>)
 
     let NonNull = [|
@@ -273,7 +273,7 @@ module ``{ optional=true } serialize with atomic elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int list>.FullName}' for which nulls are not"
+                    + $" '{typeof<int list>}' for which nulls are not"
                     + " allowed by default" @>)
 
     let NonNull = [|
@@ -337,7 +337,7 @@ module ``{ optional=true } serialize with list elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int list list>.FullName}' for which nulls are"
+                    + $" '{typeof<int list list>}' for which nulls are"
                     + " not allowed by default" @>)
 
     let NonNull = [|
@@ -398,7 +398,7 @@ module ``{ optional=true } serialize with record elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<Record list>.FullName}' for which nulls are"
+                    + $" '{typeof<Record list>}' for which nulls are"
                     + " not allowed by default" @>)
 
     let NonNull = [|
@@ -450,7 +450,7 @@ module ``{ optional=true } serialize with optional elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int option list>.FullName}' for which nulls"
+                    + $" '{typeof<int option list>}' for which nulls"
                     + " are not allowed by default" @>)
 
     let NonNull = [|
@@ -729,7 +729,7 @@ module ``{ allowNull=true } serialize with atomic elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int list>.FullName}' which is not optional"
+                    + $" '{typeof<int list>}' which is not optional"
                     + " by default" @>)
 
     let NonNull = [|
@@ -793,7 +793,7 @@ module ``{ allowNull=true } serialize with list elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int list list>.FullName}' which is not"
+                    + $" '{typeof<int list list>}' which is not"
                     + " optional by default" @>)
 
     let NonNull = [|
@@ -854,7 +854,7 @@ module ``{ allowNull=true } serialize with record elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<Record list>.FullName}' which is not optional"
+                    + $" '{typeof<Record list>}' which is not optional"
                     + " by default" @>)
 
     let NonNull = [|
@@ -906,7 +906,7 @@ module ``{ allowNull=true } serialize with optional elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int option list>.FullName}' which is not"
+                    + $" '{typeof<int option list>}' which is not"
                     + " optional by default" @>)
 
     let NonNull = [|
@@ -1014,7 +1014,7 @@ module ``{ optional=true } deserialize with atomic elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<int list>.FullName}' for which nulls are not"
+                    + $" '{typeof<int list>}' for which nulls are not"
                     + " allowed by default" @>)
 
     let NonNull = [|
@@ -1043,7 +1043,7 @@ module ``{ optional=true } deserialize with list elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<int list list>.FullName}' for which nulls are"
+                    + $" '{typeof<int list list>}' for which nulls are"
                     + " not allowed by default" @>)
 
     let NonNull = [|
@@ -1075,7 +1075,7 @@ module ``{ optional=true } deserialize with record elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<Record list>.FullName}' for which nulls are"
+                    + $" '{typeof<Record list>}' for which nulls are"
                     + " not allowed by default" @>)
 
     let NonNull = [|
@@ -1104,7 +1104,7 @@ module ``{ optional=true } deserialize with optional elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<int option list>.FullName}' for which nulls"
+                    + $" '{typeof<int option list>}' for which nulls"
                     + " are not allowed by default" @>)
 
     let NonNull = [|

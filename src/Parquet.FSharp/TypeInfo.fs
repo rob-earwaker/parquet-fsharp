@@ -153,7 +153,7 @@ module internal UnionInfo =
             | :? PropertyInfo as property ->
                 fun (union: Expression) -> Expression.Property(union, property) :> Expression
             | memberInfo ->
-                failwith $"unsupported tag member info type '{memberInfo.GetType().FullName}'"
+                failwith $"unsupported tag member info type '{memberInfo.GetType()}'"
         let getCaseName (union: Expression) =
             let tag = Expression.Variable(typeof<int>, "tag")
             let returnLabel = Expression.Label(typeof<string>, "caseName")
@@ -168,7 +168,7 @@ module internal UnionInfo =
                                 Expression.Return(returnLabel, Expression.Constant(caseInfo.Name)))
                             :> Expression)
                     yield Expression.FailWith(
-                        $"union of type '{unionType.FullName}' has invalid tag value")
+                        $"union of type '{unionType}' has invalid tag value")
                     yield Expression.Label(returnLabel, Expression.Null(returnLabel.Type))
                 })
             :> Expression
@@ -283,31 +283,6 @@ module internal OptionalInfo =
         Cache.GetOrCreate nullableType ofNullableType
 
 module internal DotnetType =
-    // TODO: Check how much of this is actually used.
-
-    let private ActivePatternTypeMatch<'Type> dotnetType =
-        if dotnetType = typeof<'Type>
-        then Option.Some ()
-        else Option.None
-
-    let (|Bool|_|) = ActivePatternTypeMatch<bool>
-    let (|Int8|_|) = ActivePatternTypeMatch<int8>
-    let (|Int16|_|) = ActivePatternTypeMatch<int16>
-    let (|Int32|_|) = ActivePatternTypeMatch<int>
-    let (|Int64|_|) = ActivePatternTypeMatch<int64>
-    let (|UInt8|_|) = ActivePatternTypeMatch<uint8>
-    let (|UInt16|_|) = ActivePatternTypeMatch<uint16>
-    let (|UInt32|_|) = ActivePatternTypeMatch<uint>
-    let (|UInt64|_|) = ActivePatternTypeMatch<uint64>
-    let (|Float32|_|) = ActivePatternTypeMatch<float32>
-    let (|Float64|_|) = ActivePatternTypeMatch<float>
-    let (|Decimal|_|) = ActivePatternTypeMatch<decimal>
-    let (|Guid|_|) = ActivePatternTypeMatch<Guid>
-    let (|DateTime|_|) = ActivePatternTypeMatch<DateTime>
-    let (|DateTimeOffset|_|) = ActivePatternTypeMatch<DateTimeOffset>
-    let (|String|_|) = ActivePatternTypeMatch<string>
-    let (|ByteArray|_|) = ActivePatternTypeMatch<byte[]>
-
     let (|Enum|_|) (dotnetType: Type) =
         if not dotnetType.IsEnum
         then Option.None
@@ -328,14 +303,6 @@ module internal DotnetType =
         dotnetType.IsGenericType
         && dotnetType.GetGenericTypeDefinition() = typedefof<'GenericType>
 
-    let private ActivePatternGenericTypeMatch<'GenericType> (dotnetType: Type) =
-        if isGenericType<'GenericType> dotnetType
-        then Option.Some ()
-        else Option.None
-
-    let (|GenericList|_|) = ActivePatternGenericTypeMatch<ResizeArray<_>>
-    let (|FSharpList|_|) = ActivePatternGenericTypeMatch<list<_>>
-
     let (|Option|_|) (dotnetType: Type) =
         if DotnetType.isGenericType<option<_>> dotnetType
         then Option.Some (OptionalInfo.ofOptionTypeCached dotnetType)
@@ -351,18 +318,20 @@ module internal DotnetType =
         then Option.Some (OptionalInfo.ofNullableTypeCached dotnetType)
         else Option.None
 
-    let (|Array1d|_|) (dotnetType: Type) =
-        if dotnetType.IsArray
-            && dotnetType.GetArrayRank() = 1
-        then Option.Some ()
-        else Option.None
-
     let (|Record|_|) dotnetType =
         if FSharpType.IsRecord(dotnetType)
         then Option.Some (RecordInfo.ofTypeCached dotnetType)
         else Option.None
 
     let (|Union|_|) dotnetType =
+        // Explicitly exclude union types that are handled in a special way.
+        // This ultimately means that these union types can't be serailized by
+        // the default union converter, so if converters associated with these
+        // types cannot be used we'll get an exception rather than silently
+        // succeeding and producing an overly verbose serialization schema.
         if FSharpType.IsUnion(dotnetType)
+            && not (DotnetType.isGenericType<list<_>> dotnetType)
+            && not (DotnetType.isGenericType<option<_>> dotnetType)
+            && not (DotnetType.isGenericType<voption<_>> dotnetType)
         then Option.Some (UnionInfo.ofTypeCached dotnetType)
         else Option.None

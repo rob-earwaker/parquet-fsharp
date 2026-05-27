@@ -99,7 +99,7 @@ module ``deserialize float64 from optional float64`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<float>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<float>}'" @>)
 
     [<Fact>]
     let ``nan value`` () =
@@ -179,7 +179,7 @@ module ``deserialize float64 from optional float32`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<float>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<float>}'" @>)
 
     [<Fact>]
     let ``nan value`` () =
@@ -242,7 +242,7 @@ module ``deserialize float64 from optional int32`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<float>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<float>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) Int32.MinValue, (* outputValue *) -2147483648.0)>]
@@ -285,7 +285,7 @@ module ``deserialize float64 from optional int16`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<float>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<float>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) Int16.MinValue, (* outputValue *) -32768.0)>]
@@ -328,7 +328,7 @@ module ``deserialize float64 from optional int8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<float>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<float>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) SByte.MinValue, (* outputValue *) -128.0)>]
@@ -369,7 +369,7 @@ module ``deserialize float64 from optional uint32`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<float>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<float>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) UInt32.MinValue, (* outputValue *)          0.0)>]
@@ -408,7 +408,7 @@ module ``deserialize float64 from optional uint16`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<float>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<float>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) UInt16.MinValue, (* outputValue *)     0.0)>]
@@ -447,7 +447,7 @@ module ``deserialize float64 from optional uint8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<float>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<float>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) Byte.MinValue, (* outputValue *)   0.0)>]

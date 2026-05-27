@@ -92,7 +92,7 @@ module ``deserialize enum union with single case from optional string`` =
                     // mapping from string to case name for a better exception
                     // message.
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<string>.FullName}' for which nulls are not"
+                    + $" '{typeof<string>}' for which nulls are not"
                     + " allowed by default" @>)
 
     [<Fact>]
@@ -138,7 +138,7 @@ module ``deserialize enum union with multiple cases from optional string`` =
                     // mapping from string to case name for a better exception
                     // message.
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<string>.FullName}' for which nulls are not"
+                    + $" '{typeof<string>}' for which nulls are not"
                     + " allowed by default" @>)
 
     let NonNullValue = [|
@@ -173,7 +173,7 @@ module ``deserialize enum union from required string with unknown case name`` =
                 <@ exn.Message =
                     $"encountered invalid case name '{caseName}' during"
                     + " deserialization of enum union type"
-                    + $" '{typeof<Union>.FullName}'" @>)
+                    + $" '{typeof<Union>}'" @>)
 
 module ``deserialize enum union from optional string with unknown case name`` =
     type Union = Case1 | Case2 | Case3
@@ -193,7 +193,7 @@ module ``deserialize enum union from optional string with unknown case name`` =
                     // mapping from string to case name for a better exception
                     // message.
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<string>.FullName}' for which nulls are not"
+                    + $" '{typeof<string>}' for which nulls are not"
                     + " allowed by default" @>)
 
     [<Theory>]
@@ -210,4 +210,4 @@ module ``deserialize enum union from optional string with unknown case name`` =
                 <@ exn.Message =
                     $"encountered invalid case name '{caseName}' during"
                     + " deserialization of enum union type"
-                    + $" '{typeof<Union>.FullName}'" @>)
+                    + $" '{typeof<Union>}'" @>)

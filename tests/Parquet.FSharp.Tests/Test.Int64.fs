@@ -63,7 +63,7 @@ module ``deserialize int64 from optional int64`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int64>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int64>}'" @>)
 
     [<Theory>]
     [<InlineData(Int64.MinValue)>]
@@ -106,7 +106,7 @@ module ``deserialize int64 from optional int32`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int64>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int64>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) Int32.MinValue, (* outputValue *) -2147483648L)>]
@@ -149,7 +149,7 @@ module ``deserialize int64 from optional int16`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int64>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int64>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) Int16.MinValue, (* outputValue *) -32768L)>]
@@ -192,7 +192,7 @@ module ``deserialize int64 from optional int8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int64>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int64>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) SByte.MinValue, (* outputValue *) -128L)>]
@@ -233,7 +233,7 @@ module ``deserialize int64 from optional uint32`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int64>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int64>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) UInt32.MinValue, (* outputValue *)          0L)>]
@@ -272,7 +272,7 @@ module ``deserialize int64 from optional uint16`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int64>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int64>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) UInt16.MinValue, (* outputValue *)     0L)>]
@@ -311,7 +311,7 @@ module ``deserialize int64 from optional uint8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int64>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int64>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) Byte.MinValue, (* outputValue *)   0L)>]

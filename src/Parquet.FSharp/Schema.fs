@@ -125,7 +125,7 @@ module internal ValueSchema =
                 |> Seq.map FieldSchema.ofParquetNet
                 |> Array.ofSeq
                 |> ValueTypeSchema.record
-            | _ -> failwith $"unsupported field type '{field.GetType().FullName}'"
+            | _ -> failwith $"unsupported field type '{field.GetType()}'"
         ValueSchema.create isOptional valueType
 
     // The {ListField} and {StructField} defined in Parquet.Net assume all lists

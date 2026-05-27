@@ -57,7 +57,7 @@ type internal NullableConverter private () =
                 tryCreateSerializer optionalInfo settings
             | _ -> Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
             match targetType with
             | DotnetType.Nullable optionalInfo ->
                 let deserializer =

@@ -1,7 +1,7 @@
 namespace Parquet.FSharp
 
 type ParquetUnionAttribute() =
-    inherit ParquetValueAttribute()
+    inherit ParquetValueSettingsAttribute()
 
     let default' = UnionConverterSettings.Default
 
@@ -80,6 +80,21 @@ type ParquetOptionFieldAttribute() =
         let converter =
             OptionConverter {
                 Required = this.Required }
+        valueSettings |> ValueSettings.converter converter
+
+type ParquetOptionalDateTimeAttribute() =
+    inherit ParquetOptionalValueAttribute()
+
+    let default' = DateTimeConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+    member val Unit = default'.Unit with get, set
+
+    override this.ApplyOptionalValueSettings(valueSettings) =
+        let converter =
+            DateTimeConverter {
+                Optional = this.Optional
+                Unit = this.Unit }
         valueSettings |> ValueSettings.converter converter
 
 //type internal ParquetDateTimeFieldAttribute() =

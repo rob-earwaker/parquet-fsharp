@@ -63,7 +63,7 @@ module ``deserialize int8 from optional int8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int8>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int8>}'" @>)
 
     [<Theory>]
     [<InlineData(SByte.MinValue)>]

@@ -529,8 +529,8 @@ type internal Assembler<'Record>(sourceSchema: RootSchema, settings) =
         | Deserializer.Optional optionalDeserializer ->
             match optionalDeserializer.ValueDeserializer with
             | Deserializer.Record recordDeserializer -> recordDeserializer
-            | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
-        | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
+            | _ -> failwith $"type {typeof<'Record>} is not a record"
+        | _ -> failwith $"type {typeof<'Record>} is not a record"
 
     let schema = RootSchema.ofValueSchema recordDeserializer.Schema
 

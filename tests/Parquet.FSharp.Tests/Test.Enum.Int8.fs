@@ -87,7 +87,7 @@ module ``deserialize int8 enum from optional int8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Enum>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Enum>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) 0y, (* outputValue *) Enum.Value1)>]

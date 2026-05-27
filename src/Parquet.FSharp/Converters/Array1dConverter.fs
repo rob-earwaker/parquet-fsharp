@@ -66,7 +66,7 @@ type internal Array1dConverter(converterSettings: Array1dConverterSettings) =
             then Option.Some (createSerializer sourceType settings)
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
             if not (isArray1dType targetType)
             then Option.None
             else

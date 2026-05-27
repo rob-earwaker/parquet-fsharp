@@ -87,7 +87,7 @@ module ``deserialize int32 enum from optional int32`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Enum>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Enum>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) 0, (* outputValue *) Enum.Value1)>]
@@ -150,7 +150,7 @@ module ``deserialize int32 enum from optional int32`` =
 //            (fun exn ->
 //                <@ exn.Message =
 //                    "null value encountered during deserialization for"
-//                    + $" non-nullable type '{typeof<Enum>.FullName}'" @>)
+//                    + $" non-nullable type '{typeof<Enum>}'" @>)
 
 //    [<Theory>]
 //    [<InlineData((* inputValue *) 0s, (* outputValue *) Enum.Value1)>]
@@ -213,7 +213,7 @@ module ``deserialize int32 enum from optional int32`` =
 //            (fun exn ->
 //                <@ exn.Message =
 //                    "null value encountered during deserialization for"
-//                    + $" non-nullable type '{typeof<Enum>.FullName}'" @>)
+//                    + $" non-nullable type '{typeof<Enum>}'" @>)
 
 //    [<Theory>]
 //    [<InlineData((* inputValue *) 0y, (* outputValue *) Enum.Value1)>]
@@ -274,7 +274,7 @@ module ``deserialize int32 enum from optional int32`` =
 //            (fun exn ->
 //                <@ exn.Message =
 //                    "null value encountered during deserialization for"
-//                    + $" non-nullable type '{typeof<Enum>.FullName}'" @>)
+//                    + $" non-nullable type '{typeof<Enum>}'" @>)
 
 //    [<Theory>]
 //    [<InlineData((* inputValue *) 0us, (* outputValue *) Enum.Value1)>]
@@ -333,7 +333,7 @@ module ``deserialize int32 enum from optional int32`` =
 //            (fun exn ->
 //                <@ exn.Message =
 //                    "null value encountered during deserialization for"
-//                    + $" non-nullable type '{typeof<Enum>.FullName}'" @>)
+//                    + $" non-nullable type '{typeof<Enum>}'" @>)
 
 //    [<Theory>]
 //    [<InlineData((* inputValue *) 0uy, (* outputValue *) Enum.Value1)>]

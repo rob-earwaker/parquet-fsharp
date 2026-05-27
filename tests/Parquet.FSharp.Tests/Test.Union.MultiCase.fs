@@ -390,7 +390,7 @@ module ``deserialize multi case union with atomic field from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box {
@@ -457,7 +457,7 @@ module ``deserialize multi case union with list field from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box {
@@ -526,7 +526,7 @@ module ``deserialize multi case union with record field from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box {
@@ -589,7 +589,7 @@ module ``deserialize multi case union with optional field from optional record``
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box {
@@ -664,7 +664,7 @@ module ``deserialize multi case union with multiple fields from optional record`
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box<UnionRecord> {
@@ -735,7 +735,7 @@ module ``deserialize multi case union with out-of-order fields from optional rec
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box<UnionRecord> {
@@ -808,7 +808,7 @@ module ``deserialize multi case union with subset of fields from optional record
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     let NonNullValue = [|
         [| (* inputValue *) box<UnionRecord> {

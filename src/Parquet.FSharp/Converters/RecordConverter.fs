@@ -33,7 +33,7 @@ type internal RecordConverter private () =
                 Option.Some (createSerializer recordInfo settings)
             | _ -> Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
             match targetType with
             | DotnetType.Record recordInfo ->
                 match sourceSchema.Type with

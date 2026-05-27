@@ -39,7 +39,7 @@ module ``serialize resize array with atomic elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<ResizeArray<int>>.FullName}' for which nulls"
+                    + $" '{typeof<ResizeArray<int>>}' for which nulls"
                     + " are not allowed by default" @>)
 
     let NonNull = [|
@@ -104,7 +104,7 @@ module ``serialize resize array with list elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<ResizeArray<int list>>.FullName}' for which"
+                    + $" '{typeof<ResizeArray<int list>>}' for which"
                     + " nulls are not allowed by default" @>)
 
     let NonNull = [|
@@ -166,7 +166,7 @@ module ``serialize resize array with record elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<ResizeArray<Record>>.FullName}' for which"
+                    + $" '{typeof<ResizeArray<Record>>}' for which"
                     + " nulls are not allowed by default" @>)
 
     let NonNull = [|
@@ -219,7 +219,7 @@ module ``serialize resize array with optional elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<ResizeArray<int option>>.FullName}' for which"
+                    + $" '{typeof<ResizeArray<int option>>}' for which"
                     + " nulls are not allowed by default" @>)
 
     let NonNull = [|
@@ -277,7 +277,7 @@ module ``deserialize resize array with atomic elements from optional list with a
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<ResizeArray<int>>.FullName}' for which nulls"
+                    + $" '{typeof<ResizeArray<int>>}' for which nulls"
                     + " are not allowed by default" @>)
 
     let NonNullValue = [|
@@ -341,7 +341,7 @@ module ``deserialize resize array with list elements from optional list with lis
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<ResizeArray<int list>>.FullName}' for which"
+                    + $" '{typeof<ResizeArray<int list>>}' for which"
                     + " nulls are not allowed by default" @>)
 
     let NonNullValue = [|
@@ -407,7 +407,7 @@ module ``deserialize resize array with record elements from optional list with r
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<ResizeArray<Record>>.FullName}' for which"
+                    + $" '{typeof<ResizeArray<Record>>}' for which"
                     + " nulls are not allowed by default" @>)
 
     let NonNullValue = [|
@@ -474,7 +474,7 @@ module ``deserialize resize array with optional elements from optional list with
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<ResizeArray<int option>>.FullName}' for which"
+                    + $" '{typeof<ResizeArray<int option>>}' for which"
                     + " nulls are not allowed by default" @>)
 
     let NonNullValue = [|

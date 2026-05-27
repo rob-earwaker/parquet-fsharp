@@ -92,11 +92,10 @@ module internal Serializer =
             if allowNull
             then
                 "null value encountered during serialization for type"
-                + $" '{value.Type.FullName}' which is not optional by default"
+                + $" '{value.Type}' which is not optional by default"
             else
                 "null value encountered during serialization for type"
-                + $" '{value.Type.FullName}' for which nulls are not allowed by"
-                + " default"
+                + $" '{value.Type}' for which nulls are not allowed by default"
         Expression.IfThen(
             Expression.IsNull(value),
             Expression.FailWith<SerializationException>(exnMessage))
@@ -130,7 +129,7 @@ module internal Serializer =
             assignedConverter.TryCreateSerializer(sourceType, valueSettings, settings)
             |> Option.defaultWith (fun () ->
                 raise <| SerializationException(
-                    $"could not create serializer for type '{sourceType.FullName}'"
+                    $"could not create serializer for type '{sourceType}'"
                     + $" using assigned converter '{assignedConverter}'"))
         | Option.None ->
             settings.ValueConverters
@@ -141,8 +140,7 @@ module internal Serializer =
                 // avoid confusion if there is a converter registered to support the
                 // specified type.
                 raise <| SerializationException(
-                    "could not find converter to serialize type"
-                    + $" '{sourceType.FullName}'"))
+                    $"could not find converter to serialize type '{sourceType}'"))
 
     // TODO: Should this live in Settings.fs?
     let resolve sourceType settings =
@@ -237,7 +235,7 @@ module internal Deserializer =
             Expression.Block(
                 Expression.FailWith<SerializationException>(
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{dotnetType.FullName}'"),
+                    + $" non-nullable type '{dotnetType}'"),
                 Expression.Default(dotnetType))
             :> Expression
         let createFromValue = id
@@ -253,8 +251,8 @@ module internal Deserializer =
                 Expression.Block(
                     Expression.FailWith<SerializationException>(
                         "null value encountered during deserialization for type"
-                        + $" '{dotnetType.FullName}' for which nulls are not"
-                        + " allowed by default"),
+                        + $" '{dotnetType}' for which nulls are not allowed"
+                        + " by default"),
                     Expression.Default(dotnetType))
                 :> Expression
         let createFromValue = id
@@ -265,15 +263,15 @@ module internal Deserializer =
     let resolveWithValueSettings sourceSchema targetType (valueSettings: ValueSettings) settings =
         match valueSettings.Converter with
         | Option.Some assignedConverter ->
-            assignedConverter.TryCreateDeserializer(sourceSchema, targetType, settings)
+            assignedConverter.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings)
             |> Option.defaultWith (fun () ->
                 raise <| SerializationException(
                     $"could not create deserializer from schema '{sourceSchema}'"
-                    + $" to type '{targetType.FullName}' using assigned converter"
+                    + $" to type '{targetType}' using assigned converter"
                     + $" '{assignedConverter}'"))
         | Option.None ->
             settings.ValueConverters
-            |> List.tryPick _.TryCreateDeserializer(sourceSchema, targetType, settings)
+            |> List.tryPick _.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings)
             |> Option.defaultWith (fun () ->
                 // TODO: This will likely end up depending on attributes as well,
                 // so probably will want to make the exception more generic to
@@ -281,7 +279,7 @@ module internal Deserializer =
                 // specified type.
                 raise <| SerializationException(
                     "could not find converter to deserialize from schema"
-                    + $" '{sourceSchema}' to type '{targetType.FullName}'"))
+                    + $" '{sourceSchema}' to type '{targetType}'"))
 
     // TODO: Should this live in Settings.fs?
     let resolve sourceSchema targetType settings =

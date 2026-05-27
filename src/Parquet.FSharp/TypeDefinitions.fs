@@ -77,7 +77,7 @@ type IValueConverter =
         : sourceType:Type * valueSettings:ValueSettings * settings:Settings
         -> Serializer option
     abstract member TryCreateDeserializer
-        : sourceSchema:ValueSchema * targetType:Type * settings:Settings
+        : sourceSchema:ValueSchema * targetType:Type * valueSettings:ValueSettings * settings:Settings
         -> Deserializer option
 
 type Serializer =

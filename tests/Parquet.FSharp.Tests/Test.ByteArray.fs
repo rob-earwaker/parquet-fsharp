@@ -28,7 +28,7 @@ module ``serialize byte array`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<byte[]>.FullName}' for which nulls are not"
+                    + $" '{typeof<byte[]>}' for which nulls are not"
                     + " allowed by default" @>)
 
     [<Theory>]
@@ -72,7 +72,7 @@ module ``deserialize byte array from optional byte array`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for type"
-                    + $" '{typeof<byte[]>.FullName}' for which nulls are not"
+                    + $" '{typeof<byte[]>}' for which nulls are not"
                     + " allowed by default" @>)
 
     [<Theory>]

@@ -62,7 +62,7 @@ type internal ResizeArrayConverter(converterSettings: ResizeArrayConverterSettin
             then Option.Some (createSerializer sourceType settings)
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
             if not (isResizeArrayType targetType)
             then Option.None
             else

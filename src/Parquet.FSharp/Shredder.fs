@@ -321,8 +321,8 @@ type private Shredder<'Record>(settings) =
         | Serializer.Optional optionalSerializer ->
             match optionalSerializer.ValueSerializer with
             | Serializer.Record recordSerializer -> recordSerializer
-            | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
-        | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
+            | _ -> failwith $"type {typeof<'Record>} is not a record"
+        | _ -> failwith $"type {typeof<'Record>} is not a record"
 
     let schema = RootSchema.ofValueSchema recordSerializer.Schema
     let parquetNetSchema = RootSchema.toParquetNet schema

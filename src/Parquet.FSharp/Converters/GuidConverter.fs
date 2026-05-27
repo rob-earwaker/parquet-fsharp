@@ -28,7 +28,7 @@ type internal GuidConverter private () =
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
             if targetType <> dotnetType
             then Option.None
             else

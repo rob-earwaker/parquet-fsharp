@@ -263,7 +263,7 @@ module ``deserialize record with atomic field from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Record>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Record>}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =
@@ -305,7 +305,7 @@ module ``deserialize record with list field from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Record>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Record>}'" @>)
 
     let NonNullValue = [|
         [| box<Record> (**) { Field2 = [] } (**) |]
@@ -349,7 +349,7 @@ module ``deserialize record with record field from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Record>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Record>}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =
@@ -390,7 +390,7 @@ module ``deserialize record with optional field from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Record>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Record>}'" @>)
 
     let NonNullValue = [|
         [| box<Record> (**) { Field2 = Option.None } (**) |]
@@ -431,7 +431,7 @@ module ``deserialize record with multiple fields from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Record>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Record>}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =
@@ -471,7 +471,7 @@ module ``deserialize record with out-of-order fields from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<OutputRecord>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<OutputRecord>}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =
@@ -513,7 +513,7 @@ module ``deserialize record with subset of fields from optional record`` =
                 <@ exn.Message =
                     "null value encountered during deserialization for"
                     + " non-nullable type"
-                    + $" '{typeof<OutputRecord>.FullName}'" @>)
+                    + $" '{typeof<OutputRecord>}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =

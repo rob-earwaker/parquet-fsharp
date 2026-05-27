@@ -87,7 +87,7 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
                 if name = typeFieldSerializer.Name then
                     failwith <|
                         $"case name '{typeFieldSerializer.Name}' is not supported"
-                        + $" for union type '{dotnetType.FullName}'"
+                        + $" for union type '{dotnetType}'"
                 let valueSerializer = createUnionCaseSerializer unionInfo unionCase settings
                 let getValue = id
                 FieldSerializer.create name valueSerializer getValue)
@@ -122,8 +122,7 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
                         // TODO: Could detect null values here and print '<null>' instead of ''
                         caseName,
                         Expression.Constant(
-                            "' during deserialization of enum union type"
-                            + $" '{dotnetType.FullName}'"))
+                            $"' during deserialization of enum union type '{dotnetType}'"))
                     yield Expression.Label(returnLabel, Expression.Default(dotnetType))
                 })
             :> Expression
@@ -252,10 +251,10 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
                                             Expression.IsNull(Expression.Convert(fieldValue, typeof<obj>)),
                                             Expression.FailWith(
                                                 $"no field values found for case '{caseInfo.Name}'"
-                                                + " of union type '{dotnetType.FullName}'"),
+                                                + $" of union type '{dotnetType}'"),
                                             Expression.Return(returnLabel, fieldValue)))
                             yield Expression.FailWith(
-                                $"unknown case name for union of type '{dotnetType.FullName}'")
+                                $"unknown case name for union of type '{dotnetType}'")
                             yield Expression.Label(returnLabel, Expression.Default(returnLabel.Type))
                         })
                     :> Expression
@@ -282,7 +281,7 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
                 Option.Some serializer
             | _ -> Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
             match targetType with
             | DotnetType.Union unionInfo ->
                 match unionInfo.UnionCategory with

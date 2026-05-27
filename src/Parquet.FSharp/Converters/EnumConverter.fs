@@ -41,7 +41,7 @@ type internal EnumConverter private () =
                 Option.Some (createSerializer enumInfo)
             | _ -> Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
             match targetType with
             | DotnetType.Enum enumInfo ->
                 match sourceSchema.Type with

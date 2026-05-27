@@ -79,7 +79,7 @@ type internal ListConverter(converterSettings: ListConverterSettings) =
                 then Option.Some (createOptionalSerializer sourceType settings)
                 else Option.Some (createRequiredSerializer sourceType settings)
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, settings) =
+        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
             if not (isListType targetType)
             then Option.None
             else

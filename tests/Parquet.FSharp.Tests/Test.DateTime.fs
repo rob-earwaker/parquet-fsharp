@@ -577,7 +577,7 @@ module ``{ optional=true } deserialize`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<DateTime>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<DateTime>}'" @>)
 
     [<Theory>]
     [<InlineData(                  0L)>] // Min value

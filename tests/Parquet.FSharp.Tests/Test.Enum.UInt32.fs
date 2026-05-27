@@ -83,7 +83,7 @@ module ``deserialize uint32 enum from optional uint32`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Enum>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Enum>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) 0u, (* outputValue *) Enum.Value1)>]
@@ -142,7 +142,7 @@ module ``deserialize uint32 enum from optional uint32`` =
 //            (fun exn ->
 //                <@ exn.Message =
 //                    "null value encountered during deserialization for"
-//                    + $" non-nullable type '{typeof<Enum>.FullName}'" @>)
+//                    + $" non-nullable type '{typeof<Enum>}'" @>)
 
 //    [<Theory>]
 //    [<InlineData((* inputValue *) 0us, (* outputValue *) Enum.Value1)>]
@@ -201,7 +201,7 @@ module ``deserialize uint32 enum from optional uint32`` =
 //            (fun exn ->
 //                <@ exn.Message =
 //                    "null value encountered during deserialization for"
-//                    + $" non-nullable type '{typeof<Enum>.FullName}'" @>)
+//                    + $" non-nullable type '{typeof<Enum>}'" @>)
 
 //    [<Theory>]
 //    [<InlineData((* inputValue *) 0uy, (* outputValue *) Enum.Value1)>]

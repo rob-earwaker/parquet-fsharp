@@ -239,7 +239,7 @@ module ``deserialize single case union with atomic field from optional record`` 
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =
@@ -284,7 +284,7 @@ module ``deserialize single case union with list field from optional record`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     let NonNullValue = [|
         [| box<int list> (**) [] (**) |]
@@ -332,7 +332,7 @@ module ``deserialize single case union with record field from optional record`` 
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =
@@ -377,7 +377,7 @@ module ``deserialize single case union with optional field from optional record`
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     let NonNullValue = [|
         [| box<int option> <| (**) Option.None (**) |]
@@ -421,7 +421,7 @@ module ``deserialize single case union with multiple fields from optional record
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =
@@ -460,7 +460,7 @@ module ``deserialize single case union with out-of-order fields from optional re
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =
@@ -499,7 +499,7 @@ module ``deserialize single case union with subset of fields from optional recor
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Union>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Union>}'" @>)
 
     [<Fact>]
     let ``non-null value`` () =

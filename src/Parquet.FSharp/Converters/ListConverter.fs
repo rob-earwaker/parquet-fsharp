@@ -18,9 +18,11 @@ type internal ListConverterSettings = {
 type internal ListConverter(converterSettings: ListConverterSettings) =
     let isListType = DotnetType.isGenericType<list<_>>
 
-    let createRequiredSerializer (dotnetType: Type) settings =
+    let createRequiredSerializer (dotnetType: Type) (listSettings: ValueSettings) settings =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
-        let elementSerializer = Serializer.resolve elementDotnetType settings
+        let elementSettings = listSettings.NestedValueSettings
+        let elementSerializer =
+            Serializer.resolveWithValueSettings elementDotnetType elementSettings settings
         let getEnumerator (list: Expression) =
             // if isNull list then
             //     raise SerializationException(...)
@@ -38,16 +40,19 @@ type internal ListConverter(converterSettings: ListConverterSettings) =
             :> Expression
         Serializer.list dotnetType elementSerializer getEnumerator
 
-    let createOptionalSerializer dotnetType settings =
-        createRequiredSerializer dotnetType settings
+    let createOptionalSerializer dotnetType listSettings settings =
+        createRequiredSerializer dotnetType listSettings settings
         |> Serializer.optionalNullableTypeWrapper converterSettings.AllowNull
 
     // Deserializer for required values, i.e. those that will never have null
     // values according to the source schema.
-    let createRequiredDeserializer (schema: ListTypeSchema) (dotnetType: Type) settings =
+    let createRequiredDeserializer
+        (schema: ListTypeSchema) (dotnetType: Type) (listSettings: ValueSettings) settings =
         let elementDotnetType = dotnetType.GetGenericArguments()[0]
+        let elementSettings = listSettings.NestedValueSettings
         let elementDeserializer =
-            Deserializer.resolve schema.Element elementDotnetType settings
+            Deserializer.resolveWithValueSettings
+                schema.Element elementDotnetType elementSettings settings
         let createEmpty =
             Expression.Property(null, dotnetType.GetProperty("Empty"))
         let createFromElementValues (elementValues: Expression) =
@@ -64,8 +69,8 @@ type internal ListConverter(converterSettings: ListConverterSettings) =
     // according to the source schema. Since we usually don't want null values
     // in F#, we just wrap as a non-nullable type. This means an exception will
     // be thrown if a null value is encountered in the data.
-    let createOptionalDeserializer schema dotnetType settings =
-        createRequiredDeserializer schema dotnetType settings
+    let createOptionalDeserializer schema dotnetType listSettings settings =
+        createRequiredDeserializer schema dotnetType listSettings settings
         |> Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull
 
     static member val Default = ListConverter(ListConverterSettings.Default)
@@ -76,8 +81,8 @@ type internal ListConverter(converterSettings: ListConverterSettings) =
             then Option.None
             else
                 if converterSettings.Optional
-                then Option.Some (createOptionalSerializer sourceType settings)
-                else Option.Some (createRequiredSerializer sourceType settings)
+                then Option.Some (createOptionalSerializer sourceType valueSettings settings)
+                else Option.Some (createRequiredSerializer sourceType valueSettings settings)
 
         member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
             if not (isListType targetType)
@@ -86,8 +91,8 @@ type internal ListConverter(converterSettings: ListConverterSettings) =
                 match sourceSchema.Type with
                 | ValueTypeSchema.List listSchema ->
                     if sourceSchema.IsOptional && converterSettings.Optional
-                    then Option.Some (createOptionalDeserializer listSchema targetType settings)
+                    then Option.Some (createOptionalDeserializer listSchema targetType valueSettings settings)
                     elif not sourceSchema.IsOptional && not converterSettings.Optional
-                    then Option.Some (createRequiredDeserializer listSchema targetType settings)
+                    then Option.Some (createRequiredDeserializer listSchema targetType valueSettings settings)
                     else Option.None
                 | _ -> Option.None

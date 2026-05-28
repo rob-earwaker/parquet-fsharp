@@ -18,20 +18,13 @@ type internal DelegateValueSettingsPolicy(isValidFor, applyValueSettings) =
 module internal ValueSettings =
     let Default = {
         ValueSettings.Converter = Option.None
-        ValueSettings.ListElementSettings = ValueSettings.Default
-        ValueSettings.OptionalValueSettings = ValueSettings.Default }
+        ValueSettings.NestedValueSettings = ValueSettings.Default }
 
     let converterOption converter (settings: ValueSettings) =
         { settings with Converter = converter }
 
     let converter converter (settings: ValueSettings) =
         converterOption (Option.Some converter) settings
-
-    let updateListElementSettings update (settings: ValueSettings) =
-        { settings with ListElementSettings = update settings.ListElementSettings }
-
-    let updateOptionalValueSettings update (settings: ValueSettings) =
-        { settings with OptionalValueSettings = update settings.OptionalValueSettings }
 
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -42,9 +35,6 @@ module internal FieldSettings =
 
     let nameOption name (settings: FieldSettings) =
         { settings with Name = name }
-
-    let name name settings =
-        nameOption (Option.Some name) settings
 
     let valueSettings valueSettings (settings: FieldSettings) =
         { settings with ValueSettings = valueSettings }
@@ -164,13 +154,46 @@ type ParquetFieldAttribute() =
         |> FieldSettings.updateValueSettings this.ApplyValueSettings
 
 [<AbstractClass>]
-type ParquetOptionalValueAttribute() =
+type ParquetNestedValueAttribute() =
     inherit ParquetFieldSettingsAttribute()
 
-    abstract member ApplyOptionalValueSettings : valueSettings:ValueSettings -> ValueSettings
+    // The minimum nesting level, equivalent to a single level of nesting, i.e. a value nested
+    // directly inside an optional or list field. For example, in a field of type {option<int>} or
+    // {list<int>}, the {int} values are nested by one level and so are at the minimum nesting level.
+    // A nesting level of zero would imply no nesting at all, so is not a valid value.
+    static let [<Literal>] MinNestingLevel = 1
+
+    member val Level = MinNestingLevel with get, set
+
+    abstract member ApplyNestedValueSettings : valueSettings:ValueSettings -> ValueSettings
 
     override this.ApplyFieldSettings(fieldSettings) =
+        // We need to recurse down through the field value settings until we reach the
+        // {NestedValueSettings} at the configured level. We can then update these settings using
+        // the abstract {ApplyNestedValueSettings} method and then roll back up the levels, updating
+        // them as we go. We do this using a recursive function.
+        let rec updateNestedValueSettings currentLevel (valueSettings: ValueSettings) =
+            let nestedValueSettings = valueSettings.NestedValueSettings
+            // Update the existing nested value settings based on the current level.
+            let updatedNestedValueSettings =
+                // If we haven't yet reached the configured level then we continue recursing down by
+                // incrementing the current level and passing down the nested value settings.
+                if currentLevel < this.Level
+                then updateNestedValueSettings (currentLevel + 1) nestedValueSettings
+                // If we have reached the configured level then we don't need to continue recursing
+                // and our updated nested value settings are the result of calling the
+                // {ApplyNestedValueSettings} method on the settings from the current level.
+                elif currentLevel = this.Level
+                then this.ApplyNestedValueSettings(nestedValueSettings)
+                // Otherwise, the level is greater than the configured level. This shouldn't really
+                // happen unless there's a misconfiguration and the configured level is less than
+                // the {MinNestingLevel}, but we handle it anyway by just leaving the nested value
+                // settings unmodified.
+                else nestedValueSettings
+            // Now that we've resolved the updated nested value settings at this level, we update
+            // the value settings for this level and return them.
+            { valueSettings with NestedValueSettings = updatedNestedValueSettings }
+        // Update the field value settings using the recursive function above, starting at the
+        // minimum nesting level.
         fieldSettings
-        |> FieldSettings.updateValueSettings (fun valueSettings ->
-            valueSettings
-            |> ValueSettings.updateOptionalValueSettings this.ApplyOptionalValueSettings)
+        |> FieldSettings.updateValueSettings (updateNestedValueSettings MinNestingLevel)

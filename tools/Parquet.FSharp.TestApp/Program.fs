@@ -63,6 +63,11 @@ module Random =
         let dateTimeOffset = dateTimeOffset ()
         dateTimeOffset.UtcDateTime
 
+    let dateTimeOption () =
+        if Random.NextDouble() >= 0.75
+        then Option.None
+        else Option.Some (dateTime ())
+
     let guid () =
         Guid.NewGuid()
 

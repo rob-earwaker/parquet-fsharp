@@ -14,8 +14,8 @@ type internal OptionConverterSettings = {
 
 type internal OptionConverter(converterSettings: OptionConverterSettings) =
     let tryCreateOptionalSerializer
-        (optionalInfo: OptionalInfo) (valueSettings: ValueSettings) settings =
-        let valueSettings = valueSettings.OptionalValueSettings
+        (optionalInfo: OptionalInfo) (optionalSettings: ValueSettings) settings =
+        let valueSettings = optionalSettings.NestedValueSettings
         let valueSerializer =
             Serializer.resolveWithValueSettings
                 optionalInfo.ValueType valueSettings settings
@@ -34,8 +34,8 @@ type internal OptionConverter(converterSettings: OptionConverterSettings) =
     // required, i.e. can never be NULL. Optional values are allowed in this
     // situation because they don't result in nested optionals.
     let createRequiredSerializer
-        (optionalInfo: OptionalInfo) (valueSettings: ValueSettings) settings =
-        let valueSettings = valueSettings.OptionalValueSettings
+        (optionalInfo: OptionalInfo) (optionalSettings: ValueSettings) settings =
+        let valueSettings = optionalSettings.NestedValueSettings
         let valueSerializer =
             Serializer.resolveWithValueSettings optionalInfo.ValueType valueSettings settings
         let unwrapValue (option: Expression) =
@@ -62,7 +62,7 @@ type internal OptionConverter(converterSettings: OptionConverterSettings) =
     // wrap it in the {Option.Some} case.
     let tryCreateOptionalDeserializer
         (sourceSchema: ValueSchema) (optionalInfo: OptionalInfo)
-        (valueSettings: ValueSettings) settings =
+        (optionalSettings: ValueSettings) settings =
         if not sourceSchema.IsOptional
         then Option.None
         else
@@ -71,7 +71,7 @@ type internal OptionConverter(converterSettings: OptionConverterSettings) =
             // the value deserializer in an {OptionalDeserializer}, we want to pass
             // down an equivalent non-optional value schema.
             let valueSchema = sourceSchema.MakeRequired()
-            let valueSettings = valueSettings.OptionalValueSettings
+            let valueSettings = optionalSettings.NestedValueSettings
             let valueDeserializer =
                 Deserializer.resolveWithValueSettings
                     valueSchema optionalInfo.ValueType valueSettings settings
@@ -90,10 +90,10 @@ type internal OptionConverter(converterSettings: OptionConverterSettings) =
     // deserialize in {Option.Some} cases so that they can be assigned to the
     // target option field.
     let createRequiredDeserializer
-        sourceSchema (optionalInfo: OptionalInfo) (valueSettings: ValueSettings) settings =
+        sourceSchema (optionalInfo: OptionalInfo) (optionalSettings: ValueSettings) settings =
         // Resolve the value deserializer. The value schema is just the same as
         // the source schema since we're dealing with a required field value.
-        let valueSettings = valueSettings.OptionalValueSettings
+        let valueSettings = optionalSettings.NestedValueSettings
         let valueDeserializer =
             Deserializer.resolveWithValueSettings
                 sourceSchema optionalInfo.ValueType valueSettings settings

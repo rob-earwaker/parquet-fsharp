@@ -82,15 +82,30 @@ type ParquetOptionFieldAttribute() =
                 Required = this.Required }
         valueSettings |> ValueSettings.converter converter
 
-type ParquetOptionalDateTimeAttribute() =
-    inherit ParquetOptionalValueAttribute()
+type ParquetNestedListAttribute() =
+    inherit ParquetNestedValueAttribute()
+
+    let default' = ListConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+    member val AllowNull = default'.AllowNull with get, set
+
+    override this.ApplyNestedValueSettings(valueSettings) =
+        let converter =
+            ListConverter {
+                Optional = this.Optional
+                AllowNull = this.AllowNull }
+        valueSettings |> ValueSettings.converter converter
+
+type ParquetNestedDateTimeAttribute() =
+    inherit ParquetNestedValueAttribute()
 
     let default' = DateTimeConverterSettings.Default
 
     member val Optional = default'.Optional with get, set
     member val Unit = default'.Unit with get, set
 
-    override this.ApplyOptionalValueSettings(valueSettings) =
+    override this.ApplyNestedValueSettings(valueSettings) =
         let converter =
             DateTimeConverter {
                 Optional = this.Optional

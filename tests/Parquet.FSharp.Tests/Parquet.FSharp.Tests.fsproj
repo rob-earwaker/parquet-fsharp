@@ -46,7 +46,8 @@
     <Compile Include="Test.ResizeArray.fs" />
     <Compile Include="Test.Record.fs" />
     <Compile Include="Test.Record.Struct.fs" />
-    <Compile Include="Test.Option.fs" />
+    <Compile Include="Test.Option\Test.Option.fs" />
+    <Compile Include="Test.Option\Test.Option.DateTime.fs" />
     <Compile Include="Test.ValueOption.fs" />
     <Compile Include="Test.Nullable.fs" />
     <Compile Include="Test.Union.Enum.fs" />

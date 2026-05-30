@@ -1,8 +1,9 @@
 namespace Parquet.FSharp
 
 type internal NullableConverter private () =
-    let tryCreateSerializer (optionalInfo: OptionalInfo) settings =
-        let valueSerializer = Serializer.resolve optionalInfo.ValueType settings
+    let tryCreateSerializer (optionalInfo: OptionalInfo) optionalValue settings =
+        let value = optionalValue |> ValueDefinition.forNestedValue optionalInfo.ValueType
+        let valueSerializer = Serializer.resolve value settings
         // Parquet doesn't support nested optional values, so if the value is
         // optional then we can't serialize it.
         if valueSerializer.IsOptional
@@ -19,14 +20,14 @@ type internal NullableConverter private () =
     // handle NULL values. When we read a NULL value we create a NULL valued
     // {Nullable}. When we read a NOTNULL value we wrap it as a {Nullable}.
     let createOptionalDeserializer
-        (sourceSchema: ValueSchema) (optionalInfo: OptionalInfo) settings =
+        (sourceSchema: ValueSchema) (optionalInfo: OptionalInfo) optionalValue settings =
         // Resolve the value deserializer. Since we're dealing with an optional
         // field value and we're going to deal with this optionality by wrapping
         // the value deserializer in an {OptionalDeserializer}, we want to pass
         // down an equivalent non-optional value schema.
         let valueSchema = sourceSchema.MakeRequired()
-        let valueDeserializer =
-            Deserializer.resolve valueSchema optionalInfo.ValueType settings
+        let value = optionalValue |> ValueDefinition.forNestedValue optionalInfo.ValueType
+        let valueDeserializer = Deserializer.resolve valueSchema value settings
         // Build the {OptionalDeserializer} wrapper.
         let dotnetType = optionalInfo.Type
         let createNull = optionalInfo.CreateNull
@@ -40,29 +41,29 @@ type internal NullableConverter private () =
     // deserialize as {Nullable} values so that they can be assigned to the
     // target field.
     let createRequiredDeserializer
-        sourceSchema (optionalInfo: OptionalInfo) settings =
-        let wrapValue = optionalInfo.CreateFromValue
+        sourceSchema (optionalInfo: OptionalInfo) optionalValue settings =
         // Resolve the value deserializer. The value schema is just the same as
         // the source schema since we're dealing with a required field value.
-        let valueDeserializer =
-            Deserializer.resolve sourceSchema optionalInfo.ValueType settings
+        let value = optionalValue |> ValueDefinition.forNestedValue optionalInfo.ValueType
+        let valueDeserializer = Deserializer.resolve sourceSchema value settings
+        let wrapValue = optionalInfo.CreateFromValue
         Deserializer.wrapAs optionalInfo.Type valueDeserializer wrapValue
 
     static member val Default = NullableConverter()
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
-            match sourceType with
+        member this.TryCreateSerializer(sourceValue, settings) =
+            match sourceValue.Type with
             | DotnetType.Nullable optionalInfo ->
-                tryCreateSerializer optionalInfo settings
+                tryCreateSerializer optionalInfo sourceValue settings
             | _ -> Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
-            match targetType with
+        member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
+            match targetValue.Type with
             | DotnetType.Nullable optionalInfo ->
                 let deserializer =
                     if sourceSchema.IsOptional
-                    then createOptionalDeserializer sourceSchema optionalInfo settings
-                    else createRequiredDeserializer sourceSchema optionalInfo settings
+                    then createOptionalDeserializer sourceSchema optionalInfo targetValue settings
+                    else createRequiredDeserializer sourceSchema optionalInfo targetValue settings
                 Option.Some deserializer
             | _ -> Option.None

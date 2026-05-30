@@ -4,7 +4,7 @@ open System.Linq.Expressions
 
 // TODO: Should we have separate converters for the different union types? Seems
 // like they are fairly independent, particularly as common functionality lives in
-// the {UnionInfo} type(s).
+// the {UnionInfo} type(s). Probably makes sense as they will have different settings.
 
 // TODO: Should single-field union cases be inlined?
 
@@ -15,11 +15,12 @@ type internal UnionConverterSettings = {
         UnionConverterSettings.CaseTypeFieldName = "Type" }
 
 type internal UnionConverter(converterSettings: UnionConverterSettings) =
-    let createEnumUnionSerializer (unionInfo: UnionInfo) settings =
+    let createEnumUnionSerializer (unionInfo: UnionInfo) =
         let dotnetType = unionInfo.Type
-        let caseNameSerializer = Serializer.resolve typeof<string> settings
-        let unwrapValue = unionInfo.GetCaseName
-        Serializer.wrapAs dotnetType caseNameSerializer unwrapValue
+        let dataDotnetType = typeof<string>
+        let schema = ValueTypeSchema.primitive dataDotnetType
+        let getDataValue = unionInfo.GetCaseName
+        Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let createSingleCaseUnionSerializer (unionInfo: UnionInfo) settings =
         // Unions with a single case are most likely being used to enable
@@ -63,12 +64,17 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
         let unionCasesWithFields =
             unionInfo.Cases
             |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
-        // The 'Type' field holds the case name. Since unions are not nullable
+        // The type field holds the case name. Since unions are not nullable
         // there must always be a case name present. We therefore model this
         // as a non-optional string value.
         let typeFieldSerializer =
             let name = converterSettings.CaseTypeFieldName
-            let valueSerializer = Serializer.resolve typeof<string> settings
+            let valueSerializer =
+                let dotnetType = typeof<string>
+                let dataDotnetType = typeof<string>
+                let schema = ValueTypeSchema.primitive dataDotnetType
+                let getDataValue = id
+                Serializer.atomic schema dotnetType dataDotnetType getDataValue
             let getValue = unionInfo.GetCaseName
             FieldSerializer.create name valueSerializer getValue
         // Each union case with one or more fields is assigned an additional
@@ -94,20 +100,15 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
         let fieldSerializers = Array.append [| typeFieldSerializer |] caseFieldSerializers
         Serializer.record dotnetType fieldSerializers
 
-    let createEnumUnionDeserializer (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
+    let createEnumUnionDeserializer (unionInfo: UnionInfo) =
         // Unions in which all cases have no fields are be represented as a
         // simple string value containing the case name. Since a union value
         // can't be null and must be one of the possible cases, this value is
         // not optional.
         let dotnetType = unionInfo.Type
-        // TODO: Could catch exception that occurs if this isn't resolved and
-        // raise a more descriptive exception, or event add a tryResolve function.
-        // Also applies to other places where we use 'resolve' for both serializers
-        // and deserializers. Or maybe these should just return None when it can't
-        // be resolved?
-        let caseNameDeserializer =
-            Deserializer.resolve sourceSchema typeof<string> settings
-        let wrapValue caseName =
+        let dataDotnetType = typeof<string>
+        let schema = ValueTypeSchema.primitive dataDotnetType
+        let createFromDataValue caseName =
             let returnLabel = Expression.Label(dotnetType, "union")
             Expression.Block(
                 seq<Expression> {
@@ -126,7 +127,7 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
                     yield Expression.Label(returnLabel, Expression.Default(dotnetType))
                 })
             :> Expression
-        Deserializer.wrapAs dotnetType caseNameDeserializer wrapValue
+        Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
     let tryCreateSingleCaseUnionDeserializer
         (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
@@ -190,14 +191,20 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
             let unionCasesWithFields =
                 unionInfo.Cases
                 |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
-            // The 'Type' field holds the case name as a string.
+            // The type field holds the case name as a string.
             let typeFieldDeserializer =
                 let name = converterSettings.CaseTypeFieldName
+                let valueDeserializer =
+                    let dotnetType = typeof<string>
+                    let dataDotnetType = typeof<string>
+                    let schema = ValueTypeSchema.primitive dataDotnetType
+                    let createFromDataValue = id
+                    Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
                 recordSchema.Fields
-                |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = name)
-                |> Option.map (fun fieldSchema ->
-                    Deserializer.resolve fieldSchema.Value typeof<string> settings
-                    |> FieldDeserializer.create name)
+                |> Array.tryFind (fun fieldSchema ->
+                    fieldSchema.Name = name
+                    && fieldSchema.Value = valueDeserializer.Schema)
+                |> Option.map (fun _ -> FieldDeserializer.create name valueDeserializer)
             // Each union case with one or more fields is assigned an additional
             // field within the record to hold its associated data. The name of this
             // field matches the case name and the value is a record that contains
@@ -270,23 +277,27 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
     static member val Default = UnionConverter(UnionConverterSettings.Default)
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
-            match sourceType with
+        member this.TryCreateSerializer(sourceValue, settings) =
+            match sourceValue.Type with
             | DotnetType.Union unionInfo ->
                 let serializer =
                     match unionInfo.UnionCategory with
-                    | UnionCategory.Enum -> createEnumUnionSerializer unionInfo settings
+                    | UnionCategory.Enum -> createEnumUnionSerializer unionInfo
                     | UnionCategory.SingleCase -> createSingleCaseUnionSerializer unionInfo settings
                     | UnionCategory.MultiCase -> createMultiCaseUnionSerializer unionInfo settings
                 Option.Some serializer
             | _ -> Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
-            match targetType with
+        member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
+            match targetValue.Type with
             | DotnetType.Union unionInfo ->
                 match unionInfo.UnionCategory with
                 | UnionCategory.Enum ->
-                    Option.Some (createEnumUnionDeserializer sourceSchema unionInfo settings)
+                    // TODO: This is a bit optimistic, but is an easy way to check the schema.
+                    let deserializer = createEnumUnionDeserializer unionInfo
+                    if sourceSchema = deserializer.Schema
+                    then Option.Some deserializer
+                    else Option.None
                 | UnionCategory.SingleCase ->
                     tryCreateSingleCaseUnionDeserializer sourceSchema unionInfo settings
                 | UnionCategory.MultiCase ->

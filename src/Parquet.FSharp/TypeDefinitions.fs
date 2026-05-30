@@ -56,28 +56,38 @@ type Settings = {
     ValuePolicies: IValueSettingsPolicy list }
 
 type FieldSettings = {
-    Name: string option
-    ValueSettings: ValueSettings }
+    Name: string option }
 
 type ValueSettings = {
-    Converter: IValueConverter option
-    NestedValueSettings: ValueSettings }
+    Converter: IValueConverter option }
 
+type FieldDefinition = {
+    Name: string
+    ValueType: Type
+    Attributes: Attribute[] }
+
+type ValueDefinition = {
+    Field: FieldDefinition
+    NestingLevel: int
+    Type: Type
+    Attributes: Attribute[] }
+
+// TODO: Might be able to tidy thes eup and combine with attributes better if we combined
+// the IsValidFor and ApplySettings methods into one TryApplySettings
 type IFieldSettingsPolicy =
-    abstract member IsValidFor : field:PropertyInfo -> bool
+    abstract member IsValidFor : field:FieldDefinition -> bool
+    // TODO: Naming - 'update' vs 'apply'
     abstract member ApplyFieldSettings : fieldSettings:FieldSettings -> FieldSettings
 
 type IValueSettingsPolicy =
-    abstract member IsValidFor : valueType:Type -> bool
+    abstract member IsValidFor : value:ValueDefinition -> bool
     abstract member ApplyValueSettings : valueSettings:ValueSettings -> ValueSettings
 
 type IValueConverter =
     abstract member TryCreateSerializer
-        : sourceType:Type * valueSettings:ValueSettings * settings:Settings
-        -> Serializer option
+        : sourceValue:ValueDefinition * settings:Settings -> Serializer option
     abstract member TryCreateDeserializer
-        : sourceSchema:ValueSchema * targetType:Type * valueSettings:ValueSettings * settings:Settings
-        -> Deserializer option
+        : sourceSchema:ValueSchema * targetValue:ValueDefinition * settings:Settings -> Deserializer option
 
 type Serializer =
     | Atomic of AtomicSerializer

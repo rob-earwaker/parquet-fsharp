@@ -2,6 +2,44 @@
 
 open System
 open System.Linq.Expressions
+open System.Reflection
+
+// Add module suffix so we can define the module in a different file to the type.
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
+module internal FieldDefinition =
+    let [<Literal>] private RootName = "$root"
+
+    let create name valueType attributes =
+        { FieldDefinition.Name = name
+          FieldDefinition.ValueType = valueType
+          FieldDefinition.Attributes = attributes }
+
+    let forRoot (recordType: Type) =
+        let attributes = [||]
+        create RootName recordType attributes
+
+    let ofProperty (property: PropertyInfo) =
+        let attributes = property.GetCustomAttributes() |> Array.ofSeq
+        create property.Name property.PropertyType attributes
+
+// Add module suffix so we can define the module in a different file to the type.
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
+module internal ValueDefinition =
+    let create field nestingLevel valueType attributes =
+        { ValueDefinition.Field = field
+          ValueDefinition.NestingLevel = nestingLevel
+          ValueDefinition.Type = valueType
+          ValueDefinition.Attributes = attributes }
+
+    let ofField (field: FieldDefinition) =
+        let nestingLevel = 0
+        let attributes = field.ValueType.GetCustomAttributes() |> Array.ofSeq
+        create field nestingLevel field.ValueType attributes
+
+    let forNestedValue (nestedValueType: Type) (value: ValueDefinition) =
+        let nestingLevel = value.NestingLevel + 1
+        let attributes = nestedValueType.GetCustomAttributes() |> Array.ofSeq
+        create value.Field nestingLevel nestedValueType attributes
 
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -48,6 +86,7 @@ module internal Serializer =
             IsNull = isNull
             GetValue = getValue }
 
+    // TODO: This might end up only being used by optional values. Can we simplify?
     let wrapAs dotnetType (serializer: Serializer) unwrapValue =
         // Modify an existing serializer such that it instead serializes a
         // wrapper type, providing an expression builder that converts from the
@@ -123,29 +162,26 @@ module internal Serializer =
         Serializer.optional dotnetType valueSerializer isNull getValue
 
     // TODO: Should this live in Settings.fs?
-    let resolveWithValueSettings sourceType (valueSettings: ValueSettings) settings =
+    // TODO: Exceptions could be improved with field path and nesting level info!
+    let resolve sourceValue settings =
+        let valueSettings = Settings.resolveForValue sourceValue settings
         match valueSettings.Converter with
         | Option.Some assignedConverter ->
-            assignedConverter.TryCreateSerializer(sourceType, valueSettings, settings)
+            assignedConverter.TryCreateSerializer(sourceValue, settings)
             |> Option.defaultWith (fun () ->
                 raise <| SerializationException(
-                    $"could not create serializer for type '{sourceType}'"
+                    $"could not create serializer for type '{sourceValue.Type}'"
                     + $" using assigned converter '{assignedConverter}'"))
         | Option.None ->
             settings.ValueConverters
-            |> List.tryPick _.TryCreateSerializer(sourceType, valueSettings, settings)
+            |> List.tryPick _.TryCreateSerializer(sourceValue, settings)
             |> Option.defaultWith (fun () ->
                 // TODO: This will likely end up depending on attributes as well,
                 // so probably will want to make the exception more generic to
                 // avoid confusion if there is a converter registered to support the
                 // specified type.
                 raise <| SerializationException(
-                    $"could not find converter to serialize type '{sourceType}'"))
-
-    // TODO: Should this live in Settings.fs?
-    let resolve sourceType settings =
-        let valueSettings = Settings.resolveForValue sourceType settings
-        resolveWithValueSettings sourceType valueSettings settings
+                    $"could not find converter to serialize type '{sourceValue.Type}'"))
 
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -194,6 +230,7 @@ module internal Deserializer =
             CreateNull = createNull
             CreateFromValue = createFromValue }
 
+    // TODO: This might end up only being used by optional values. Can we simplify?
     let wrapAs dotnetType (deserializer: Deserializer) wrapValue =
         // Modify an existing deserializer such that it instead deserializes
         // into a wrapper type, providing an expression builder that converts
@@ -260,18 +297,19 @@ module internal Deserializer =
             dotnetType valueDeserializer createNull createFromValue
 
     // TODO: Should this live in Settings.fs?
-    let resolveWithValueSettings sourceSchema targetType (valueSettings: ValueSettings) settings =
+    let resolve sourceSchema targetValue settings =
+        let valueSettings = Settings.resolveForValue targetValue settings
         match valueSettings.Converter with
         | Option.Some assignedConverter ->
-            assignedConverter.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings)
+            assignedConverter.TryCreateDeserializer(sourceSchema, targetValue, settings)
             |> Option.defaultWith (fun () ->
                 raise <| SerializationException(
                     $"could not create deserializer from schema '{sourceSchema}'"
-                    + $" to type '{targetType}' using assigned converter"
+                    + $" to type '{targetValue.Type}' using assigned converter"
                     + $" '{assignedConverter}'"))
         | Option.None ->
             settings.ValueConverters
-            |> List.tryPick _.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings)
+            |> List.tryPick _.TryCreateDeserializer(sourceSchema, targetValue, settings)
             |> Option.defaultWith (fun () ->
                 // TODO: This will likely end up depending on attributes as well,
                 // so probably will want to make the exception more generic to
@@ -279,12 +317,7 @@ module internal Deserializer =
                 // specified type.
                 raise <| SerializationException(
                     "could not find converter to deserialize from schema"
-                    + $" '{sourceSchema}' to type '{targetType}'"))
-
-    // TODO: Should this live in Settings.fs?
-    let resolve sourceSchema targetType settings =
-        let valueSettings = Settings.resolveForValue targetType settings
-        resolveWithValueSettings sourceSchema targetType valueSettings settings
+                    + $" '{sourceSchema}' to type '{targetValue.Type}'"))
 
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -296,13 +329,27 @@ module internal FieldSerializer =
           FieldSerializer.ValueSerializer = valueSerializer
           FieldSerializer.GetValue = getValue }
 
-    let ofField (field: FieldInfo) settings =
-        let fieldSettings = Settings.resolveForField field.Field settings
-        let name = fieldSettings.Name |> Option.defaultValue field.Name
-        let valueSerializer =
-            Serializer.resolveWithValueSettings
-                field.Type fieldSettings.ValueSettings settings
-        let getValue = field.GetValue
+    let ofField (fieldInfo: Parquet.FSharp.FieldInfo) settings =
+        // TODO: When we resolve value settings at the field level we only see
+        // attributes applied to the field and the top-level value type, we don't
+        // see attributes applied to nested types and can currently only configure
+        // these if the field is annotated with a {ParquetNestedValueAttribute}.
+        // How can we ensure nested type attributes are picked up as part of this
+        // settings resolution process? It's difficult to do it in
+        // Settings.resolveForField or Settings.resolveForValue since we would
+        // have to recurse down the type heirarchy, identifying nesting and =
+        // pulling out attributes as we go. We do this type recursion already as
+        // part of the serializer resolution, so makes sense to build it in as
+        // part of that somehow. This probably means resolving value settings
+        // based on the type at the current nesting level even if we've already
+        // resolved value settings for the field. However, we generally want
+        // field attributes to override type attributes so this needs some thought!
+        let fieldDefinition = FieldDefinition.ofProperty fieldInfo.Property
+        let fieldSettings = Settings.resolveForField fieldDefinition settings
+        let name = fieldSettings.Name |> Option.defaultValue fieldInfo.Name
+        let valueDefinition = ValueDefinition.ofField fieldDefinition
+        let valueSerializer = Serializer.resolve valueDefinition settings
+        let getValue = fieldInfo.GetValue
         create name valueSerializer getValue
 
 // Add module suffix so we can define the module in a different file to the type.
@@ -314,15 +361,15 @@ module internal FieldDeserializer =
           FieldDeserializer.Name = name
           FieldDeserializer.ValueDeserializer = valueDeserializer }
 
-    let tryOfField (recordSchema: RecordTypeSchema) (field: FieldInfo) settings =
-        let fieldSettings = Settings.resolveForField field.Field settings
+    let tryOfField (recordSchema: RecordTypeSchema) (fieldInfo: Parquet.FSharp.FieldInfo) settings =
+        let fieldDefinition = FieldDefinition.ofProperty fieldInfo.Property
+        let fieldSettings = Settings.resolveForField fieldDefinition settings
         // Override field name with configured name (if present) before looking
         // for matching field in the schema.
-        let name = fieldSettings.Name |> Option.defaultValue field.Name
+        let name = fieldSettings.Name |> Option.defaultValue fieldInfo.Name
         recordSchema.Fields
         |> Array.tryFind _.Name.Equals(name)
         |> Option.map (fun fieldSchema ->
-            let deserializer =
-                Deserializer.resolveWithValueSettings
-                    fieldSchema.Value field.Type fieldSettings.ValueSettings settings
+            let valueDefinition = ValueDefinition.ofField fieldDefinition
+            let deserializer = Deserializer.resolve fieldSchema.Value valueDefinition settings
             create name deserializer)

@@ -84,16 +84,16 @@ type internal DateTimeConverter(converterSettings: DateTimeConverterSettings) =
     static member val Default = DateTimeConverter(DateTimeConverterSettings.Default)
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
-            if sourceType <> dotnetType
+        member this.TryCreateSerializer(sourceValue, settings) =
+            if sourceValue.Type <> dotnetType
             then Option.None
             else
                 if converterSettings.Optional
                 then option.Some optionalSerializer
                 else Option.Some requiredSerializer
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
-            if targetType <> dotnetType
+        member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
+            if targetValue.Type <> dotnetType
             then Option.None
             else
                 match sourceSchema.Type with

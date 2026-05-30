@@ -27,14 +27,14 @@ type internal RecordConverter private () =
     static member val Default = RecordConverter()
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
-            match sourceType with
+        member this.TryCreateSerializer(sourceValue, settings) =
+            match sourceValue.Type with
             | DotnetType.Record recordInfo ->
                 Option.Some (createSerializer recordInfo settings)
             | _ -> Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
-            match targetType with
+        member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
+            match targetValue.Type with
             | DotnetType.Record recordInfo ->
                 match sourceSchema.Type with
                 | ValueTypeSchema.Record recordSchema ->

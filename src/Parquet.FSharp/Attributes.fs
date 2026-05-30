@@ -1,5 +1,48 @@
 namespace Parquet.FSharp
 
+type ParquetBoolAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = BoolConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            BoolConverter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+type ParquetDateTimeAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = DateTimeConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+    member val Unit = default'.Unit with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            DateTimeConverter {
+                Optional = this.Optional
+                Unit = this.Unit }
+        valueSettings |> ValueSettings.converter converter
+
+type ParquetListAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = ListConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+    member val AllowNull = default'.AllowNull with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            ListConverter {
+                Optional = this.Optional
+                AllowNull = this.AllowNull }
+        valueSettings |> ValueSettings.converter converter
+
 type ParquetUnionAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -13,64 +56,8 @@ type ParquetUnionAttribute() =
                 CaseTypeFieldName = this.CaseTypeFieldName }
         valueSettings |> ValueSettings.converter converter
 
-type ParquetBoolFieldAttribute() =
-    inherit ParquetFieldAttribute()
-
-    let default' = BoolConverterSettings.Default
-
-    member val Optional = default'.Optional with get, set
-
-    override this.ApplyValueSettings(valueSettings) =
-        let converter =
-            BoolConverter {
-                Optional = this.Optional }
-        valueSettings |> ValueSettings.converter converter
-
-type ParquetDateTimeFieldAttribute() =
-    inherit ParquetFieldAttribute()
-
-    let default' = DateTimeConverterSettings.Default
-
-    member val Optional = default'.Optional with get, set
-    member val Unit = default'.Unit with get, set
-
-    override this.ApplyValueSettings(valueSettings) =
-        let converter =
-            DateTimeConverter {
-                Optional = this.Optional
-                Unit = this.Unit }
-        valueSettings |> ValueSettings.converter converter
-
-type ParquetListFieldAttribute() =
-    inherit ParquetFieldAttribute()
-
-    let default' = ListConverterSettings.Default
-
-    member val Optional = default'.Optional with get, set
-    member val AllowNull = default'.AllowNull with get, set
-
-    override this.ApplyValueSettings(valueSettings) =
-        let converter =
-            ListConverter {
-                Optional = this.Optional
-                AllowNull = this.AllowNull }
-        valueSettings |> ValueSettings.converter converter
-
-type ParquetUnionFieldAttribute() =
-    inherit ParquetFieldAttribute()
-
-    let default' = UnionConverterSettings.Default
-
-    member val CaseTypeFieldName = default'.CaseTypeFieldName with get, set
-
-    override this.ApplyValueSettings(valueSettings) =
-        let converter =
-            UnionConverter {
-                CaseTypeFieldName = this.CaseTypeFieldName }
-        valueSettings |> ValueSettings.converter converter
-
-type ParquetOptionFieldAttribute() =
-    inherit ParquetFieldAttribute()
+type ParquetOptionAttribute() =
+    inherit ParquetValueSettingsAttribute()
 
     let default' = OptionConverterSettings.Default
 
@@ -80,36 +67,6 @@ type ParquetOptionFieldAttribute() =
         let converter =
             OptionConverter {
                 Required = this.Required }
-        valueSettings |> ValueSettings.converter converter
-
-type ParquetNestedListAttribute() =
-    inherit ParquetNestedValueAttribute()
-
-    let default' = ListConverterSettings.Default
-
-    member val Optional = default'.Optional with get, set
-    member val AllowNull = default'.AllowNull with get, set
-
-    override this.ApplyNestedValueSettings(valueSettings) =
-        let converter =
-            ListConverter {
-                Optional = this.Optional
-                AllowNull = this.AllowNull }
-        valueSettings |> ValueSettings.converter converter
-
-type ParquetNestedDateTimeAttribute() =
-    inherit ParquetNestedValueAttribute()
-
-    let default' = DateTimeConverterSettings.Default
-
-    member val Optional = default'.Optional with get, set
-    member val Unit = default'.Unit with get, set
-
-    override this.ApplyNestedValueSettings(valueSettings) =
-        let converter =
-            DateTimeConverter {
-                Optional = this.Optional
-                Unit = this.Unit }
         valueSettings |> ValueSettings.converter converter
 
 //type internal ParquetDateTimeFieldAttribute() =

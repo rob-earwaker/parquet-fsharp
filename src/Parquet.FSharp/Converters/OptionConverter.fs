@@ -13,12 +13,9 @@ type internal OptionConverterSettings = {
         OptionConverterSettings.Required = false }
 
 type internal OptionConverter(converterSettings: OptionConverterSettings) =
-    let tryCreateOptionalSerializer
-        (optionalInfo: OptionalInfo) (optionalSettings: ValueSettings) settings =
-        let valueSettings = optionalSettings.NestedValueSettings
-        let valueSerializer =
-            Serializer.resolveWithValueSettings
-                optionalInfo.ValueType valueSettings settings
+    let tryCreateOptionalSerializer (optionalInfo: OptionalInfo) optionalValue settings =
+        let value = optionalValue |> ValueDefinition.forNestedValue optionalInfo.ValueType
+        let valueSerializer = Serializer.resolve value settings
         // Parquet doesn't support nested optional values, so if the value is
         // optional then we can't serialize it.
         if valueSerializer.IsOptional
@@ -33,11 +30,9 @@ type internal OptionConverter(converterSettings: OptionConverterSettings) =
     // Create a serializer for an option type that is always treated as
     // required, i.e. can never be NULL. Optional values are allowed in this
     // situation because they don't result in nested optionals.
-    let createRequiredSerializer
-        (optionalInfo: OptionalInfo) (optionalSettings: ValueSettings) settings =
-        let valueSettings = optionalSettings.NestedValueSettings
-        let valueSerializer =
-            Serializer.resolveWithValueSettings optionalInfo.ValueType valueSettings settings
+    let createRequiredSerializer (optionalInfo: OptionalInfo) optionalValue settings =
+        let value = optionalValue |> ValueDefinition.forNestedValue optionalInfo.ValueType
+        let valueSerializer = Serializer.resolve value settings
         let unwrapValue (option: Expression) =
             // if option.IsNone then
             //     raise SerializationException(...)
@@ -61,8 +56,7 @@ type internal OptionConverter(converterSettings: OptionConverterSettings) =
     // we convert it to the {Option.None} case. When we read a NOTNULL value we
     // wrap it in the {Option.Some} case.
     let tryCreateOptionalDeserializer
-        (sourceSchema: ValueSchema) (optionalInfo: OptionalInfo)
-        (optionalSettings: ValueSettings) settings =
+        (sourceSchema: ValueSchema) (optionalInfo: OptionalInfo) optionalValue settings =
         if not sourceSchema.IsOptional
         then Option.None
         else
@@ -71,10 +65,8 @@ type internal OptionConverter(converterSettings: OptionConverterSettings) =
             // the value deserializer in an {OptionalDeserializer}, we want to pass
             // down an equivalent non-optional value schema.
             let valueSchema = sourceSchema.MakeRequired()
-            let valueSettings = optionalSettings.NestedValueSettings
-            let valueDeserializer =
-                Deserializer.resolveWithValueSettings
-                    valueSchema optionalInfo.ValueType valueSettings settings
+            let value = optionalValue |> ValueDefinition.forNestedValue optionalInfo.ValueType
+            let valueDeserializer = Deserializer.resolve valueSchema value settings
             // Build the {OptionalDeserializer} wrapper.
             let dotnetType = optionalInfo.Type
             let createNull = optionalInfo.CreateNull
@@ -90,31 +82,29 @@ type internal OptionConverter(converterSettings: OptionConverterSettings) =
     // deserialize in {Option.Some} cases so that they can be assigned to the
     // target option field.
     let createRequiredDeserializer
-        sourceSchema (optionalInfo: OptionalInfo) (optionalSettings: ValueSettings) settings =
+        sourceSchema (optionalInfo: OptionalInfo) optionalValue settings =
         // Resolve the value deserializer. The value schema is just the same as
         // the source schema since we're dealing with a required field value.
-        let valueSettings = optionalSettings.NestedValueSettings
-        let valueDeserializer =
-            Deserializer.resolveWithValueSettings
-                sourceSchema optionalInfo.ValueType valueSettings settings
+        let value = optionalValue |> ValueDefinition.forNestedValue optionalInfo.ValueType
+        let valueDeserializer = Deserializer.resolve sourceSchema value settings
         let wrapValue = optionalInfo.CreateFromValue
         Deserializer.wrapAs optionalInfo.Type valueDeserializer wrapValue
 
     static member val Default = OptionConverter(OptionConverterSettings.Default)
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
-            match sourceType with
+        member this.TryCreateSerializer(sourceValue, settings) =
+            match sourceValue.Type with
             | DotnetType.Option optionalInfo ->
                 if converterSettings.Required
-                then Option.Some (createRequiredSerializer optionalInfo valueSettings settings)
-                else tryCreateOptionalSerializer optionalInfo valueSettings settings
+                then Option.Some (createRequiredSerializer optionalInfo sourceValue settings)
+                else tryCreateOptionalSerializer optionalInfo sourceValue settings
             | _ -> Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
-            match targetType with
+        member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
+            match targetValue.Type with
             | DotnetType.Option optionalInfo ->
                 if converterSettings.Required
-                then Option.Some (createRequiredDeserializer sourceSchema optionalInfo valueSettings settings)
-                else tryCreateOptionalDeserializer sourceSchema optionalInfo valueSettings settings
+                then Option.Some (createRequiredDeserializer sourceSchema optionalInfo targetValue settings)
+                else tryCreateOptionalDeserializer sourceSchema optionalInfo targetValue settings
             | _ -> Option.None

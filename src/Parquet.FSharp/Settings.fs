@@ -1,6 +1,7 @@
 namespace rec Parquet.FSharp
 
 open System
+open System.Linq
 open System.Reflection
 
 type internal DelegateFieldSettingsPolicy(isValidFor, applyFieldSettings) =
@@ -16,9 +17,7 @@ type internal DelegateValueSettingsPolicy(isValidFor, applyValueSettings) =
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal ValueSettings =
-    let Default = {
-        ValueSettings.Converter = Option.None
-        ValueSettings.NestedValueSettings = ValueSettings.Default }
+    let Default = { ValueSettings.Converter = Option.None }
 
     let converterOption converter (settings: ValueSettings) =
         { settings with Converter = converter }
@@ -29,18 +28,10 @@ module internal ValueSettings =
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal FieldSettings =
-    let Default = {
-        FieldSettings.Name = Option.None
-        FieldSettings.ValueSettings = ValueSettings.Default }
+    let Default = { FieldSettings.Name = Option.None }
 
     let nameOption name (settings: FieldSettings) =
         { settings with Name = name }
-
-    let valueSettings valueSettings (settings: FieldSettings) =
-        { settings with ValueSettings = valueSettings }
-
-    let updateValueSettings update (settings: FieldSettings) =
-        { settings with ValueSettings = update settings.ValueSettings }
 
 // Add module suffix so we can define the module in a different file to the type.
 [<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -65,65 +56,94 @@ module internal Settings =
         let fieldPolicies = fieldPolicy :: settings.FieldPolicies
         { settings with FieldPolicies = fieldPolicies }
 
-    let resolveForValue (valueType: Type) (settings: Settings) =
-        let valueSettingsAttributes =
-            valueType.GetCustomAttributes<ParquetValueSettingsAttribute>(``inherit`` = true)
+    let resolveForValue (value: ValueDefinition) (settings: Settings) =
+        // To resolve the settings for a value we have to combine both
+        // attributes from the dotnet type information and relevant policies
+        // from the serialization call site settings. Value settings attributes
+        // can be defined both on the type and on the field so we read them from
+        // both. For attributes read from the field we must ensure the nesting
+        // level defined in the attribute matches the nesting level of this
+        // value in the type heirarchy. This filtering is not necessary for
+        // attributes applied to the type.
+        let typeValueSettingsAttributes =
+            value.Attributes.OfType<ParquetValueSettingsAttribute>()
             |> List.ofSeq
-        let valuePolicies =
+        let fieldValueSettingsAttributes =
+            value.Field.Attributes.OfType<ParquetValueSettingsAttribute>()
+            |> Seq.filter _.NestingLevel.Equals(value.NestingLevel)
+            |> List.ofSeq
+        let valueSettingsPolicies =
             settings.ValuePolicies
-            |> List.filter (fun policy -> policy.IsValidFor(valueType))
-        // Start with the default settings.
-        ValueSettings.Default
-        // Apply attributes first to allow settings to be overridden at the
-        // serialization call-site. This ensures that serialization of types
-        // defined in third-party assemblies can be customized regardless of
-        // whether they have attributes.
-        // TODO: Does the order matter here? Easier to read with foldBack, so if
-        // order does matter then maybe best to reverse above.
-        |> List.foldBack
-            (fun (attribute: ParquetValueSettingsAttribute) -> attribute.ApplyValueSettings)
-            valueSettingsAttributes
-        // Apply any configured policies. We want policies to apply in the order
-        // that they were added. Since policies are prepended when added, we
-        // apply them in reverse order.
-        |> List.foldBack
-            (fun (policy: IValueSettingsPolicy) -> policy.ApplyValueSettings)
-            valuePolicies
+            |> List.filter (fun policy -> policy.IsValidFor(value))
+        // Now that we have all the relevant attributes and policies we need to
+        // apply them to the default settings. Settings that are applied later
+        // can override settings applied earlier, so we do this in a specific
+        // order to allow settings to be overriden at convenient places.
+        // 
+        //   1. Attributes from the type.
+        //   2. Attributes from the field.
+        //   3. Policies from the serialization call site settings.
+        //
+        // We want policies defined at the serialization call site to override
+        // all attributes since it may not be possible to modify attributes,
+        // e.g. if the types are defined in third-party assemblies. We want
+        // these policies to apply in the order that they were added. Since
+        // policies are prepended when added, we reverse the order.
+        //
+        // We want field attributes to override type attributes. Type attributes
+        // are global modifiers for a given type, but we may want to customize
+        // specific fields of that type independently.
+        //
+        // Create a list of settings update functions in the above order and
+        // apply them to the default settings in turn.
+        List.concat [
+            typeValueSettingsAttributes |> List.map _.ApplyValueSettings
+            fieldValueSettingsAttributes |> List.map _.ApplyValueSettings
+            valueSettingsPolicies |> List.map _.ApplyValueSettings |> List.rev ]
+        |> List.fold
+            (fun valueSettings update -> update valueSettings)
+            ValueSettings.Default
 
-    let resolveForField (field: PropertyInfo) settings =
-        let valueSettings = Settings.resolveForValue field.PropertyType settings
+    let resolveForField (field: FieldDefinition) settings =
+        // To resolve the settings for a field we have to combine attributes
+        // from the field with relevant policies from the serialization call
+        // site settings.
         let fieldSettingsAttributes =
-            field.GetCustomAttributes<ParquetFieldSettingsAttribute>(``inherit`` = true)
+            field.Attributes.OfType<ParquetFieldSettingsAttribute>()
             |> List.ofSeq
-        let fieldPolicies =
+        let fieldSettingsPolicies =
             settings.FieldPolicies
             |> List.filter (fun policy -> policy.IsValidFor(field))
-        // Start with the default settings.
-        FieldSettings.Default
-        // Apply resolved value settings based on the value type. This will
-        // include settings from attributes applied to the field value's type
-        // and settings from value policies.
-        |> FieldSettings.valueSettings valueSettings
-        // Apply attributes first to allow settings to be overridden at the
-        // serialization call-site. This ensures that serialization of types
-        // defined in third-party assemblies can be customized regardless of
-        // whether they have attributes.
-        // TODO: Does the order matter here? Easier to read with foldBack, so if
-        // order does matter then maybe best to reverse above.
-        |> List.foldBack
-            (fun (attribute: ParquetFieldSettingsAttribute) -> attribute.ApplyFieldSettings)
-            fieldSettingsAttributes
-        // Apply any configured policies. We want policies to apply in the order
-        // that they were added. Since policies are prepended when added, we
-        // apply them in reverse order.
-        |> List.foldBack
-            (fun (policy: IFieldSettingsPolicy) -> policy.ApplyFieldSettings)
-            fieldPolicies
+        // Now that we have all the relevant attributes and policies we need to
+        // apply them to the default settings. Settings that are applied later
+        // can override settings applied earlier, so we do this in a specific
+        // order to allow settings to be overriden at convenient places.
+        // 
+        //   1. Attributes from the field.
+        //   2. Policies from the serialization call site settings.
+        //
+        // We want policies defined at the serialization call site to override
+        // attributes since it may not be possible to modify attributes, e.g. if
+        // the types are defined in third-party assemblies. We want these
+        // policies to apply in the order that they were added. Since policies
+        // are prepended when added, we reverse the order.
+        //
+        // Create a list of settings update functions in the above order and
+        // apply them to the default settings in turn.
+        List.concat [
+            fieldSettingsAttributes |> List.map _.ApplyFieldSettings
+            fieldSettingsPolicies |> List.map _.ApplyFieldSettings |> List.rev ]
+        |> List.fold
+            (fun fieldSettings update -> update fieldSettings)
+            FieldSettings.Default
 
 [<AbstractClass>]
-[<AttributeUsage(AttributeTargets.Class ||| AttributeTargets.Struct)>]
+[<AttributeUsage(AttributeTargets.Class ||| AttributeTargets.Struct ||| AttributeTargets.Property)>]
 type ParquetValueSettingsAttribute() =
     inherit Attribute()
+    // TODO: Nesting level isn't really relevant for attributes applied to types.
+    // Should we have a different base class for these?
+    member val NestingLevel = 0 with get, set
     abstract member ApplyValueSettings : valueSettings:ValueSettings -> ValueSettings
 
 [<AbstractClass>]
@@ -141,59 +161,6 @@ type ParquetFieldAttribute() =
         with set value =
             name <- Option.Some value
 
-    abstract member ApplyValueSettings : valueSettings:ValueSettings -> ValueSettings
-
-    default this.ApplyValueSettings(valueSettings) =
-        valueSettings
-
     override this.ApplyFieldSettings(fieldSettings) =
         let name = name |> Option.orElse fieldSettings.Name
-        fieldSettings
-        |> FieldSettings.nameOption name
-        // TODO: Naming - 'update' vs 'apply'
-        |> FieldSettings.updateValueSettings this.ApplyValueSettings
-
-[<AbstractClass>]
-type ParquetNestedValueAttribute() =
-    inherit ParquetFieldSettingsAttribute()
-
-    // The minimum nesting level, equivalent to a single level of nesting, i.e. a value nested
-    // directly inside an optional or list field. For example, in a field of type {option<int>} or
-    // {list<int>}, the {int} values are nested by one level and so are at the minimum nesting level.
-    // A nesting level of zero would imply no nesting at all, so is not a valid value.
-    static let [<Literal>] MinNestingLevel = 1
-
-    member val Level = MinNestingLevel with get, set
-
-    abstract member ApplyNestedValueSettings : valueSettings:ValueSettings -> ValueSettings
-
-    override this.ApplyFieldSettings(fieldSettings) =
-        // We need to recurse down through the field value settings until we reach the
-        // {NestedValueSettings} at the configured level. We can then update these settings using
-        // the abstract {ApplyNestedValueSettings} method and then roll back up the levels, updating
-        // them as we go. We do this using a recursive function.
-        let rec updateNestedValueSettings currentLevel (valueSettings: ValueSettings) =
-            let nestedValueSettings = valueSettings.NestedValueSettings
-            // Update the existing nested value settings based on the current level.
-            let updatedNestedValueSettings =
-                // If we haven't yet reached the configured level then we continue recursing down by
-                // incrementing the current level and passing down the nested value settings.
-                if currentLevel < this.Level
-                then updateNestedValueSettings (currentLevel + 1) nestedValueSettings
-                // If we have reached the configured level then we don't need to continue recursing
-                // and our updated nested value settings are the result of calling the
-                // {ApplyNestedValueSettings} method on the settings from the current level.
-                elif currentLevel = this.Level
-                then this.ApplyNestedValueSettings(nestedValueSettings)
-                // Otherwise, the level is greater than the configured level. This shouldn't really
-                // happen unless there's a misconfiguration and the configured level is less than
-                // the {MinNestingLevel}, but we handle it anyway by just leaving the nested value
-                // settings unmodified.
-                else nestedValueSettings
-            // Now that we've resolved the updated nested value settings at this level, we update
-            // the value settings for this level and return them.
-            { valueSettings with NestedValueSettings = updatedNestedValueSettings }
-        // Update the field value settings using the recursive function above, starting at the
-        // minimum nesting level.
-        fieldSettings
-        |> FieldSettings.updateValueSettings (updateNestedValueSettings MinNestingLevel)
+        fieldSettings |> FieldSettings.nameOption name

@@ -521,16 +521,12 @@ type internal Assembler<'Record>(sourceSchema: RootSchema, settings) =
             let isOptional = false
             let valueType = ValueTypeSchema.record sourceSchema.Fields
             ValueSchema.create isOptional valueType
-        match Deserializer.resolve sourceSchema typeof<'Record> settings with
+        let recordValue =
+            FieldDefinition.forRoot typeof<'Record>
+            |> ValueDefinition.ofField
+        match Deserializer.resolve sourceSchema recordValue settings with
         | Deserializer.Record recordDeserializer -> recordDeserializer
-        // The root record should never be optional. If it is an optional
-        // record, unwrap it to remove this optionality. This ensures that the
-        // root defnition level is always zero.
-        | Deserializer.Optional optionalDeserializer ->
-            match optionalDeserializer.ValueDeserializer with
-            | Deserializer.Record recordDeserializer -> recordDeserializer
-            | _ -> failwith $"type {typeof<'Record>} is not a record"
-        | _ -> failwith $"type {typeof<'Record>} is not a record"
+        | _ -> raise <| SerializationException($"root type '{recordValue.Type}' is not a record")
 
     let schema = RootSchema.ofValueSchema recordDeserializer.Schema
 

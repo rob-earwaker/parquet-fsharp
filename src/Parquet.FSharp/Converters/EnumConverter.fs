@@ -35,14 +35,14 @@ type internal EnumConverter private () =
     static member val Default = EnumConverter()
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
-            match sourceType with
+        member this.TryCreateSerializer(sourceValue, settings) =
+            match sourceValue.Type with
             | DotnetType.Enum enumInfo ->
                 Option.Some (createSerializer enumInfo)
             | _ -> Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
-            match targetType with
+        member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
+            match targetValue.Type with
             | DotnetType.Enum enumInfo ->
                 match sourceSchema.Type with
                 | ValueTypeSchema.Primitive primitiveSchema

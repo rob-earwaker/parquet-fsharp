@@ -21,13 +21,13 @@ type internal Int8Converter private () =
     static member val Default = Int8Converter()
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
-            if sourceType = dotnetType
+        member this.TryCreateSerializer(sourceValue, settings) =
+            if sourceValue.Type = dotnetType
             then Option.Some serializer
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
-            if targetType <> dotnetType
+        member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
+            if targetValue.Type <> dotnetType
             then Option.None
             else
                 match sourceSchema.Type with

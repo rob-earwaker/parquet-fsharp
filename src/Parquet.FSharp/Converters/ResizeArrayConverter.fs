@@ -15,9 +15,10 @@ type internal ResizeArrayConverterSettings = {
 type internal ResizeArrayConverter(converterSettings: ResizeArrayConverterSettings) =
     let isResizeArrayType = DotnetType.isGenericType<ResizeArray<_>>
 
-    let createSerializer (dotnetType: Type) settings =
-        let elementDotnetType = dotnetType.GetGenericArguments()[0]
-        let elementSerializer = Serializer.resolve elementDotnetType settings
+    let createSerializer (arrayValue: ValueDefinition) settings =
+        let elementDotnetType = arrayValue.Type.GetGenericArguments()[0]
+        let elementValue = arrayValue |> ValueDefinition.forNestedValue elementDotnetType
+        let elementSerializer = Serializer.resolve elementValue settings
         let getEnumerator (list: Expression) =
             // if isNull list then
             //     raise SerializationException(...)
@@ -33,42 +34,43 @@ type internal ResizeArrayConverter(converterSettings: ResizeArrayConverterSettin
                 Expression.Assign(enumerable, Expression.Convert(list, enumerable.Type)),
                 Expression.Call(enumerable, "GetEnumerator", []))
             :> Expression
-        Serializer.list dotnetType elementSerializer getEnumerator
+        Serializer.list arrayValue.Type elementSerializer getEnumerator
 
     // Deserializer for required values, i.e. those that will never have null
     // values according to the source schema.
-    let createRequiredDeserializer (schema: ListTypeSchema) (dotnetType: Type) settings =
-        let elementDotnetType = dotnetType.GetGenericArguments()[0]
+    let createRequiredDeserializer (listSchema: ListTypeSchema) (arrayValue: ValueDefinition) settings =
+        let elementDotnetType = arrayValue.Type.GetGenericArguments()[0]
+        let elementValue = arrayValue |> ValueDefinition.forNestedValue elementDotnetType
         let elementDeserializer =
-            Deserializer.resolve schema.Element elementDotnetType settings
-        let createEmpty = Expression.New(dotnetType)
+            Deserializer.resolve listSchema.Element elementValue settings
+        let createEmpty = Expression.New(arrayValue.Type)
         let createFromElementValues = id
         Deserializer.list
-            dotnetType elementDeserializer createEmpty createFromElementValues
+            arrayValue.Type elementDeserializer createEmpty createFromElementValues
 
     // Deserializer for optional values, i.e. those that could have null values
     // according to the source schema. Since we usually don't want null values
     // in F#, we just wrap as a non-nullable type. This means an exception will
     // be thrown if a null value is encountered in the data.
-    let createOptionalDeserializer schema dotnetType settings =
-        createRequiredDeserializer schema dotnetType settings
+    let createOptionalDeserializer listSchema arrayValue settings =
+        createRequiredDeserializer listSchema arrayValue settings
         |> Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull
 
     static member val Default = ResizeArrayConverter(ResizeArrayConverterSettings.Default)
 
     interface IValueConverter with
-        member this.TryCreateSerializer(sourceType, valueSettings, settings) =
-            if isResizeArrayType sourceType
-            then Option.Some (createSerializer sourceType settings)
+        member this.TryCreateSerializer(sourceValue, settings) =
+            if isResizeArrayType sourceValue.Type
+            then Option.Some (createSerializer sourceValue settings)
             else Option.None
 
-        member this.TryCreateDeserializer(sourceSchema, targetType, valueSettings, settings) =
-            if not (isResizeArrayType targetType)
+        member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
+            if not (isResizeArrayType targetValue.Type)
             then Option.None
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.List listSchema ->
                     if sourceSchema.IsOptional
-                    then Option.Some (createOptionalDeserializer listSchema targetType settings)
-                    else Option.Some (createRequiredDeserializer listSchema targetType settings)
+                    then Option.Some (createOptionalDeserializer listSchema targetValue settings)
+                    else Option.Some (createRequiredDeserializer listSchema targetValue settings)
                 | _ -> Option.None

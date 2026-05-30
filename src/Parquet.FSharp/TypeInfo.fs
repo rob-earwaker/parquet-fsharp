@@ -11,7 +11,7 @@ type internal EnumInfo = {
     ValueType: Type }
 
 type internal FieldInfo = {
-    Field: PropertyInfo
+    Property: PropertyInfo
     Name: string
     Type: Type
     GetValue: Expression -> Expression }
@@ -89,7 +89,7 @@ module internal RecordInfo =
                 let getValue (record: Expression) =
                     Expression.Property(record, field)
                     :> Expression
-                { FieldInfo.Field = field
+                { FieldInfo.Property = field
                   FieldInfo.Name = field.Name
                   FieldInfo.Type = field.PropertyType
                   FieldInfo.GetValue = getValue })
@@ -125,7 +125,7 @@ module internal UnionInfo =
                                 let unionCase = Expression.Convert(union, unionCaseType)
                                 Expression.Property(unionCase, field)
                                 :> Expression
-                        { FieldInfo.Field = field
+                        { FieldInfo.Property = field
                           FieldInfo.Name = field.Name
                           FieldInfo.Type = field.PropertyType
                           FieldInfo.GetValue = getValue })

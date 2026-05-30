@@ -4,6 +4,7 @@ open Parquet.FSharp
 open System
 open System.IO
 
+[<ParquetUnion(CaseTypeFieldName = "GZip")>]
 type Alternative =
     | OptionA of value1:int * value2:float
     | OptionB of string * bool
@@ -25,20 +26,20 @@ type Data = {
     Value3: Nullable<int> }
 
 type Message = {
-    Id: Guid
+  (*  Id: Guid
     Time: DateTime
     Timestamp: DateTimeOffset
     Source: string
-    Level: float
-    Alternative: Alternative
-    FileType: FileType
+    Level: float*)
+    Alternative: Alternative list
+    (*FileType: FileType
     Flag: Nullable<bool>
     Count: int option
     Index: int voption
     Samples: int list
     Gps: Gps
     Values: Data[]
-    Money: decimal }
+    Money: decimal*) }
 
 module Random =
     let private Random = Random()
@@ -140,20 +141,20 @@ module Random =
           Data.Value3 = nullableInt () }
 
     let message () =
-        { Message.Id = guid ()
+        { (*Message.Id = guid ()
           Message.Time = dateTime ()
           Message.Timestamp = dateTimeOffset ()
           Message.Source = string ()
-          Message.Level = float ()
-          Message.Alternative = alternative ()
-          Message.FileType = fileType ()
+          Message.Level = float ()*)
+          Message.Alternative = list 2 alternative
+          (*Message.FileType = fileType ()
           Message.Flag = nullableBool ()
           Message.Count = intOption ()
           Message.Index = intValueOption ()
           Message.Samples = list 5 int
           Message.Gps = gps ()
           Message.Values = array 3 data
-          Message.Money = decimal () }
+          Message.Money = decimal ()*) }
 
 [<EntryPoint>]
 let main _ =

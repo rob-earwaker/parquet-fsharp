@@ -23,6 +23,7 @@ type internal RecordInfo = {
 
 type internal UnionInfo = {
     Type: Type
+    // TODO: Maybe the union converter(s) should derive the category?
     UnionCategory: UnionCategory
     GetTag: Expression -> Expression
     GetCaseName: Expression -> Expression

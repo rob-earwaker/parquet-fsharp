@@ -44,11 +44,11 @@ module ``option:{ default } dateTime:{ default } serialize`` =
 
 module ``option:{ default } dateTime:{ non-default } serialize`` =
     type Input = {
-        [<ParquetNestedDateTime(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetDateTime(NestingLevel = 1, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime option }
 
     type Output = {
-        [<ParquetNestedDateTime(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetDateTime(NestingLevel = 1, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime option }
 
     let assertSchemaMatchesExpected schema =
@@ -82,7 +82,7 @@ module ``option:{ default } dateTime:{ non-default } serialize`` =
 
 module ``option:{ required=true } dateTime:{ default } serialize`` =
     type Input = {
-        [<ParquetOptionField(Required = true)>]
+        [<ParquetOption(Required = true)>]
         Field1: DateTime option }
 
     type Output = {
@@ -121,12 +121,12 @@ module ``option:{ required=true } dateTime:{ default } serialize`` =
 
 module ``option:{ required=true } dateTime:{ non-default } serialize`` =
     type Input = {
-        [<ParquetOptionField(Required = true)>]
-        [<ParquetNestedDateTime(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetOption(Required = true)>]
+        [<ParquetDateTime(NestingLevel = 1, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime option }
 
     type Output = {
-        [<ParquetDateTimeField(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetDateTime(Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime }
 
     let assertSchemaMatchesExpected schema =
@@ -184,11 +184,11 @@ module ``option:{ default } dateTime:{ default } deserialize`` =
 
 module ``option:{ default } dateTime:{ non-default } deserialize`` =
     type Input = {
-        [<ParquetNestedDateTime(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetDateTime(NestingLevel = 1, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime option }
 
     type Output = {
-        [<ParquetNestedDateTime(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetDateTime(NestingLevel = 1, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime option }
 
     [<Fact>]
@@ -211,7 +211,7 @@ module ``option:{ required=true } dateTime:{ default } deserialize`` =
         Field1: DateTime }
 
     type Output = {
-        [<ParquetOptionField(Required = true)>]
+        [<ParquetOption(Required = true)>]
         Field1: DateTime option }
 
     [<Fact>]
@@ -224,12 +224,12 @@ module ``option:{ required=true } dateTime:{ default } deserialize`` =
 
 module ``option:{ required=true } dateTime:{ non-default } deserialize`` =
     type Input = {
-        [<ParquetDateTimeField(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetDateTime(Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime }
 
     type Output = {
-        [<ParquetOptionField(Required = true)>]
-        [<ParquetNestedDateTime(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetOption(Required = true)>]
+        [<ParquetDateTime(NestingLevel = 1, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime option }
 
     [<Fact>]

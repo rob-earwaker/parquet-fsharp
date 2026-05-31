@@ -68,11 +68,11 @@ module ``list:{ default } dateTime:{ default } serialize`` =
 
 module ``list:{ default } dateTime:{ non-default } serialize`` =
     type Input = {
-        [<ParquetNestedDateTime(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetDateTime(NestingLevel = 1, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime list }
 
     type Output = {
-        [<ParquetNestedDateTime(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetDateTime(NestingLevel = 1, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime list }
 
     let assertSchemaMatchesExpected schema =
@@ -130,7 +130,7 @@ module ``list:{ default } dateTime:{ non-default } serialize`` =
 
 module ``list:{ optional=true } dateTime:{ default } serialize`` =
     type Input = {
-        [<ParquetListField(Optional = true)>]
+        [<ParquetList(Optional = true)>]
         Field1: DateTime list }
 
     type Output = {
@@ -191,12 +191,12 @@ module ``list:{ optional=true } dateTime:{ default } serialize`` =
 
 module ``list:{ optional=true } dateTime:{ non-default } serialize`` =
     type Input = {
-        [<ParquetListField(Optional = true)>]
-        [<ParquetNestedDateTime(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetList(Optional = true)>]
+        [<ParquetDateTime(NestingLevel = 1, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime list }
 
     type Output = {
-        [<ParquetNestedDateTime(Level = 2, Unit = TimeUnit.Milliseconds)>]
+        [<ParquetDateTime(NestingLevel = 2, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime list option }
 
     let assertSchemaMatchesExpected schema =
@@ -279,11 +279,11 @@ module ``list:{ default } dateTime:{ default } deserialize`` =
 
 module ``list:{ default } dateTime:{ non-default } deserialize`` =
     type Input = {
-        [<ParquetNestedDateTime(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetDateTime(NestingLevel = 1, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime list }
 
     type Output = {
-        [<ParquetNestedDateTime(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetDateTime(NestingLevel = 1, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime list }
 
     let Value = [|
@@ -309,7 +309,7 @@ module ``list:{ optional=true } dateTime:{ default } deserialize`` =
         Field1: DateTime list option }
 
     type Output = {
-        [<ParquetListField(Optional = true)>]
+        [<ParquetList(Optional = true)>]
         Field1: DateTime list }
 
     [<Fact>]
@@ -344,12 +344,12 @@ module ``list:{ optional=true } dateTime:{ default } deserialize`` =
 
 module ``list:{ optional=true } dateTime:{ non-default } deserialize`` =
     type Input = {
-        [<ParquetNestedDateTime(Level = 2, Unit = TimeUnit.Milliseconds)>]
+        [<ParquetDateTime(NestingLevel = 2, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime list option }
 
     type Output = {
-        [<ParquetListField(Optional = true)>]
-        [<ParquetNestedDateTime(Unit = TimeUnit.Milliseconds)>]
+        [<ParquetList(Optional = true)>]
+        [<ParquetDateTime(NestingLevel = 1, Unit = TimeUnit.Milliseconds)>]
         Field1: DateTime list }
 
     [<Fact>]

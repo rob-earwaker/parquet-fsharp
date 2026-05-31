@@ -128,7 +128,7 @@ module ``{ default } serialize with record value`` =
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
 module ``{ required=true } serialize with atomic value`` =
-    type Input = { [<ParquetOptionField(Required = true)>] Field1: int option }
+    type Input = { [<ParquetOption(Required = true)>] Field1: int option }
     type Output = { Field1: int }
 
     let assertSchemaMatchesExpected schema =
@@ -162,7 +162,7 @@ module ``{ required=true } serialize with atomic value`` =
         test <@ outputRecords = [| { Output.Field1 = 1 } |] @>
 
 module ``{ required=true } serialize with list value`` =
-    type Input = { [<ParquetOptionField(Required = true)>] Field1: int list option }
+    type Input = { [<ParquetOption(Required = true)>] Field1: int list option }
     type Output = { Field1: int list }
 
     let assertSchemaMatchesExpected schema =
@@ -215,7 +215,7 @@ module ``{ required=true } serialize with list value`` =
 
 module ``{ required=true } serialize with record value`` =
     type Record = { Field2: int }
-    type Input = { [<ParquetOptionField(Required = true)>] Field1: Record option }
+    type Input = { [<ParquetOption(Required = true)>] Field1: Record option }
     type Output = { Field1: Record }
 
     let assertSchemaMatchesExpected schema =
@@ -256,7 +256,7 @@ module ``{ required=true } serialize with record value`` =
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``{ required=true } serialize with optional value`` =
-    type Input = { [<ParquetOptionField(Required = true)>] Field1: int option option }
+    type Input = { [<ParquetOption(Required = true)>] Field1: int option option }
     type Output = { Field1: int option }
 
     let assertSchemaMatchesExpected schema =
@@ -358,7 +358,7 @@ module ``{ default } deserialize with record value`` =
 
 module ``{ required=true } deserialize with atomic value`` =
     type Input = { Field1: int }
-    type Output = { [<ParquetOptionField(Required = true)>] Field1: int option }
+    type Output = { [<ParquetOption(Required = true)>] Field1: int option }
 
     [<Fact>]
     let ``value`` () =
@@ -369,7 +369,7 @@ module ``{ required=true } deserialize with atomic value`` =
 
 module ``{ required=true } deserialize with list value`` =
     type Input = { Field1: int list }
-    type Output = { [<ParquetOptionField(Required = true)>] Field1: int list option }
+    type Output = { [<ParquetOption(Required = true)>] Field1: int list option }
 
     let Value = [|
         [| box<int list> (**) [] (**) |]
@@ -387,7 +387,7 @@ module ``{ required=true } deserialize with list value`` =
 module ``{ required=true } deserialize with record value`` =
     type Record = { Field2: int }
     type Input = { Field1: Record }
-    type Output = { [<ParquetOptionField(Required = true)>] Field1: Record option }
+    type Output = { [<ParquetOption(Required = true)>] Field1: Record option }
 
     [<Fact>]
     let ``value`` () =
@@ -399,7 +399,7 @@ module ``{ required=true } deserialize with record value`` =
 
 module ``{ required=true } deserialize with optional value`` =
     type Input = { Field1: int option }
-    type Output = { [<ParquetOptionField(Required = true)>] Field1: int option option }
+    type Output = { [<ParquetOption(Required = true)>] Field1: int option option }
 
     let Value = [|
         [| box<int option> <| (**) Option.None (**) |]

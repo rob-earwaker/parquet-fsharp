@@ -240,7 +240,7 @@ module ``{ default } serialize with optional elements`` =
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``{ optional=true } serialize with atomic elements`` =
-    type Input = { [<ParquetListField(Optional = true)>] Field1: int list }
+    type Input = { [<ParquetList(Optional = true)>] Field1: int list }
     type Output = { Field1: int list option }
 
     let assertSchemaMatchesExpected schema =
@@ -292,7 +292,7 @@ module ``{ optional=true } serialize with atomic elements`` =
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
 module ``{ optional=true } serialize with list elements`` =
-    type Input = { [<ParquetListField(Optional = true)>] Field1: int list list }
+    type Input = { [<ParquetList(Optional = true)>] Field1: int list list }
     type Output = { Field1: int list list option }
 
     let assertSchemaMatchesExpected schema =
@@ -359,7 +359,7 @@ module ``{ optional=true } serialize with list elements`` =
 
 module ``{ optional=true } serialize with record elements`` =
     type Record = { Field2: int }
-    type Input = { [<ParquetListField(Optional = true)>] Field1: Record list }
+    type Input = { [<ParquetList(Optional = true)>] Field1: Record list }
     type Output = { Field1: Record list option }
 
     let assertSchemaMatchesExpected schema =
@@ -417,7 +417,7 @@ module ``{ optional=true } serialize with record elements`` =
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
 module ``{ optional=true } serialize with optional elements`` =
-    type Input = { [<ParquetListField(Optional = true)>] Field1: int option list }
+    type Input = { [<ParquetList(Optional = true)>] Field1: int option list }
     type Output = { Field1: int option list option }
 
     let assertSchemaMatchesExpected schema =
@@ -472,7 +472,7 @@ module ``{ optional=true } serialize with optional elements`` =
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
 module ``{ optional=true; allowNull=true } serialize with atomic elements`` =
-    type Input = { [<ParquetListField(Optional = true, AllowNull = true)>] Field1: int list }
+    type Input = { [<ParquetList(Optional = true, AllowNull = true)>] Field1: int list }
     type Output = { Field1: int list option }
 
     let assertSchemaMatchesExpected schema =
@@ -522,7 +522,7 @@ module ``{ optional=true; allowNull=true } serialize with atomic elements`` =
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
 module ``{ optional=true; allowNull=true } serialize with list elements`` =
-    type Input = { [<ParquetListField(Optional = true, AllowNull = true)>] Field1: int list list }
+    type Input = { [<ParquetList(Optional = true, AllowNull = true)>] Field1: int list list }
     type Output = { Field1: int list list option }
 
     let assertSchemaMatchesExpected schema =
@@ -587,7 +587,7 @@ module ``{ optional=true; allowNull=true } serialize with list elements`` =
 
 module ``{ optional=true; allowNull=true } serialize with record elements`` =
     type Record = { Field2: int }
-    type Input = { [<ParquetListField(Optional = true, AllowNull = true)>] Field1: Record list }
+    type Input = { [<ParquetList(Optional = true, AllowNull = true)>] Field1: Record list }
     type Output = { Field1: Record list option }
 
     let assertSchemaMatchesExpected schema =
@@ -643,7 +643,7 @@ module ``{ optional=true; allowNull=true } serialize with record elements`` =
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
 module ``{ optional=true; allowNull=true } serialize with optional elements`` =
-    type Input = { [<ParquetListField(Optional = true, AllowNull = true)>] Field1: int option list }
+    type Input = { [<ParquetList(Optional = true, AllowNull = true)>] Field1: int option list }
     type Output = { Field1: int option list option }
 
     let assertSchemaMatchesExpected schema =
@@ -771,7 +771,7 @@ module ``{ default } deserialize with optional elements`` =
 
 module ``{ optional=true } deserialize with atomic elements`` =
     type Input = { Field1: int list option }
-    type Output = { [<ParquetListField(Optional = true)>] Field1: int list }
+    type Output = { [<ParquetList(Optional = true)>] Field1: int list }
 
     [<Fact>]
     let ``null`` () =
@@ -800,7 +800,7 @@ module ``{ optional=true } deserialize with atomic elements`` =
 
 module ``{ optional=true } deserialize with list elements`` =
     type Input = { Field1: int list list option }
-    type Output = { [<ParquetListField(Optional = true)>] Field1: int list list }
+    type Output = { [<ParquetList(Optional = true)>] Field1: int list list }
 
     [<Fact>]
     let ``null`` () =
@@ -832,7 +832,7 @@ module ``{ optional=true } deserialize with list elements`` =
 module ``{ optional=true } deserialize with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list option }
-    type Output = { [<ParquetListField(Optional = true)>] Field1: Record list }
+    type Output = { [<ParquetList(Optional = true)>] Field1: Record list }
 
     [<Fact>]
     let ``null`` () =
@@ -861,7 +861,7 @@ module ``{ optional=true } deserialize with record elements`` =
 
 module ``{ optional=true } deserialize with optional elements`` =
     type Input = { Field1: int option list option }
-    type Output = { [<ParquetListField(Optional = true)>] Field1: int option list }
+    type Output = { [<ParquetList(Optional = true)>] Field1: int option list }
 
     [<Fact>]
     let ``null`` () =
@@ -893,7 +893,7 @@ module ``{ optional=true } deserialize with optional elements`` =
 
 module ``{ optional=true; allowNull=true } deserialize with atomic elements`` =
     type Input = { Field1: int list option }
-    type Output = { [<ParquetListField(Optional = true, AllowNull = true)>] Field1: int list }
+    type Output = { [<ParquetList(Optional = true, AllowNull = true)>] Field1: int list }
 
     [<Fact>]
     let ``null`` () =
@@ -922,7 +922,7 @@ module ``{ optional=true; allowNull=true } deserialize with atomic elements`` =
 
 module ``{ optional=true; allowNull=true } deserialize with list elements`` =
     type Input = { Field1: int list list option }
-    type Output = { [<ParquetListField(Optional = true, AllowNull = true)>] Field1: int list list }
+    type Output = { [<ParquetList(Optional = true, AllowNull = true)>] Field1: int list list }
 
     [<Fact>]
     let ``null`` () =
@@ -954,7 +954,7 @@ module ``{ optional=true; allowNull=true } deserialize with list elements`` =
 module ``{ optional=true; allowNull=true } deserialize with record elements`` =
     type Record = { Field2: int }
     type Input = { Field1: Record list option }
-    type Output = { [<ParquetListField(Optional = true, AllowNull = true)>] Field1: Record list }
+    type Output = { [<ParquetList(Optional = true, AllowNull = true)>] Field1: Record list }
 
     [<Fact>]
     let ``null`` () =
@@ -983,7 +983,7 @@ module ``{ optional=true; allowNull=true } deserialize with record elements`` =
 
 module ``{ optional=true; allowNull=true } deserialize with optional elements`` =
     type Input = { Field1: int option list option }
-    type Output = { [<ParquetListField(Optional = true, AllowNull = true)>] Field1: int option list }
+    type Output = { [<ParquetList(Optional = true, AllowNull = true)>] Field1: int option list }
 
     [<Fact>]
     let ``null`` () =

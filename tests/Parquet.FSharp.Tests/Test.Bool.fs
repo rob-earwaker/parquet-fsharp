@@ -31,7 +31,7 @@ module ``{ default } serialize`` =
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
 module ``{ optional=true } serialize`` =
-    type Input = { [<ParquetBoolField(Optional = true)>] Field1: bool }
+    type Input = { [<ParquetBool(Optional = true)>] Field1: bool }
     type Output = { Field1: bool option }
 
     let assertSchemaMatchesExpected schema =
@@ -70,7 +70,7 @@ module ``{ default } deserialize from required`` =
 
 module ``{ optional=true } deserialize`` =
     type Input = { Field1: bool option }
-    type Output = { [<ParquetBoolField(Optional = true)>] Field1: bool }
+    type Output = { [<ParquetBool(Optional = true)>] Field1: bool }
 
     [<Fact>]
     let ``null value`` () =

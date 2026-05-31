@@ -72,7 +72,7 @@ type ValueDefinition = {
     Type: Type
     Attributes: Attribute[] }
 
-// TODO: Might be able to tidy thes eup and combine with attributes better if we combined
+// TODO: Might be able to tidy these up and combine with attributes better if we combined
 // the IsValidFor and ApplySettings methods into one TryApplySettings
 type IFieldSettingsPolicy =
     abstract member IsValidFor : field:FieldDefinition -> bool

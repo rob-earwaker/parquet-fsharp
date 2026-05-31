@@ -164,3 +164,5 @@ type ParquetFieldAttribute() =
     override this.ApplyFieldSettings(fieldSettings) =
         let name = name |> Option.orElse fieldSettings.Name
         fieldSettings |> FieldSettings.nameOption name
+
+// TODO: Attribute for ignoring a field?

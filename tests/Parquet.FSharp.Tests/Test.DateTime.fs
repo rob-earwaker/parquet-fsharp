@@ -141,7 +141,7 @@ module ``{ default } serialize`` =
         test <@ outputRecord.Field1.Kind = DateTimeKind.Utc @>
 
 module ``{ optional=true } serialize`` =
-    type Input = { [<ParquetDateTimeField(Optional = true)>] Field1: DateTime }
+    type Input = { [<ParquetDateTime(Optional = true)>] Field1: DateTime }
     type Output = { Field1: DateTime option }
 
     let assertSchemaMatchesExpected schema =
@@ -277,8 +277,8 @@ module ``{ optional=true } serialize`` =
         test <@ outputRecord.Field1.Value.Kind = DateTimeKind.Utc @>
 
 module ``{ unit=milliseconds } serialize`` =
-    type Input = { [<ParquetDateTimeField(Unit = TimeUnit.Milliseconds)>] Field1: DateTime }
-    type Output = { [<ParquetDateTimeField(Unit = TimeUnit.Milliseconds)>] Field1: DateTime }
+    type Input = { [<ParquetDateTime(Unit = TimeUnit.Milliseconds)>] Field1: DateTime }
+    type Output = { [<ParquetDateTime(Unit = TimeUnit.Milliseconds)>] Field1: DateTime }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -409,8 +409,8 @@ module ``{ unit=milliseconds } serialize`` =
         test <@ outputRecord.Field1.Kind = DateTimeKind.Utc @>
 
 module ``{ unit=nanoseconds } serialize`` =
-    type Input = { [<ParquetDateTimeField(Unit = TimeUnit.Nanoseconds)>] Field1: DateTime }
-    type Output = { [<ParquetDateTimeField(Unit = TimeUnit.Nanoseconds)>] Field1: DateTime }
+    type Input = { [<ParquetDateTime(Unit = TimeUnit.Nanoseconds)>] Field1: DateTime }
+    type Output = { [<ParquetDateTime(Unit = TimeUnit.Nanoseconds)>] Field1: DateTime }
 
     let assertSchemaMatchesExpected schema =
         Assert.schema schema [
@@ -566,7 +566,7 @@ module ``{ default } deserialize`` =
 
 module ``{ optional=true } deserialize`` =
     type Input = { Field1: DateTime option }
-    type Output = { [<ParquetDateTimeField(Optional = true)>] Field1: DateTime }
+    type Output = { [<ParquetDateTime(Optional = true)>] Field1: DateTime }
 
     [<Fact>]
     let ``null`` () =
@@ -600,8 +600,8 @@ module ``{ optional=true } deserialize`` =
         test <@ outputRecord.Field1.Kind = DateTimeKind.Utc @>
 
 module ``{ unit=milliseconds } deserialize`` =
-    type Input = { [<ParquetDateTimeField(Unit = TimeUnit.Milliseconds)>] Field1: DateTime }
-    type Output = { [<ParquetDateTimeField(Unit = TimeUnit.Milliseconds)>] Field1: DateTime }
+    type Input = { [<ParquetDateTime(Unit = TimeUnit.Milliseconds)>] Field1: DateTime }
+    type Output = { [<ParquetDateTime(Unit = TimeUnit.Milliseconds)>] Field1: DateTime }
 
     [<Theory>]
     [<InlineData(                  0L)>] // Min value
@@ -624,8 +624,8 @@ module ``{ unit=milliseconds } deserialize`` =
         test <@ outputRecord.Field1.Kind = DateTimeKind.Utc @>
 
 module ``{ unit=nanoseconds } deserialize`` =
-    type Input = { [<ParquetDateTimeField(Unit = TimeUnit.Nanoseconds)>] Field1: DateTime }
-    type Output = { [<ParquetDateTimeField(Unit = TimeUnit.Nanoseconds)>] Field1: DateTime }
+    type Input = { [<ParquetDateTime(Unit = TimeUnit.Nanoseconds)>] Field1: DateTime }
+    type Output = { [<ParquetDateTime(Unit = TimeUnit.Nanoseconds)>] Field1: DateTime }
 
     [<Theory>]
     //[<InlineData(                  0L)>] // Min value

@@ -5,8 +5,6 @@ open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
-// TODO: It's worth adding tests for { allowNull=true } due to the exception message handling.
-
 module ``{ default } serialize with atomic elements`` =
     type Input = { Field1: int array }
     type Output = { Field1: int array }
@@ -41,7 +39,7 @@ module ``{ default } serialize with atomic elements`` =
             (fun exn ->
                 <@ exn.Message =
                     $"null value encountered during serialization for type '{typeof<int array>}'"
-                    + " for which nulls are not allowed by default" @>)
+                    + " which is not optional by default" @>)
 
     let NonNull = [|
         [| box<int[]> (**) [||] (**) |]
@@ -104,7 +102,7 @@ module ``{ default } serialize with list elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int list array>}' for which nulls are not allowed by default" @>)
+                    + $" '{typeof<int list array>}' which is not optional by default" @>)
 
     let NonNull = [|
         [| box<int list array> (**) [||] (**) |]
@@ -164,7 +162,7 @@ module ``{ default } serialize with record elements`` =
             (fun exn ->
                 <@ exn.Message =
                     $"null value encountered during serialization for type '{typeof<Record array>}'"
-                    + " for which nulls are not allowed by default" @>)
+                    + " which is not optional by default" @>)
 
     let NonNull = [|
         [| box<Record array> (**) [||] (**) |]
@@ -215,7 +213,235 @@ module ``{ default } serialize with optional elements`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<int option array>}' for which nulls are not allowed by default" @>)
+                    + $" '{typeof<int option array>}' which is not optional by default" @>)
+
+    let NonNull = [|
+        [| box<int option array> (**) [||] (**) |]
+        [| box<int option array> (**) [| Option.None |] (**) |]
+        [| box<int option array> (**) [| Option.Some 1 |] (**) |]
+        [| box<int option array> (**) [| Option.None; Option.None; Option.None |] (**) |]
+        [| box<int option array> (**) [| Option.Some 1; Option.None; Option.Some 3 |] (**) |]
+        [| box<int option array> (**) [| Option.Some 1; Option.Some 2 |] (**) |] |]
+
+    [<Theory>]
+    [<MemberData(nameof NonNull)>]
+    let ``non-null`` value =
+        let inputRecords = [| { Input.Field1 = value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+
+module ``{ allowNull=true } serialize with atomic elements`` =
+    type Input = { [<ParquetArray1d(AllowNull = true)>] Field1: int array }
+    type Output = { Field1: int array }
+
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isRequired
+                Assert.Field.Type.hasNoValue
+                Assert.Field.LogicalType.isList
+                Assert.Field.ConvertedType.isList
+                Assert.Field.child [
+                    Assert.Field.nameEquals "list"
+                    Assert.Field.isRepeated
+                    Assert.Field.Type.hasNoValue
+                    Assert.Field.LogicalType.hasNoValue
+                    Assert.Field.ConvertedType.hasNoValue
+                    Assert.Field.child [
+                        Assert.Field.nameEquals "element"
+                        Assert.Field.isRequired
+                        Assert.Field.Type.isInt32
+                        Assert.Field.LogicalType.isInteger 32 true
+                        Assert.Field.ConvertedType.isInt32
+                        Assert.Field.hasNoChildren ] ] ] ]
+
+    [<Fact>]
+    let ``null`` () =
+        let inputRecords = [| { Input.Field1 = null } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    $"null value encountered during serialization for type '{typeof<int array>}'"
+                    + " which is not optional by default" @>)
+
+    let NonNull = [|
+        [| box<int[]> (**) [||] (**) |]
+        [| box<int[]> (**) [| 1 |] (**) |]
+        [| box<int[]> (**) [| 1; 2; 3 |] (**) |] |]
+
+    [<Theory>]
+    [<MemberData(nameof NonNull)>]
+    let ``non-null`` value =
+        let inputRecords = [| { Input.Field1 = value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+
+module ``{ allowNull=true } serialize with list elements`` =
+    type Input = { [<ParquetArray1d(AllowNull = true)>] Field1: int list array }
+    type Output = { Field1: int list array }
+
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isRequired
+                Assert.Field.Type.hasNoValue
+                Assert.Field.LogicalType.isList
+                Assert.Field.ConvertedType.isList
+                Assert.Field.child [
+                    Assert.Field.nameEquals "list"
+                    Assert.Field.isRepeated
+                    Assert.Field.Type.hasNoValue
+                    Assert.Field.LogicalType.hasNoValue
+                    Assert.Field.ConvertedType.hasNoValue
+                    Assert.Field.child [
+                        Assert.Field.nameEquals "element"
+                        Assert.Field.isRequired
+                        Assert.Field.Type.hasNoValue
+                        Assert.Field.LogicalType.isList
+                        Assert.Field.ConvertedType.isList
+                        Assert.Field.child [
+                            Assert.Field.nameEquals "list"
+                            Assert.Field.isRepeated
+                            Assert.Field.Type.hasNoValue
+                            Assert.Field.LogicalType.hasNoValue
+                            Assert.Field.ConvertedType.hasNoValue
+                            Assert.Field.child [
+                                Assert.Field.nameEquals "element"
+                                Assert.Field.isRequired
+                                Assert.Field.Type.isInt32
+                                Assert.Field.LogicalType.isInteger 32 true
+                                Assert.Field.ConvertedType.isInt32
+                                Assert.Field.hasNoChildren ] ] ] ] ] ]
+
+    [<Fact>]
+    let ``null`` () =
+        let inputRecords = [| { Input.Field1 = null } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "null value encountered during serialization for type"
+                    + $" '{typeof<int list array>}' which is not optional by default" @>)
+
+    let NonNull = [|
+        [| box<int list array> (**) [||] (**) |]
+        [| box<int list array> (**) [| [] |] (**) |]
+        [| box<int list array> (**) [| [ 1; 2; 3 ] |] (**) |]
+        [| box<int list array> (**) [| []; []; [] |] (**) |]
+        [| box<int list array> (**) [| [ 1 ]; []; [ 2; 3; 4 ] |] (**) |] |]
+
+    [<Theory>]
+    [<MemberData(nameof NonNull)>]
+    let ``non-null`` value =
+        let inputRecords = [| { Input.Field1 = value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+
+module ``{ allowNull=true } serialize with record elements`` =
+    type Record = { Field2: int }
+    type Input = { [<ParquetArray1d(AllowNull = true)>] Field1: Record array }
+    type Output = { Field1: Record array }
+
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isRequired
+                Assert.Field.Type.hasNoValue
+                Assert.Field.LogicalType.isList
+                Assert.Field.ConvertedType.isList
+                Assert.Field.child [
+                    Assert.Field.nameEquals "list"
+                    Assert.Field.isRepeated
+                    Assert.Field.Type.hasNoValue
+                    Assert.Field.LogicalType.hasNoValue
+                    Assert.Field.ConvertedType.hasNoValue
+                    Assert.Field.child [
+                        Assert.Field.nameEquals "element"
+                        Assert.Field.isRequired
+                        Assert.Field.Type.hasNoValue
+                        Assert.Field.LogicalType.hasNoValue
+                        Assert.Field.ConvertedType.hasNoValue
+                        Assert.Field.child [
+                            Assert.Field.nameEquals "Field2"
+                            Assert.Field.isRequired
+                            Assert.Field.Type.isInt32
+                            Assert.Field.LogicalType.isInteger 32 true
+                            Assert.Field.ConvertedType.isInt32
+                            Assert.Field.hasNoChildren ] ] ] ] ]
+
+    [<Fact>]
+    let ``null`` () =
+        let inputRecords = [| { Input.Field1 = null } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    $"null value encountered during serialization for type '{typeof<Record array>}'"
+                    + " which is not optional by default" @>)
+
+    let NonNull = [|
+        [| box<Record array> (**) [||] (**) |]
+        [| box<Record array> (**) [| { Field2 = 1 } |] (**) |]
+        [| box<Record array> (**) [| { Field2 = 1 }; { Field2 = 2 } |] (**) |] |]
+
+    [<Theory>]
+    [<MemberData(nameof NonNull)>]
+    let ``non-null`` value =
+        let inputRecords = [| { Input.Field1 = value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+
+module ``{ allowNull=true } serialize with optional elements`` =
+    type Input = { [<ParquetArray1d(AllowNull = true)>] Field1: int option array }
+    type Output = { Field1: int option array }
+
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isRequired
+                Assert.Field.Type.hasNoValue
+                Assert.Field.LogicalType.isList
+                Assert.Field.ConvertedType.isList
+                Assert.Field.child [
+                    Assert.Field.nameEquals "list"
+                    Assert.Field.isRepeated
+                    Assert.Field.Type.hasNoValue
+                    Assert.Field.LogicalType.hasNoValue
+                    Assert.Field.ConvertedType.hasNoValue
+                    Assert.Field.child [
+                        Assert.Field.nameEquals "element"
+                        Assert.Field.isOptional
+                        Assert.Field.Type.isInt32
+                        Assert.Field.LogicalType.isInteger 32 true
+                        Assert.Field.ConvertedType.isInt32
+                        Assert.Field.hasNoChildren ] ] ] ]
+
+    [<Fact>]
+    let ``null`` () =
+        let inputRecords = [| { Input.Field1 = null } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "null value encountered during serialization for type"
+                    + $" '{typeof<int option array>}' which is not optional by default" @>)
 
     let NonNull = [|
         [| box<int option array> (**) [||] (**) |]

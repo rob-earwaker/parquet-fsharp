@@ -4,9 +4,6 @@ open System
 open System.Collections.Generic
 open System.Linq.Expressions
 
-// TODO: Should we allow invalid or non-sensical combinations, e.g. allow null
-// without optional?
-
 type internal ListConverterSettings = {
     Optional: bool
     AllowNull: bool }
@@ -18,9 +15,9 @@ type internal ListConverterSettings = {
 type internal ListConverter(converterSettings: ListConverterSettings) =
     let isListType = DotnetType.isGenericType<list<_>>
 
-    let createRequiredSerializer (listValue: ValueDefinition) settings =
-        let elementDotnetType = listValue.Type.GetGenericArguments()[0]
-        let elementValue = listValue |> ValueDefinition.forNestedValue elementDotnetType
+    let createRequiredSerializer (value: ValueDefinition) settings =
+        let elementDotnetType = value.Type.GetGenericArguments()[0]
+        let elementValue = value |> ValueDefinition.forNestedValue elementDotnetType
         let elementSerializer = Serializer.resolve elementValue settings
         let getEnumerator (list: Expression) =
             // if isNull list then
@@ -33,25 +30,23 @@ type internal ListConverter(converterSettings: ListConverterSettings) =
                     "enumerable")
             Expression.Block(
                 [ enumerable ],
-                Serializer.throwIfNull converterSettings.AllowNull list,
+                Serializer.throwIfNull converterSettings.Optional list,
                 Expression.Assign(enumerable, Expression.Convert(list, enumerable.Type)),
                 Expression.Call(enumerable, "GetEnumerator", []))
             :> Expression
-        Serializer.list listValue.Type elementSerializer getEnumerator
+        Serializer.list value.Type elementSerializer getEnumerator
 
-    let createOptionalSerializer listValue settings =
-        createRequiredSerializer listValue settings
+    let createOptionalSerializer value settings =
+        createRequiredSerializer value settings
         |> Serializer.optionalNullableTypeWrapper converterSettings.AllowNull
 
-    // Deserializer for required values, i.e. those that will never have null
-    // values according to the source schema.
-    let createRequiredDeserializer (listSchema: ListTypeSchema) (listValue: ValueDefinition) settings =
-        let elementDotnetType = listValue.Type.GetGenericArguments()[0]
-        let elementValue = listValue |> ValueDefinition.forNestedValue elementDotnetType
+    let createRequiredDeserializer (schema: ListTypeSchema) (value: ValueDefinition) settings =
+        let elementDotnetType = value.Type.GetGenericArguments()[0]
+        let elementValue = value |> ValueDefinition.forNestedValue elementDotnetType
         let elementDeserializer =
-            Deserializer.resolve listSchema.Element elementValue settings
+            Deserializer.resolve schema.Element elementValue settings
         let createEmpty =
-            Expression.Property(null, listValue.Type.GetProperty("Empty"))
+            Expression.Property(null, value.Type.GetProperty("Empty"))
         let createFromElementValues (elementValues: Expression) =
             let seqModuleType =
                 System.Reflection.Assembly.Load("FSharp.Core").GetTypes()
@@ -60,14 +55,10 @@ type internal ListConverter(converterSettings: ListConverterSettings) =
             Expression.Call(seqModuleType, "ToList", [| elementDotnetType |], elementValues)
             :> Expression
         Deserializer.list
-            listValue.Type elementDeserializer createEmpty createFromElementValues
+            value.Type elementDeserializer createEmpty createFromElementValues
 
-    // Deserializer for optional values, i.e. those that could have null values
-    // according to the source schema. Since we usually don't want null values
-    // in F#, we just wrap as a non-nullable type. This means an exception will
-    // be thrown if a null value is encountered in the data.
-    let createOptionalDeserializer listSchema listValue settings =
-        createRequiredDeserializer listSchema listValue settings
+    let createOptionalDeserializer schema value settings =
+        createRequiredDeserializer schema value settings
         |> Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull
 
     static member val Default = ListConverter(ListConverterSettings.Default)
@@ -86,10 +77,10 @@ type internal ListConverter(converterSettings: ListConverterSettings) =
             then Option.None
             else
                 match sourceSchema.Type with
-                | ValueTypeSchema.List listSchema ->
+                | ValueTypeSchema.List schema ->
                     if sourceSchema.IsOptional && converterSettings.Optional
-                    then Option.Some (createOptionalDeserializer listSchema targetValue settings)
+                    then Option.Some (createOptionalDeserializer schema targetValue settings)
                     elif not sourceSchema.IsOptional && not converterSettings.Optional
-                    then Option.Some (createRequiredDeserializer listSchema targetValue settings)
+                    then Option.Some (createRequiredDeserializer schema targetValue settings)
                     else Option.None
                 | _ -> Option.None

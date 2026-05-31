@@ -43,8 +43,7 @@ module ``list:{ default } dateTime:{ default } serialize`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<DateTime list>}' for which nulls are not"
-                    + " allowed by default" @>)
+                    + $" '{typeof<DateTime list>}' which is not optional by default" @>)
 
     let NonNull = [|
         [| box<DateTime list> (**) [] (**) |]
@@ -105,8 +104,7 @@ module ``list:{ default } dateTime:{ non-default } serialize`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during serialization for type"
-                    + $" '{typeof<DateTime list>}' for which nulls are not"
-                    + " allowed by default" @>)
+                    + $" '{typeof<DateTime list>}' which is not optional by default" @>)
 
     let NonNull = [|
         [| box<DateTime list> (**) [] (**) |]

@@ -18,7 +18,7 @@ type internal StringConverter(converterSettings: StringConverterSettings) =
         let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue (value: Expression) =
             Expression.Block(
-                Serializer.throwIfNull converterSettings.AllowNull value,
+                Serializer.throwIfNull converterSettings.Optional value,
                 value)
             :> Expression
         Serializer.atomic schema dotnetType dataDotnetType getDataValue

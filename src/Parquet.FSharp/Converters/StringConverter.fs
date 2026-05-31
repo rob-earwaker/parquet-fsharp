@@ -12,9 +12,9 @@ type internal StringConverterSettings = {
 
 type internal StringConverter(converterSettings: StringConverterSettings) =
     let dotnetType = typeof<string>
-    let dataDotnetType = dotnetType
+    let dataDotnetType = typeof<string>
 
-    let serializer =
+    let requiredSerializer =
         let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue (value: Expression) =
             Expression.Block(
@@ -23,17 +23,15 @@ type internal StringConverter(converterSettings: StringConverterSettings) =
             :> Expression
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
-    // Deserializer for required values, i.e. those that will never have null
-    // values according to the source schema.
+    let optionalSerializer =
+        requiredSerializer
+        |> Serializer.optionalNullableTypeWrapper converterSettings.AllowNull
+
     let requiredDeserializer =
         let schema = ValueTypeSchema.primitive dataDotnetType
         let createFromDataValue = id
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
-    // Deserializer for optional values, i.e. those that could have null values
-    // according to the source schema. Since we usually don't want null values
-    // in F#, we just wrap as a non-nullable type. This means an exception will
-    // be thrown if a null value is encountered in the data.
     let optionalDeserializer =
         requiredDeserializer
         |> Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull
@@ -42,9 +40,12 @@ type internal StringConverter(converterSettings: StringConverterSettings) =
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceValue, settings) =
-            if sourceValue.Type = dotnetType
-            then Option.Some serializer
-            else Option.None
+            if sourceValue.Type <> dotnetType
+            then Option.None
+            else
+                if converterSettings.Optional
+                then Option.Some optionalSerializer
+                else Option.Some requiredSerializer
 
         member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
             if targetValue.Type <> dotnetType
@@ -52,8 +53,8 @@ type internal StringConverter(converterSettings: StringConverterSettings) =
             else
                 match sourceSchema.Type with
                 // Only support atomic values with the correct type.
-                | ValueTypeSchema.Primitive primitiveSchema
-                    when primitiveSchema.DataDotnetType = dotnetType ->
+                | ValueTypeSchema.Primitive schema
+                    when schema.DataDotnetType = dotnetType ->
                     if sourceSchema.IsOptional && converterSettings.Optional
                     then Option.Some optionalDeserializer
                     elif not sourceSchema.IsOptional && not converterSettings.Optional

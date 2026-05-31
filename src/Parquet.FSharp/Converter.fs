@@ -128,6 +128,10 @@ module internal Serializer =
 
     let throwIfNull allowNull (value: Expression) =
         let exnMessage =
+            // TODO: These messages are used for optional wrappers too (see below function)
+            // but in the case optional=false and allowNull=false we kinda want the top
+            // message (or even a combination of the top and bottom) since setting allowNull=true
+            // on its own will not resolve null values.
             if allowNull
             then
                 "null value encountered during serialization for type"

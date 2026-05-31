@@ -5,6 +5,8 @@ open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
+// TODO: It's worth adding tests for { allowNull=true } due to the exception message handling.
+
 module ``{ default } serialize with atomic elements`` =
     type Input = { Field1: int array }
     type Output = { Field1: int array }

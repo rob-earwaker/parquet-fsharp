@@ -55,9 +55,9 @@ type internal ByteArrayConverter(converterSettings: ByteArrayConverterSettings) 
                 | ValueTypeSchema.Primitive primitiveSchema
                     // TODO: Support reading binary-backed types, e.g. Guid, string?
                     when primitiveSchema.DataDotnetType = dotnetType ->
-                    // Choose the right deserializer based on whether the values
-                    // are optional.
-                    if sourceSchema.IsOptional
+                    if sourceSchema.IsOptional && converterSettings.Optional
                     then Option.Some optionalDeserializer
-                    else Option.Some requiredDeserializer
+                    elif not sourceSchema.IsOptional && not converterSettings.Optional
+                    then Option.Some requiredDeserializer
+                    else Option.None
                 | _ -> Option.None

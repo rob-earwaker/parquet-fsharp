@@ -15,13 +15,6 @@ type internal UnionConverterSettings = {
         UnionConverterSettings.CaseTypeFieldName = "Type" }
 
 type internal UnionConverter(converterSettings: UnionConverterSettings) =
-    let createEnumUnionSerializer (unionInfo: UnionInfo) =
-        let dotnetType = unionInfo.Type
-        let dataDotnetType = typeof<string>
-        let schema = ValueTypeSchema.primitive dataDotnetType
-        let getDataValue = unionInfo.GetCaseName
-        Serializer.atomic schema dotnetType dataDotnetType getDataValue
-
     let createSingleCaseUnionSerializer (unionInfo: UnionInfo) settings =
         // Unions with a single case are most likely being used to enable
         // stricter type checking and to allow encapsulation of any associated
@@ -99,35 +92,6 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
                 FieldSerializer.create name valueSerializer getValue)
         let fieldSerializers = Array.append [| typeFieldSerializer |] caseFieldSerializers
         Serializer.record dotnetType fieldSerializers
-
-    let createEnumUnionDeserializer (unionInfo: UnionInfo) =
-        // Unions in which all cases have no fields are be represented as a
-        // simple string value containing the case name. Since a union value
-        // can't be null and must be one of the possible cases, this value is
-        // not optional.
-        let dotnetType = unionInfo.Type
-        let dataDotnetType = typeof<string>
-        let schema = ValueTypeSchema.primitive dataDotnetType
-        let createFromDataValue caseName =
-            let returnLabel = Expression.Label(dotnetType, "union")
-            Expression.Block(
-                seq<Expression> {
-                    yield! unionInfo.Cases
-                        |> Array.map (fun caseInfo ->
-                            Expression.IfThen(
-                                Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
-                                Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||]))
-                            :> Expression)
-                    yield Expression.FailWith<SerializationException>(
-                        Expression.Constant("encountered invalid case name '"),
-                        // TODO: Could detect null values here and print '<null>' instead of ''
-                        caseName,
-                        Expression.Constant(
-                            $"' during deserialization of enum union type '{dotnetType}'"))
-                    yield Expression.Label(returnLabel, Expression.Default(dotnetType))
-                })
-            :> Expression
-        Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
     let tryCreateSingleCaseUnionDeserializer
         (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
@@ -280,24 +244,17 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
         member this.TryCreateSerializer(sourceValue, settings) =
             match sourceValue.Type with
             | DotnetType.Union unionInfo ->
-                let serializer =
-                    match unionInfo.UnionCategory with
-                    | UnionCategory.Enum -> createEnumUnionSerializer unionInfo
-                    | UnionCategory.SingleCase -> createSingleCaseUnionSerializer unionInfo settings
-                    | UnionCategory.MultiCase -> createMultiCaseUnionSerializer unionInfo settings
-                Option.Some serializer
+                match unionInfo.UnionCategory with
+                | UnionCategory.Enum -> Option.None
+                | UnionCategory.SingleCase -> Option.Some (createSingleCaseUnionSerializer unionInfo settings)
+                | UnionCategory.MultiCase -> Option.Some (createMultiCaseUnionSerializer unionInfo settings)
             | _ -> Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
             match targetValue.Type with
             | DotnetType.Union unionInfo ->
                 match unionInfo.UnionCategory with
-                | UnionCategory.Enum ->
-                    // TODO: This is a bit optimistic, but is an easy way to check the schema.
-                    let deserializer = createEnumUnionDeserializer unionInfo
-                    if sourceSchema = deserializer.Schema
-                    then Option.Some deserializer
-                    else Option.None
+                | UnionCategory.Enum -> Option.None
                 | UnionCategory.SingleCase ->
                     tryCreateSingleCaseUnionDeserializer sourceSchema unionInfo settings
                 | UnionCategory.MultiCase ->

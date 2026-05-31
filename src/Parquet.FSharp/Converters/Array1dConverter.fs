@@ -17,7 +17,7 @@ type internal Array1dConverter(converterSettings: Array1dConverterSettings) =
         dotnetType.IsArray
         && dotnetType.GetArrayRank() = 1
 
-    let createSerializer arrayValue settings =
+    let createRequiredSerializer arrayValue settings =
         let elementDotnetType = arrayValue.Type.GetElementType()
         let elementValue = arrayValue |> ValueDefinition.forNestedValue elementDotnetType
         let elementSerializer = Serializer.resolve elementValue settings
@@ -38,8 +38,10 @@ type internal Array1dConverter(converterSettings: Array1dConverterSettings) =
             :> Expression
         Serializer.list arrayValue.Type elementSerializer getEnumerator
 
-    // Deserializer for required values, i.e. those that will never have null
-    // values according to the source schema.
+    let createOptionalSerializer arrayValue settings =
+        createRequiredSerializer arrayValue settings
+        |> Serializer.optionalNullableTypeWrapper converterSettings.AllowNull
+
     let createRequiredDeserializer (listSchema: ListTypeSchema) (arrayValue: ValueDefinition) settings =
         let elementDotnetType = arrayValue.Type.GetElementType()
         let elementValue = arrayValue |> ValueDefinition.forNestedValue elementDotnetType
@@ -52,10 +54,6 @@ type internal Array1dConverter(converterSettings: Array1dConverterSettings) =
         Deserializer.list
             arrayValue.Type elementDeserializer createEmpty createFromElementValues
 
-    // Deserializer for optional values, i.e. those that could have null values
-    // according to the source schema. Since we usually don't want null values
-    // in F#, we just wrap as a non-nullable type. This means an exception will
-    // be thrown if a null value is encountered in the data.
     let createOptionalDeserializer listSchema arrayValue settings =
         createRequiredDeserializer listSchema arrayValue settings
         |> Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull
@@ -64,9 +62,12 @@ type internal Array1dConverter(converterSettings: Array1dConverterSettings) =
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceValue, settings) =
-            if isArray1dType sourceValue.Type
-            then Option.Some (createSerializer sourceValue settings)
-            else Option.None
+            if not (isArray1dType sourceValue.Type)
+            then Option.None
+            else
+                if converterSettings.Optional
+                then Option.Some (createOptionalSerializer sourceValue settings)
+                else Option.Some (createRequiredSerializer sourceValue settings)
 
         member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
             if not (isArray1dType targetValue.Type)
@@ -74,7 +75,9 @@ type internal Array1dConverter(converterSettings: Array1dConverterSettings) =
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.List listSchema ->
-                    if sourceSchema.IsOptional
+                    if sourceSchema.IsOptional && converterSettings.Optional
                     then Option.Some (createOptionalDeserializer listSchema targetValue settings)
-                    else Option.Some (createRequiredDeserializer listSchema targetValue settings)
+                    elif not sourceSchema.IsOptional && not converterSettings.Optional
+                    then Option.Some (createRequiredDeserializer listSchema targetValue settings)
+                    else Option.None
                 | _ -> Option.None

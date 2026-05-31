@@ -54,9 +54,9 @@ type internal StringConverter(converterSettings: StringConverterSettings) =
                 // Only support atomic values with the correct type.
                 | ValueTypeSchema.Primitive primitiveSchema
                     when primitiveSchema.DataDotnetType = dotnetType ->
-                    // Choose the right deserializer based on whether the values
-                    // are optional.
-                    if sourceSchema.IsOptional
+                    if sourceSchema.IsOptional && converterSettings.Optional
                     then Option.Some optionalDeserializer
-                    else Option.Some requiredDeserializer
+                    elif not sourceSchema.IsOptional && not converterSettings.Optional
+                    then Option.Some requiredDeserializer
+                    else Option.None
                 | _ -> Option.None

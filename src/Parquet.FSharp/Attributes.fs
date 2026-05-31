@@ -28,6 +28,36 @@ type ParquetDateTimeAttribute() =
                 Unit = this.Unit }
         valueSettings |> ValueSettings.converter converter
 
+type ParquetStringAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = StringConverterSettings.Default
+    
+    member val Optional = default'.Optional with get, set
+    member val AllowNull = default'.AllowNull with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            StringConverter {
+                Optional = this.Optional
+                AllowNull = this.AllowNull }
+        valueSettings |> ValueSettings.converter converter
+
+type ParquetByteArrayAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = ByteArrayConverterSettings.Default
+    
+    member val Optional = default'.Optional with get, set
+    member val AllowNull = default'.AllowNull with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            ByteArrayConverter {
+                Optional = this.Optional
+                AllowNull = this.AllowNull }
+        valueSettings |> ValueSettings.converter converter
+
 type ParquetListAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -39,6 +69,51 @@ type ParquetListAttribute() =
     override this.ApplyValueSettings(valueSettings) =
         let converter =
             ListConverter {
+                Optional = this.Optional
+                AllowNull = this.AllowNull }
+        valueSettings |> ValueSettings.converter converter
+
+type ParquetArray1dAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = Array1dConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+    member val AllowNull = default'.AllowNull with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            Array1dConverter {
+                Optional = this.Optional
+                AllowNull = this.AllowNull }
+        valueSettings |> ValueSettings.converter converter
+
+type ParquetResizeArrayAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = ResizeArrayConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+    member val AllowNull = default'.AllowNull with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            ResizeArrayConverter {
+                Optional = this.Optional
+                AllowNull = this.AllowNull }
+        valueSettings |> ValueSettings.converter converter
+
+type ParquetUnionEnumAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = UnionEnumConverterSettings.Default
+    
+    member val Optional = default'.Optional with get, set
+    member val AllowNull = default'.AllowNull with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            UnionEnumConverter {
                 Optional = this.Optional
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter

@@ -70,7 +70,9 @@ type internal ResizeArrayConverter(converterSettings: ResizeArrayConverterSettin
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.List listSchema ->
-                    if sourceSchema.IsOptional
+                    if sourceSchema.IsOptional && converterSettings.Optional
                     then Option.Some (createOptionalDeserializer listSchema targetValue settings)
-                    else Option.Some (createRequiredDeserializer listSchema targetValue settings)
+                    elif not sourceSchema.IsOptional && not converterSettings.Optional
+                    then Option.Some (createRequiredDeserializer listSchema targetValue settings)
+                    else Option.None
                 | _ -> Option.None

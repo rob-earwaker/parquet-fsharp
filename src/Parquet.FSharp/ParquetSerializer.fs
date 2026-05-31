@@ -39,8 +39,9 @@ type ParquetSerializer =
             NullableConverter.Default
             // These must come after the converters for more union types that
             // are handled in a special way - options, value options and lists.
-            UnionEnumConverter.Default
-            UnionConverter.Default ]
+            EnumUnionConverter.Default
+            SingleCaseUnionConverter.Default
+            MultiCaseUnionConverter.Default ]
         Settings.ValuePolicies = []
         Settings.FieldPolicies = [] }
 

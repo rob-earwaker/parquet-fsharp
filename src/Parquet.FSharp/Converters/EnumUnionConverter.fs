@@ -6,15 +6,15 @@ open System.Linq.Expressions
 // represented as a simple string value containing the case name. Since a union value shouldn't be
 // null and must be one of the possible cases, this string value is not optional by default.
 
-type internal UnionEnumConverterSettings = {
+type internal EnumUnionConverterSettings = {
     Optional: bool
     AllowNull: bool }
     with
     static member val Default = {
-        UnionEnumConverterSettings.Optional = false
-        UnionEnumConverterSettings.AllowNull = false }
+        EnumUnionConverterSettings.Optional = false
+        EnumUnionConverterSettings.AllowNull = false }
 
-type internal UnionEnumConverter(converterSettings: UnionEnumConverterSettings) =
+type internal EnumUnionConverter(converterSettings: EnumUnionConverterSettings) =
     let dataDotnetType = typeof<string>
 
     let createRequiredSerializer (unionInfo: UnionInfo) =
@@ -55,7 +55,7 @@ type internal UnionEnumConverter(converterSettings: UnionEnumConverterSettings) 
         createRequiredDeserializer unionInfo
         |> Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull
 
-    static member val Default = UnionEnumConverter(UnionEnumConverterSettings.Default)
+    static member val Default = EnumUnionConverter(EnumUnionConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceValue, settings) =

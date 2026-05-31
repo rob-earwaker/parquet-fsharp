@@ -64,7 +64,7 @@ module ``{ default } serialize with multiple cases`` =
 
 module ``{ optional=true } serialize with single case`` =
     type Union = Case1
-    type Input = { [<ParquetUnionEnum(Optional = true)>] Field1: Union }
+    type Input = { [<ParquetEnumUnion(Optional = true)>] Field1: Union }
     type Output = { Field1: string option }
 
     let assertSchemaMatchesExpected schema =
@@ -88,7 +88,7 @@ module ``{ optional=true } serialize with single case`` =
 
 module ``{ optional=true } serialize with multiple cases`` =
     type Union = Case1 | Case2 | Case3
-    type Input = { [<ParquetUnionEnum(Optional = true)>] Field1: Union }
+    type Input = { [<ParquetEnumUnion(Optional = true)>] Field1: Union }
     type Output = { Field1: string option }
 
     let assertSchemaMatchesExpected schema =
@@ -179,7 +179,7 @@ module ``{ default } deserialize with multiple cases`` =
 module ``{ optional=true } deserialize with single case`` =
     type Union = Case1
     type Input = { Field1: string option }
-    type Output = { [<ParquetUnionEnum(Optional = true)>] Field1: Union }
+    type Output = { [<ParquetEnumUnion(Optional = true)>] Field1: Union }
 
     [<Fact>]
     let ``null`` () =
@@ -217,7 +217,7 @@ module ``{ optional=true } deserialize with single case`` =
 module ``{ optional=true } deserialize with multiple cases`` =
     type Union = Case1 | Case2 | Case3
     type Input = { Field1: string option }
-    type Output = { [<ParquetUnionEnum(Optional = true)>] Field1: Union }
+    type Output = { [<ParquetEnumUnion(Optional = true)>] Field1: Union }
 
     [<Fact>]
     let ``null`` () =

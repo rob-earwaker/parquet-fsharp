@@ -103,31 +103,50 @@ type ParquetResizeArrayAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-type ParquetUnionEnumAttribute() =
+type ParquetEnumUnionAttribute() =
     inherit ParquetValueSettingsAttribute()
 
-    let default' = UnionEnumConverterSettings.Default
+    let default' = EnumUnionConverterSettings.Default
     
     member val Optional = default'.Optional with get, set
     member val AllowNull = default'.AllowNull with get, set
 
     override this.ApplyValueSettings(valueSettings) =
         let converter =
-            UnionEnumConverter {
+            EnumUnionConverter {
                 Optional = this.Optional
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-type ParquetUnionAttribute() =
+type ParquetSingleCaseUnionAttribute() =
     inherit ParquetValueSettingsAttribute()
 
-    let default' = UnionConverterSettings.Default
+    let default' = SingleCaseUnionConverterSettings.Default
+    
+    member val Optional = default'.Optional with get, set
+    member val AllowNull = default'.AllowNull with get, set
 
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            SingleCaseUnionConverter {
+                Optional = this.Optional
+                AllowNull = this.AllowNull }
+        valueSettings |> ValueSettings.converter converter
+
+type ParquetMultiCaseUnionAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = MultiCaseUnionConverterSettings.Default
+    
+    member val Optional = default'.Optional with get, set
+    member val AllowNull = default'.AllowNull with get, set
     member val CaseTypeFieldName = default'.CaseTypeFieldName with get, set
 
     override this.ApplyValueSettings(valueSettings) =
         let converter =
-            UnionConverter {
+            MultiCaseUnionConverter {
+                Optional = this.Optional
+                AllowNull = this.AllowNull
                 CaseTypeFieldName = this.CaseTypeFieldName }
         valueSettings |> ValueSettings.converter converter
 

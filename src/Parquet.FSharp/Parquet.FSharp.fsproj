@@ -52,8 +52,9 @@
     <Compile Include="Converters\Array1dConverter.fs" />
     <Compile Include="Converters\ResizeArrayConverter.fs" />
     <Compile Include="Converters\RecordConverter.fs" />
-    <Compile Include="Converters\UnionEnumConverter.fs" />
-    <Compile Include="Converters\UnionConverter.fs" />
+    <Compile Include="Converters\EnumUnionConverter.fs" />
+    <Compile Include="converters\SingleCaseUnionConverter.fs" />
+    <Compile Include="Converters\MultiCaseUnionConverter.fs" />
     <Compile Include="Converters\OptionConverter.fs" />
     <Compile Include="Converters\ValueOptionConverter.fs" />
     <Compile Include="Converters\NullableConverter.fs" />

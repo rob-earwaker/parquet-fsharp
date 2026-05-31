@@ -2,32 +2,20 @@ namespace Parquet.FSharp
 
 open System.Linq.Expressions
 
-// TODO: Should we have separate converters for the different union types? Seems
-// like they are fairly independent, particularly as common functionality lives in
-// the {UnionInfo} type(s). Probably makes sense as they will have different settings.
-
-// TODO: Should single-field union cases be inlined?
-
-type internal UnionConverterSettings = {
+type internal MultiCaseUnionConverterSettings = {
+    Optional: bool
+    AllowNull: bool
     CaseTypeFieldName: string }
     with
     static member val Default = {
-        UnionConverterSettings.CaseTypeFieldName = "Type" }
+        MultiCaseUnionConverterSettings.Optional = false
+        MultiCaseUnionConverterSettings.AllowNull = false
+        MultiCaseUnionConverterSettings.CaseTypeFieldName = "Type" }
 
-type internal UnionConverter(converterSettings: UnionConverterSettings) =
-    let createSingleCaseUnionSerializer (unionInfo: UnionInfo) settings =
-        // Unions with a single case are most likely being used to enable
-        // stricter type checking and to allow encapsulation of any associated
-        // field values. We serialize single case unions as a record using the
-        // case field names and types.
-        let dotnetType = unionInfo.Type
-        let unionCase = unionInfo.Cases[0]
-        let fieldSerializers =
-            unionCase.Fields
-            |> Array.map (fun fieldInfo ->
-                FieldSerializer.ofField fieldInfo settings)
-        Serializer.record dotnetType fieldSerializers
+// TODO: Make use of settings.
+// TODO: Should single-field union cases be inlined?
 
+type internal MultiCaseUnionConverter(converterSettings: MultiCaseUnionConverterSettings) =
     let createUnionCaseSerializer (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) settings =
         // Union case data is represented as an optional record containing the
         // field values for that case. The record needs to be optional since
@@ -48,7 +36,7 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
         let getValue = id
         Serializer.optional dotnetType valueSerializer isNull getValue
 
-    let createMultiCaseUnionSerializer (unionInfo: UnionInfo) settings =
+    let createSerializer (unionInfo: UnionInfo) settings =
         // Unions that have one or more cases with one or more fields can not be
         // represented as a simple string value. Instead, we have to model the
         // union as a record with a field to capture the case name and
@@ -93,29 +81,6 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
         let fieldSerializers = Array.append [| typeFieldSerializer |] caseFieldSerializers
         Serializer.record dotnetType fieldSerializers
 
-    let tryCreateSingleCaseUnionDeserializer
-        (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
-        match sourceSchema.Type with
-        | ValueTypeSchema.Record recordSchema ->
-            let dotnetType = unionInfo.Type
-            let unionCase = unionInfo.Cases[0]
-            let fieldDeserializers =
-                unionCase.Fields
-                |> Array.choose (fun fieldInfo ->
-                    FieldDeserializer.tryOfField recordSchema fieldInfo settings)
-            let createFromFieldValues = unionCase.CreateFromFieldValues
-            if fieldDeserializers.Length < unionCase.Fields.Length
-            then Option.None
-            else
-                let requiredValueDeserializer =
-                    Deserializer.record dotnetType fieldDeserializers createFromFieldValues
-                let deserializer =
-                    if sourceSchema.IsOptional
-                    then requiredValueDeserializer |> Deserializer.optionalNonNullableTypeWrapper
-                    else requiredValueDeserializer
-                Option.Some deserializer
-        | _ -> Option.None
-
     let tryCreateUnionCaseDeserializer
         (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) (schema: RecordTypeSchema) settings =
         // Union case data is represented as an optional record containing the
@@ -144,7 +109,7 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
                 dotnetType deserializer createNull createFromValue
             |> Option.Some
 
-    let tryCreateMultiCaseUnionDeserializer
+    let tryCreateDeserializer
         (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
         // For unions that have one or more cases with one or more fields, we
         // model as a record, with a field to capture the case name and
@@ -238,7 +203,7 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
                 Option.Some deserializer
         | _ -> Option.None
 
-    static member val Default = UnionConverter(UnionConverterSettings.Default)
+    static member val Default = MultiCaseUnionConverter(MultiCaseUnionConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceValue, settings) =
@@ -246,8 +211,8 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
             | DotnetType.Union unionInfo ->
                 match unionInfo.UnionCategory with
                 | UnionCategory.Enum -> Option.None
-                | UnionCategory.SingleCase -> Option.Some (createSingleCaseUnionSerializer unionInfo settings)
-                | UnionCategory.MultiCase -> Option.Some (createMultiCaseUnionSerializer unionInfo settings)
+                | UnionCategory.SingleCase -> Option.None
+                | UnionCategory.MultiCase -> Option.Some (createSerializer unionInfo settings)
             | _ -> Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
@@ -255,8 +220,7 @@ type internal UnionConverter(converterSettings: UnionConverterSettings) =
             | DotnetType.Union unionInfo ->
                 match unionInfo.UnionCategory with
                 | UnionCategory.Enum -> Option.None
-                | UnionCategory.SingleCase ->
-                    tryCreateSingleCaseUnionDeserializer sourceSchema unionInfo settings
+                | UnionCategory.SingleCase -> Option.None
                 | UnionCategory.MultiCase ->
-                    tryCreateMultiCaseUnionDeserializer sourceSchema unionInfo settings
+                    tryCreateDeserializer sourceSchema unionInfo settings
             | _ -> Option.None

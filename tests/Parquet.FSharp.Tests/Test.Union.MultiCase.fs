@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.Union
+namespace Parquet.FSharp.Tests.Union.MultiCase
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests

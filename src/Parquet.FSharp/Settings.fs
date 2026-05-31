@@ -2,7 +2,6 @@ namespace rec Parquet.FSharp
 
 open System
 open System.Linq
-open System.Reflection
 
 type internal DelegateFieldSettingsPolicy(isValidFor, applyFieldSettings) =
     interface IFieldSettingsPolicy with
@@ -138,9 +137,13 @@ module internal Settings =
             FieldSettings.Default
 
 [<AbstractClass>]
+type ParquetAttribute() =
+    inherit Attribute()
+
+[<AbstractClass>]
 [<AttributeUsage(AttributeTargets.Class ||| AttributeTargets.Struct ||| AttributeTargets.Property)>]
 type ParquetValueSettingsAttribute() =
-    inherit Attribute()
+    inherit ParquetAttribute()
     // TODO: Nesting level isn't really relevant for attributes applied to types.
     // Should we have a different base class for these?
     member val NestingLevel = 0 with get, set
@@ -149,7 +152,7 @@ type ParquetValueSettingsAttribute() =
 [<AbstractClass>]
 [<AttributeUsage(AttributeTargets.Property)>]
 type ParquetFieldSettingsAttribute() =
-    inherit Attribute()
+    inherit ParquetAttribute()
     abstract member ApplyFieldSettings : fieldSettings:FieldSettings -> FieldSettings
 
 type ParquetFieldAttribute() =

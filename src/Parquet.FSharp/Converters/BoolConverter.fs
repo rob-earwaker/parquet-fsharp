@@ -1,5 +1,7 @@
 namespace Parquet.FSharp
 
+// TODO: Support int conversion to 0 and 1?
+
 type internal BoolConverterSettings = {
     Optional: bool }
     with

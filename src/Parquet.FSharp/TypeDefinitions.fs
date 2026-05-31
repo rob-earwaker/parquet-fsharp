@@ -39,9 +39,6 @@ open System.Reflection
 
 // TODO: Replace 'failwith' with 'SerializationException'.
 
-// TODO: Attribute to select specific serializer type to use? Alternatively could
-// be part of the serializer configuration?
-
 // TODO: Add converter type to serializer/deserializer so we can catch exceptions
 // that occur when calling the compiled lambda functions and enrich with info about
 // which converter they originated from and which lambda function they originated from.

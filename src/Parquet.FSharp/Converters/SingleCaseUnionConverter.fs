@@ -23,7 +23,7 @@ type internal SingleCaseUnionConverter(converterSettings: SingleCaseUnionConvert
         let fieldSerializers =
             unionCase.Fields
             |> Array.map (fun fieldInfo ->
-                FieldSerializer.ofField fieldInfo converterSettings.Optional settings)
+                FieldSerializer.ofClassField fieldInfo converterSettings.Optional settings)
         Serializer.record dotnetType fieldSerializers
 
     let createOptionalSerializer unionInfo settings =

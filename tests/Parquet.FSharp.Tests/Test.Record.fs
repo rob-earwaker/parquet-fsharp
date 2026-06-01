@@ -5,8 +5,6 @@ open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
-// TODO: Add tests for serializing null values
-
 module ``{ default } serialize with atomic field`` =
     type Record = { Field2: int }
     type Input = { Field1: Record }

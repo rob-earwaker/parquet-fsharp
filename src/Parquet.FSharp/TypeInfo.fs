@@ -18,6 +18,7 @@ type internal FieldInfo = {
 
 type internal RecordInfo = {
     Type: Type
+    IsStruct: bool
     Fields: FieldInfo[]
     CreateFromFieldValues: Expression[] -> Expression }
 
@@ -100,6 +101,7 @@ module internal RecordInfo =
                 Expression.New(constructor, fieldValues)
                 :> Expression
         { RecordInfo.Type = recordType
+          RecordInfo.IsStruct = recordType.IsValueType
           RecordInfo.Fields = fields
           RecordInfo.CreateFromFieldValues = createFromFieldValues }
 

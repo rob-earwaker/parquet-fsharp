@@ -1,24 +1,22 @@
 namespace Parquet.FSharp
 
-type internal RecordConverterSettings = {
-    Optional: bool
-    AllowNull: bool }
+type internal RecordStructConverterSettings = {
+    Optional: bool }
     with
     static member val Default = {
-        RecordConverterSettings.Optional = false
-        RecordConverterSettings.AllowNull = false }
+        RecordStructConverterSettings.Optional = false }
 
-type internal RecordConverter(converterSettings: RecordConverterSettings) =
+type internal RecordStructConverter(converterSettings: RecordStructConverterSettings) =
     let createRequiredSerializer (recordInfo: RecordInfo) settings =
         let fieldSerializers =
             recordInfo.Fields
             |> Array.map (fun fieldInfo ->
-                FieldSerializer.ofClassField fieldInfo converterSettings.Optional settings)
+                FieldSerializer.ofStructField fieldInfo settings)
         Serializer.record recordInfo.Type fieldSerializers
 
     let createOptionalSerializer recordInfo settings =
         createRequiredSerializer recordInfo settings
-        |> Serializer.optionalNullableTypeWrapper converterSettings.AllowNull
+        |> Serializer.optionalNonNullableTypeWrapper
 
     let tryCreateRequiredDeserializer schema (recordInfo: RecordInfo) settings =
         let fieldDeserializers =
@@ -34,15 +32,15 @@ type internal RecordConverter(converterSettings: RecordConverterSettings) =
 
     let tryCreateOptionalDeserializer schema recordInfo settings =
         tryCreateRequiredDeserializer schema recordInfo settings
-        |> Option.map (Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull)
+        |> Option.map Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Default = RecordConverter(RecordConverterSettings.Default)
+    static member val Default = RecordStructConverter(RecordStructConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceValue, settings) =
             match sourceValue.Type with
             | DotnetType.Record recordInfo
-                when not recordInfo.IsStruct ->
+                when recordInfo.IsStruct ->
                 if converterSettings.Optional
                 then Option.Some (createOptionalSerializer recordInfo settings)
                 else Option.Some (createRequiredSerializer recordInfo settings)
@@ -51,7 +49,7 @@ type internal RecordConverter(converterSettings: RecordConverterSettings) =
         member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
             match targetValue.Type with
             | DotnetType.Record recordInfo
-                when not recordInfo.IsStruct ->
+                when recordInfo.IsStruct ->
                 match sourceSchema.Type with
                 | ValueTypeSchema.Record recordSchema ->
                     if sourceSchema.IsOptional && converterSettings.Optional

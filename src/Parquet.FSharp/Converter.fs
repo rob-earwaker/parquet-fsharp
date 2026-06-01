@@ -331,21 +331,26 @@ module internal FieldSerializer =
           FieldSerializer.ValueSerializer = valueSerializer
           FieldSerializer.GetValue = getValue }
 
-    let ofField (fieldInfo: Parquet.FSharp.FieldInfo) optional settings =
+    let ofClassField (fieldInfo: Parquet.FSharp.FieldInfo) optional settings =
         let fieldDefinition = FieldDefinition.ofProperty fieldInfo.Property
         let fieldSettings = Settings.resolveForField fieldDefinition settings
         let name = fieldSettings.Name |> Option.defaultValue fieldInfo.Name
         let valueDefinition = ValueDefinition.ofField fieldDefinition
         let valueSerializer = Serializer.resolve valueDefinition settings
         let getValue (record: Expression) =
-            // TODO: This is maybe not the best place to handle struct records.
-            if fieldInfo.Property.DeclaringType.IsValueType
-            then fieldInfo.GetValue record
-            else
-                Expression.Block(
-                    Serializer.throwIfNull optional record,
-                    fieldInfo.GetValue record)
-                :> Expression
+            Expression.Block(
+                Serializer.throwIfNull optional record,
+                fieldInfo.GetValue record)
+            :> Expression
+        create name valueSerializer getValue
+
+    let ofStructField (fieldInfo: Parquet.FSharp.FieldInfo) settings =
+        let fieldDefinition = FieldDefinition.ofProperty fieldInfo.Property
+        let fieldSettings = Settings.resolveForField fieldDefinition settings
+        let name = fieldSettings.Name |> Option.defaultValue fieldInfo.Name
+        let valueDefinition = ValueDefinition.ofField fieldDefinition
+        let valueSerializer = Serializer.resolve valueDefinition settings
+        let getValue = fieldInfo.GetValue
         create name valueSerializer getValue
 
 // Add module suffix so we can define the module in a different file to the type.

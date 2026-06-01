@@ -34,6 +34,7 @@ type ParquetSerializer =
             Array1dConverter.Default
             ResizeArrayConverter.Default
             RecordConverter.Default
+            RecordStructConverter.Default
             OptionConverter.Default
             ValueOptionConverter.Default
             NullableConverter.Default

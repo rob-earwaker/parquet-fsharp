@@ -118,6 +118,19 @@ type ParquetRecordAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
+type ParquetRecordStructAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = RecordStructConverterSettings.Default
+    
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            RecordStructConverter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
 type ParquetEnumUnionAttribute() =
     inherit ParquetValueSettingsAttribute()
 

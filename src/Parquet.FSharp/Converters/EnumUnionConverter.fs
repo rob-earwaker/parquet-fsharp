@@ -80,7 +80,6 @@ type internal EnumUnionConverter(converterSettings: EnumUnionConverterSettings) 
                 match unionInfo.UnionCategory with
                 | UnionCategory.Enum ->
                     match sourceSchema.Type with
-                    // Only support atomic values with the correct type.
                     | ValueTypeSchema.Primitive primitiveSchema
                         when primitiveSchema.DataDotnetType = dataDotnetType ->
                         if sourceSchema.IsOptional && converterSettings.Optional

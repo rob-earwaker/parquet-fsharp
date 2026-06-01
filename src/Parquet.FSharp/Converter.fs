@@ -169,6 +169,8 @@ module internal Serializer =
         | Option.Some assignedConverter ->
             assignedConverter.TryCreateSerializer(sourceValue, settings)
             |> Option.defaultWith (fun () ->
+                // TODO: Add ToString() implementation to converters with
+                // settings info to make it more obvious why this has happened.
                 raise <| SerializationException(
                     $"could not create serializer for type '{sourceValue.Type}'"
                     + $" using assigned converter '{assignedConverter}'"))
@@ -329,27 +331,21 @@ module internal FieldSerializer =
           FieldSerializer.ValueSerializer = valueSerializer
           FieldSerializer.GetValue = getValue }
 
-    let ofField (fieldInfo: Parquet.FSharp.FieldInfo) settings =
-        // TODO: When we resolve value settings at the field level we only see
-        // attributes applied to the field and the top-level value type, we don't
-        // see attributes applied to nested types and can currently only configure
-        // these if the field is annotated with a {ParquetNestedValueAttribute}.
-        // How can we ensure nested type attributes are picked up as part of this
-        // settings resolution process? It's difficult to do it in
-        // Settings.resolveForField or Settings.resolveForValue since we would
-        // have to recurse down the type heirarchy, identifying nesting and =
-        // pulling out attributes as we go. We do this type recursion already as
-        // part of the serializer resolution, so makes sense to build it in as
-        // part of that somehow. This probably means resolving value settings
-        // based on the type at the current nesting level even if we've already
-        // resolved value settings for the field. However, we generally want
-        // field attributes to override type attributes so this needs some thought!
+    let ofField (fieldInfo: Parquet.FSharp.FieldInfo) optional settings =
         let fieldDefinition = FieldDefinition.ofProperty fieldInfo.Property
         let fieldSettings = Settings.resolveForField fieldDefinition settings
         let name = fieldSettings.Name |> Option.defaultValue fieldInfo.Name
         let valueDefinition = ValueDefinition.ofField fieldDefinition
         let valueSerializer = Serializer.resolve valueDefinition settings
-        let getValue = fieldInfo.GetValue
+        let getValue (record: Expression) =
+            // TODO: This is maybe not the best place to handle struct records.
+            if fieldInfo.Property.DeclaringType.IsValueType
+            then fieldInfo.GetValue record
+            else
+                Expression.Block(
+                    Serializer.throwIfNull optional record,
+                    fieldInfo.GetValue record)
+                :> Expression
         create name valueSerializer getValue
 
 // Add module suffix so we can define the module in a different file to the type.

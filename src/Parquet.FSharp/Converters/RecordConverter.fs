@@ -1,18 +1,30 @@
 namespace Parquet.FSharp
 
-type internal RecordConverter private () =
-    let createSerializer (recordInfo: RecordInfo) settings =
+type internal RecordConverterSettings = {
+    Optional: bool
+    AllowNull: bool }
+    with
+    static member val Default = {
+        RecordConverterSettings.Optional = false
+        RecordConverterSettings.AllowNull = false }
+
+type internal RecordConverter(converterSettings: RecordConverterSettings) =
+    let createRequiredSerializer (recordInfo: RecordInfo) settings =
         let fieldSerializers =
             recordInfo.Fields
             |> Array.map (fun fieldInfo ->
-                FieldSerializer.ofField fieldInfo settings)
+                FieldSerializer.ofField fieldInfo converterSettings.Optional settings)
         Serializer.record recordInfo.Type fieldSerializers
 
-    let tryCreateRequiredDeserializer recordSchema (recordInfo: RecordInfo) settings =
+    let createOptionalSerializer recordInfo settings =
+        createRequiredSerializer recordInfo settings
+        |> Serializer.optionalNullableTypeWrapper converterSettings.AllowNull
+
+    let tryCreateRequiredDeserializer schema (recordInfo: RecordInfo) settings =
         let fieldDeserializers =
             recordInfo.Fields
             |> Array.choose (fun fieldInfo ->
-                FieldDeserializer.tryOfField recordSchema fieldInfo settings)
+                FieldDeserializer.tryOfField schema fieldInfo settings)
         if fieldDeserializers.Length < recordInfo.Fields.Length
         then Option.None
         else
@@ -20,17 +32,19 @@ type internal RecordConverter private () =
                 recordInfo.Type fieldDeserializers recordInfo.CreateFromFieldValues
             |> Option.Some
 
-    let tryCreateOptionalDeserializer recordSchema recordInfo settings =
-        tryCreateRequiredDeserializer recordSchema recordInfo settings
-        |> Option.map Deserializer.optionalNonNullableTypeWrapper
+    let tryCreateOptionalDeserializer schema recordInfo settings =
+        tryCreateRequiredDeserializer schema recordInfo settings
+        |> Option.map (Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull)
 
-    static member val Default = RecordConverter()
+    static member val Default = RecordConverter(RecordConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceValue, settings) =
             match sourceValue.Type with
             | DotnetType.Record recordInfo ->
-                Option.Some (createSerializer recordInfo settings)
+                if converterSettings.Optional
+                then Option.Some (createOptionalSerializer recordInfo settings)
+                else Option.Some (createRequiredSerializer recordInfo settings)
             | _ -> Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
@@ -38,8 +52,10 @@ type internal RecordConverter private () =
             | DotnetType.Record recordInfo ->
                 match sourceSchema.Type with
                 | ValueTypeSchema.Record recordSchema ->
-                    if sourceSchema.IsOptional
+                    if sourceSchema.IsOptional && converterSettings.Optional
                     then tryCreateOptionalDeserializer recordSchema recordInfo settings
-                    else tryCreateRequiredDeserializer recordSchema recordInfo settings
+                    elif not sourceSchema.IsOptional && not converterSettings.Optional
+                    then tryCreateRequiredDeserializer recordSchema recordInfo settings
+                    else Option.None
                 | _ -> Option.None
             | _ -> Option.None

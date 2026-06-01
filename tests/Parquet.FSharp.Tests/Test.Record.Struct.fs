@@ -1,4 +1,4 @@
-namespace Parquet.FSharp.Tests.Record
+namespace Parquet.FSharp.Tests.Record.Struct
 
 open Parquet.FSharp
 open Parquet.FSharp.Tests

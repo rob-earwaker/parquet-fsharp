@@ -12,41 +12,41 @@ type internal SingleCaseUnionConverterSettings = {
         SingleCaseUnionConverterSettings.Optional = false
         SingleCaseUnionConverterSettings.AllowNull = false }
 
-// TODO: Make use of settings.
-// TODO: Should single-field union cases be inlined?
+// TODO: Should single-field union cases be inlined? Not by default but maybe setting?
+// Should this be a configuration option on the union case rather than the union itself so we
+// can use for multi-case union serialization?
 
 type internal SingleCaseUnionConverter(converterSettings: SingleCaseUnionConverterSettings) =
-    let createSerializer (unionInfo: UnionInfo) settings =
+    let createRequiredSerializer (unionInfo: UnionInfo) settings =
         let dotnetType = unionInfo.Type
         let unionCase = unionInfo.Cases[0]
         let fieldSerializers =
             unionCase.Fields
             |> Array.map (fun fieldInfo ->
-                FieldSerializer.ofField fieldInfo settings)
+                FieldSerializer.ofField fieldInfo converterSettings.Optional settings)
         Serializer.record dotnetType fieldSerializers
 
-    let tryCreateDeserializer
-        (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
-        match sourceSchema.Type with
-        | ValueTypeSchema.Record recordSchema ->
-            let dotnetType = unionInfo.Type
-            let unionCase = unionInfo.Cases[0]
-            let fieldDeserializers =
-                unionCase.Fields
-                |> Array.choose (fun fieldInfo ->
-                    FieldDeserializer.tryOfField recordSchema fieldInfo settings)
-            let createFromFieldValues = unionCase.CreateFromFieldValues
-            if fieldDeserializers.Length < unionCase.Fields.Length
-            then Option.None
-            else
-                let requiredValueDeserializer =
-                    Deserializer.record dotnetType fieldDeserializers createFromFieldValues
-                let deserializer =
-                    if sourceSchema.IsOptional
-                    then requiredValueDeserializer |> Deserializer.optionalNonNullableTypeWrapper
-                    else requiredValueDeserializer
-                Option.Some deserializer
-        | _ -> Option.None
+    let createOptionalSerializer unionInfo settings =
+        createRequiredSerializer unionInfo settings
+        |> Serializer.optionalNullableTypeWrapper converterSettings.AllowNull
+
+    let tryCreateRequiredDeserializer (recordSchema: RecordTypeSchema) (unionInfo: UnionInfo) settings =
+        let dotnetType = unionInfo.Type
+        let unionCase = unionInfo.Cases[0]
+        let fieldDeserializers =
+            unionCase.Fields
+            |> Array.choose (fun fieldInfo ->
+                FieldDeserializer.tryOfField recordSchema fieldInfo settings)
+        let createFromFieldValues = unionCase.CreateFromFieldValues
+        if fieldDeserializers.Length < unionCase.Fields.Length
+        then Option.None
+        else
+            Deserializer.record dotnetType fieldDeserializers createFromFieldValues
+            |> Option.Some 
+
+    let tryCreateOptionalDeserializer recordSchema unionInfo settings =
+        tryCreateRequiredDeserializer recordSchema unionInfo settings
+        |> Option.map (Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull)
 
     static member val Default = SingleCaseUnionConverter(SingleCaseUnionConverterSettings.Default)
 
@@ -56,7 +56,10 @@ type internal SingleCaseUnionConverter(converterSettings: SingleCaseUnionConvert
             | DotnetType.Union unionInfo ->
                 match unionInfo.UnionCategory with
                 | UnionCategory.Enum -> Option.None
-                | UnionCategory.SingleCase -> Option.Some (createSerializer unionInfo settings)
+                | UnionCategory.SingleCase ->
+                    if converterSettings.Optional
+                    then Option.Some (createOptionalSerializer unionInfo settings)
+                    else Option.Some (createRequiredSerializer unionInfo settings)
                 | UnionCategory.MultiCase -> Option.None
             | _ -> Option.None
 
@@ -66,6 +69,13 @@ type internal SingleCaseUnionConverter(converterSettings: SingleCaseUnionConvert
                 match unionInfo.UnionCategory with
                 | UnionCategory.Enum -> Option.None
                 | UnionCategory.SingleCase ->
-                    tryCreateDeserializer sourceSchema unionInfo settings
+                    match sourceSchema.Type with
+                    | ValueTypeSchema.Record recordSchema ->
+                        if sourceSchema.IsOptional && converterSettings.Optional
+                        then tryCreateOptionalDeserializer recordSchema unionInfo settings
+                        elif not sourceSchema.IsOptional && not converterSettings.Optional
+                        then tryCreateRequiredDeserializer recordSchema unionInfo settings
+                        else Option.None
+                    | _ -> Option.None
                 | UnionCategory.MultiCase -> Option.None
             | _ -> Option.None

@@ -3,14 +3,14 @@ namespace Parquet.FSharp
 open System.Linq.Expressions
 
 type internal MultiCaseUnionConverterSettings = {
+    CaseTypeFieldName: string
     Optional: bool
-    AllowNull: bool
-    CaseTypeFieldName: string }
+    AllowNull: bool }
     with
     static member val Default = {
+        MultiCaseUnionConverterSettings.CaseTypeFieldName = "Type"
         MultiCaseUnionConverterSettings.Optional = false
-        MultiCaseUnionConverterSettings.AllowNull = false
-        MultiCaseUnionConverterSettings.CaseTypeFieldName = "Type" }
+        MultiCaseUnionConverterSettings.AllowNull = false }
 
 // TODO: Make use of settings.
 // TODO: Should single-field union cases be inlined?
@@ -26,7 +26,7 @@ type internal MultiCaseUnionConverter(converterSettings: MultiCaseUnionConverter
             let fieldSerializers =
                 unionCase.Fields
                 |> Array.map (fun fieldInfo ->
-                    FieldSerializer.ofField fieldInfo settings)
+                    FieldSerializer.ofField fieldInfo converterSettings.Optional settings)
             Serializer.record dotnetType fieldSerializers
         // The data for this case is NULL if the union tag does not match the
         // tag for this case.

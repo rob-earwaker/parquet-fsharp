@@ -103,6 +103,21 @@ type ParquetResizeArrayAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
+type ParquetRecordAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = RecordConverterSettings.Default
+    
+    member val Optional = default'.Optional with get, set
+    member val AllowNull = default'.AllowNull with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            RecordConverter {
+                Optional = this.Optional
+                AllowNull = this.AllowNull }
+        valueSettings |> ValueSettings.converter converter
+
 type ParquetEnumUnionAttribute() =
     inherit ParquetValueSettingsAttribute()
 

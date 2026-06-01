@@ -2,6 +2,8 @@ namespace Parquet.FSharp
 
 open System.Linq.Expressions
 
+// TODO: Settings for scale and precision.
+
 type internal DecimalConverter private () =
     let dotnetType = typeof<decimal>
 

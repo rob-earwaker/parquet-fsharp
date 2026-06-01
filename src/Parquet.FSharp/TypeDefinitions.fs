@@ -2,40 +2,6 @@ namespace rec Parquet.FSharp
 
 open System
 open System.Linq.Expressions
-open System.Reflection
-
-// TODO: Attribute ideas:
-//   - ParquetAttribute (base class)
-//
-//   - ParquetField(name: string, required: bool, optional: bool, allowNullValues: bool)
-//   - ParquetDecimalField(<inherited>, scale: int, precision: int)
-//   - ParquetDateTimeField(<inherited>, isAdjustedToUtc: bool, unit: <enum TimeUnit>)
-//   - ParquetDateTimeOffsetField(<inherited>, unit: <enum TimeUnit>)
-//   - ParquetUnionField(<inherited>, enum: bool, caseTypeFieldName: string)
-
-//   - ParquetType(required: bool, optional: bool, allowNullValues: bool)
-//   - ParquetUnion(caseTypeFieldName: string)
-//   - ParquetUnionCase(typeName: string, dataFieldName: string)
-
-// TODO: Types supported by Parquet.Net:
-
-//   Implemented:
-//     - bool
-//     - int8, int16, int32, int64
-//     - uint8, uint16, uint32, uint64
-//     - float32, float64
-//     - decimal
-//     - DateTime
-//     - string
-//     - Guid
-//     - byte[]
-//     - Enums
-//     - TimeSpan
-
-//   Not implemented:
-//     - BigInteger
-//     - DateOnly, TimeOnly
-//     - Interval
 
 // TODO: Replace 'failwith' with 'SerializationException'.
 
@@ -69,11 +35,8 @@ type ValueDefinition = {
     Type: Type
     Attributes: Attribute[] }
 
-// TODO: Might be able to tidy these up and combine with attributes better if we combined
-// the IsValidFor and ApplySettings methods into one TryApplySettings
 type IFieldSettingsPolicy =
     abstract member IsValidFor : field:FieldDefinition -> bool
-    // TODO: Naming - 'update' vs 'apply'
     abstract member ApplyFieldSettings : fieldSettings:FieldSettings -> FieldSettings
 
 type IValueSettingsPolicy =

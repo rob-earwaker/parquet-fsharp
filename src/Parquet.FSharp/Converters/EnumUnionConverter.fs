@@ -20,7 +20,11 @@ type internal EnumUnionConverter(converterSettings: EnumUnionConverterSettings) 
     let createRequiredSerializer (unionInfo: UnionInfo) =
         let dotnetType = unionInfo.Type
         let schema = ValueTypeSchema.primitive dataDotnetType
-        let getDataValue = unionInfo.GetCaseName
+        let getDataValue (union: Expression) =
+            Expression.Block(
+                Serializer.throwIfNull converterSettings.Optional union,
+                unionInfo.GetCaseName union)
+            :> Expression
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
     let createOptionalSerializer unionInfo =

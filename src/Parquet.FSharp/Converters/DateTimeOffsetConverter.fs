@@ -3,7 +3,6 @@ namespace Parquet.FSharp
 open System
 open System.Linq.Expressions
 
-// TODO: Handle UTC vs Local for both serialization and deserialization.
 type internal DateTimeOffsetConverter private () =
     let dotnetType = typeof<DateTimeOffset>
     let dataDotnetType = typeof<DateTime>

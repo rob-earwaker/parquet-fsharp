@@ -55,7 +55,7 @@ module ``{ optional=true } serialize`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
-module ``{ default } deserialize from required`` =
+module ``{ default } deserialize`` =
     type Input = { Field1: bool }
     type Output = { Field1: bool }
 

@@ -17,15 +17,15 @@ type ParquetDateTimeAttribute() =
     inherit ParquetValueSettingsAttribute()
 
     let default' = DateTimeConverterSettings.Default
-
-    member val Optional = default'.Optional with get, set
+    
     member val Unit = default'.Unit with get, set
+    member val Optional = default'.Optional with get, set
 
     override this.ApplyValueSettings(valueSettings) =
         let converter =
             DateTimeConverter {
-                Optional = this.Optional
-                Unit = this.Unit }
+                Unit = this.Unit
+                Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
 type ParquetStringAttribute() =
@@ -188,32 +188,3 @@ type ParquetOptionAttribute() =
             OptionConverter {
                 Required = this.Required }
         valueSettings |> ValueSettings.converter converter
-
-//type internal ParquetDateTimeFieldAttribute() =
-//    inherit ParquetFieldAttribute()
-
-//    let mutable local = Option<bool>.None
-//    let mutable ignoreKind = Option<bool>.None
-//    let mutable unit = Option<TimeUnit>.None
-
-//    member this.Local
-//        with set value =
-//            local <- Option.Some value
-
-//    member this.IgnoreKind
-//        with set value =
-//            ignoreKind <- Option.Some value
-
-//    member this.Unit
-//        with set value =
-//            unit <- Option.Some value
-
-//    override this.ApplyValueSettings(valueSettings) =
-//        let valueSettings = base.ApplyValueSettings(valueSettings)
-//        let useLocalDateTime = local |> Option.defaultValue valueSettings.UseLocalDateTime
-//        let ignoreDateTimeKind = ignoreKind |> Option.defaultValue valueSettings.IgnoreDateTimeKind
-//        let dateTimeUnit = unit |> Option.defaultValue valueSettings.DateTimeUnit
-//        valueSettings
-//        |> ValueSettings.useLocalDateTime useLocalDateTime
-//        |> ValueSettings.ignoreDateTimeKind ignoreDateTimeKind
-//        |> ValueSettings.dateTimeUnit dateTimeUnit

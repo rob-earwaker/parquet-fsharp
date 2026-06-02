@@ -28,12 +28,12 @@ open System.Linq.Expressions
 //   => deserialization assumes Local
 
 type internal DateTimeConverterSettings = {
-    Optional: bool
-    Unit: TimeUnit }
+    Unit: TimeUnit
+    Optional: bool }
     with
     static member val Default = {
-        DateTimeConverterSettings.Optional = false
-        DateTimeConverterSettings.Unit = TimeUnit.Microseconds }
+        DateTimeConverterSettings.Unit = TimeUnit.Microseconds
+        DateTimeConverterSettings.Optional = false }
 
 // TODO: Allow configuration of local vs utc - enum in schema definition or bool?
 // TODO: Allow date time kind to be ignored

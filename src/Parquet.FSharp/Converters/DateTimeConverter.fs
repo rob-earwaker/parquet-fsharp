@@ -3,8 +3,7 @@ namespace Parquet.FSharp
 open System
 open System.Linq.Expressions
 
-// TODO: Support other TimestampTypes from Parquet.Net
-// TODO: Handle UTC vs Local for both serialization and deserialization.
+// TODO: Support other TimestampTypes from Parquet.Net?
 // ---
 // Parquet.Net behaviour:
 //
@@ -35,6 +34,9 @@ type internal DateTimeConverterSettings = {
     static member val Default = {
         DateTimeConverterSettings.Optional = false
         DateTimeConverterSettings.Unit = TimeUnit.Microseconds }
+
+// TODO: Allow configuration of local vs utc - enum in schema definition or bool?
+// TODO: Allow date time kind to be ignored
 
 type internal DateTimeConverter(converterSettings: DateTimeConverterSettings) =
     let dotnetType = typeof<DateTime>

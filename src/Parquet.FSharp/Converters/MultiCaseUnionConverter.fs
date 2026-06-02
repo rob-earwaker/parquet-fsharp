@@ -2,21 +2,23 @@ namespace Parquet.FSharp
 
 open System.Linq.Expressions
 
+// Unions that have one or more cases with one or more fields we model as a
+// record, with a field to capture the case name and additional fields to hold
+// any associated case data.
+
 type internal MultiCaseUnionConverterSettings = {
-    CaseTypeFieldName: string
     Optional: bool
     AllowNull: bool }
     with
     static member val Default = {
-        MultiCaseUnionConverterSettings.CaseTypeFieldName = "Type"
         MultiCaseUnionConverterSettings.Optional = false
         MultiCaseUnionConverterSettings.AllowNull = false }
 
-// TODO: Make use of settings.
+// TODO: Allow case type field name to be configured
 // TODO: Should single-field union cases be inlined?
 
 type internal MultiCaseUnionConverter(converterSettings: MultiCaseUnionConverterSettings) =
-    let createUnionCaseSerializer (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) settings =
+    let createCaseSerializer (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) settings =
         // Union case data is represented as an optional record containing the
         // field values for that case. The record needs to be optional since
         // only one case from the union can be set and the others will be NULL.
@@ -36,7 +38,7 @@ type internal MultiCaseUnionConverter(converterSettings: MultiCaseUnionConverter
         let getValue = id
         Serializer.optional dotnetType valueSerializer isNull getValue
 
-    let createSerializer (unionInfo: UnionInfo) settings =
+    let createRequiredSerializer (unionInfo: UnionInfo) settings =
         // Unions that have one or more cases with one or more fields can not be
         // represented as a simple string value. Instead, we have to model the
         // union as a record with a field to capture the case name and
@@ -45,18 +47,22 @@ type internal MultiCaseUnionConverter(converterSettings: MultiCaseUnionConverter
         let unionCasesWithFields =
             unionInfo.Cases
             |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
-        // The type field holds the case name. Since unions are not nullable
-        // there must always be a case name present. We therefore model this
-        // as a non-optional string value.
+        // The case type field holds the case name. Since unions are not
+        // nullable there must always be a case name present. We therefore model
+        // this as a required string value.
         let typeFieldSerializer =
-            let name = converterSettings.CaseTypeFieldName
+            let name = "Type"
             let valueSerializer =
                 let dotnetType = typeof<string>
                 let dataDotnetType = typeof<string>
                 let schema = ValueTypeSchema.primitive dataDotnetType
                 let getDataValue = id
                 Serializer.atomic schema dotnetType dataDotnetType getDataValue
-            let getValue = unionInfo.GetCaseName
+            let getValue (union: Expression) =
+                Expression.Block(
+                    Serializer.throwIfNull converterSettings.Optional union,
+                    unionInfo.GetCaseName union)
+                :> Expression
             FieldSerializer.create name valueSerializer getValue
         // Each union case with one or more fields is assigned an additional
         // field within the record to hold its associated data. The name of this
@@ -75,13 +81,17 @@ type internal MultiCaseUnionConverter(converterSettings: MultiCaseUnionConverter
                     failwith <|
                         $"case name '{typeFieldSerializer.Name}' is not supported"
                         + $" for union type '{dotnetType}'"
-                let valueSerializer = createUnionCaseSerializer unionInfo unionCase settings
+                let valueSerializer = createCaseSerializer unionInfo unionCase settings
                 let getValue = id
                 FieldSerializer.create name valueSerializer getValue)
         let fieldSerializers = Array.append [| typeFieldSerializer |] caseFieldSerializers
         Serializer.record dotnetType fieldSerializers
 
-    let tryCreateUnionCaseDeserializer
+    let createOptionalSerializer unionInfo settings =
+        createRequiredSerializer unionInfo settings
+        |> Serializer.optionalNullableTypeWrapper converterSettings.AllowNull
+
+    let tryCreateCaseDeserializer
         (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) (schema: RecordTypeSchema) settings =
         // Union case data is represented as an optional record containing the
         // field values for that case. The record needs to be optional since
@@ -109,99 +119,91 @@ type internal MultiCaseUnionConverter(converterSettings: MultiCaseUnionConverter
                 dotnetType deserializer createNull createFromValue
             |> Option.Some
 
-    let tryCreateDeserializer
-        (sourceSchema: ValueSchema) (unionInfo: UnionInfo) settings =
-        // For unions that have one or more cases with one or more fields, we
-        // model as a record, with a field to capture the case name and
-        // additional fields to hold any associated case data.
-        match sourceSchema.Type with
-        | ValueTypeSchema.Record recordSchema ->
-            let dotnetType = unionInfo.Type
-            let unionCasesWithFields =
-                unionInfo.Cases
-                |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
-            // The type field holds the case name as a string.
-            let typeFieldDeserializer =
-                let name = converterSettings.CaseTypeFieldName
-                let valueDeserializer =
-                    let dotnetType = typeof<string>
-                    let dataDotnetType = typeof<string>
-                    let schema = ValueTypeSchema.primitive dataDotnetType
-                    let createFromDataValue = id
-                    Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
-                recordSchema.Fields
-                |> Array.tryFind (fun fieldSchema ->
-                    fieldSchema.Name = name
-                    && fieldSchema.Value = valueDeserializer.Schema)
-                |> Option.map (fun _ -> FieldDeserializer.create name valueDeserializer)
-            // Each union case with one or more fields is assigned an additional
-            // field within the record to hold its associated data. The name of this
-            // field matches the case name and the value is a record that contains
-            // the case's field values.
-            let caseFieldDeserializers =
-                unionCasesWithFields
-                |> Array.choose (fun unionCase ->
-                    let name = unionCase.Name
-                    // Note that there's a chance the case name is the same as the
-                    // field name chosen to store the union case name, in which case
-                    // we'd have two fields with the same name. We could add a level
-                    // of nesting to the object structure to avoid this potential
-                    // name conflict, but this adds extra complexity.
-                    if typeFieldDeserializer.IsSome && name = typeFieldDeserializer.Value.Name
-                    then Option.None
-                    else
-                        recordSchema.Fields
-                        |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = name)
-                        |> Option.bind (fun fieldSchema ->
-                            match fieldSchema.Value.Type with
-                            | ValueTypeSchema.Record recordSchema ->
-                                tryCreateUnionCaseDeserializer unionInfo unionCase recordSchema settings
-                                |> Option.map (FieldDeserializer.create name)
-                            | _ -> Option.None))
-            if typeFieldDeserializer.IsNone
-                || caseFieldDeserializers.Length < unionCasesWithFields.Length
-            then Option.None
-            else
-                let fieldDeserializers =
-                    Array.append [| typeFieldDeserializer.Value |] caseFieldDeserializers
-                let createFromFieldValues (fieldValues: Expression[]) =
-                    let caseName = Expression.Variable(typeof<string>, "caseName")
-                    let returnLabel = Expression.Label(dotnetType, "union")
-                    Expression.Block(
-                        [ caseName ],
-                        seq<Expression> {
-                            yield Expression.Assign(caseName, fieldValues[0])
-                            for caseInfo in unionInfo.Cases do
-                                yield Expression.IfThen(
-                                    Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
-                                    if caseInfo.Fields.Length = 0
-                                    then
-                                        Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||])
-                                        :> Expression
-                                    else
-                                        let caseIndex =
-                                            caseFieldDeserializers
-                                            |> Array.findIndex (fun field -> field.Name = caseInfo.Name)
-                                        let fieldValue = fieldValues[caseIndex + 1]
-                                        Expression.IfThenElse(
-                                            Expression.IsNull(Expression.Convert(fieldValue, typeof<obj>)),
-                                            Expression.FailWith(
-                                                $"no field values found for case '{caseInfo.Name}'"
-                                                + $" of union type '{dotnetType}'"),
-                                            Expression.Return(returnLabel, fieldValue)))
-                            yield Expression.FailWith(
-                                $"unknown case name for union of type '{dotnetType}'")
-                            yield Expression.Label(returnLabel, Expression.Default(returnLabel.Type))
-                        })
-                    :> Expression
-                let requiredValueDeserializer =
-                    Deserializer.record dotnetType fieldDeserializers createFromFieldValues
-                let deserializer =
-                    if sourceSchema.IsOptional
-                    then requiredValueDeserializer |> Deserializer.optionalNonNullableTypeWrapper
-                    else requiredValueDeserializer
-                Option.Some deserializer
-        | _ -> Option.None
+    let tryCreateRequiredDeserializer
+        (recordSchema: RecordTypeSchema) (unionInfo: UnionInfo) settings =
+        let dotnetType = unionInfo.Type
+        let unionCasesWithFields =
+            unionInfo.Cases
+            |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
+        // The case type field holds the case name as a required string.
+        let typeFieldDeserializer =
+            let name = "Type"
+            let valueDeserializer =
+                let dotnetType = typeof<string>
+                let dataDotnetType = typeof<string>
+                let schema = ValueTypeSchema.primitive dataDotnetType
+                let createFromDataValue = id
+                Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
+            recordSchema.Fields
+            |> Array.tryFind (fun fieldSchema ->
+                fieldSchema.Name = name
+                && fieldSchema.Value = valueDeserializer.Schema)
+            |> Option.map (fun _ -> FieldDeserializer.create name valueDeserializer)
+        // Each union case with one or more fields is assigned an additional
+        // field within the record to hold its associated data. The name of this
+        // field matches the case name and the value is a record that contains
+        // the case's field values.
+        let caseFieldDeserializers =
+            unionCasesWithFields
+            |> Array.choose (fun unionCase ->
+                let name = unionCase.Name
+                // Note that there's a chance the case name is the same as the
+                // field name chosen to store the union case name, in which case
+                // we'd have two fields with the same name. We could add a level
+                // of nesting to the object structure to avoid this potential
+                // name conflict, but this adds extra complexity.
+                if typeFieldDeserializer.IsSome && name = typeFieldDeserializer.Value.Name
+                then Option.None
+                else
+                    recordSchema.Fields
+                    |> Array.tryFind (fun fieldSchema -> fieldSchema.Name = name)
+                    |> Option.bind (fun fieldSchema ->
+                        match fieldSchema.Value.Type with
+                        | ValueTypeSchema.Record recordSchema ->
+                            tryCreateCaseDeserializer unionInfo unionCase recordSchema settings
+                            |> Option.map (FieldDeserializer.create name)
+                        | _ -> Option.None))
+        if typeFieldDeserializer.IsNone
+            || caseFieldDeserializers.Length < unionCasesWithFields.Length
+        then Option.None
+        else
+            let fieldDeserializers =
+                Array.append [| typeFieldDeserializer.Value |] caseFieldDeserializers
+            let createFromFieldValues (fieldValues: Expression[]) =
+                let caseName = Expression.Variable(typeof<string>, "caseName")
+                let returnLabel = Expression.Label(dotnetType, "union")
+                Expression.Block(
+                    [ caseName ],
+                    seq<Expression> {
+                        yield Expression.Assign(caseName, fieldValues[0])
+                        for caseInfo in unionInfo.Cases do
+                            yield Expression.IfThen(
+                                Expression.Equal(caseName, Expression.Constant(caseInfo.Name)),
+                                if caseInfo.Fields.Length = 0
+                                then
+                                    Expression.Return(returnLabel, caseInfo.CreateFromFieldValues [||])
+                                    :> Expression
+                                else
+                                    let caseIndex =
+                                        caseFieldDeserializers
+                                        |> Array.findIndex (fun field -> field.Name = caseInfo.Name)
+                                    let fieldValue = fieldValues[caseIndex + 1]
+                                    Expression.IfThenElse(
+                                        Expression.IsNull(Expression.Convert(fieldValue, typeof<obj>)),
+                                        Expression.FailWith(
+                                            $"no field values found for case '{caseInfo.Name}'"
+                                            + $" of union type '{dotnetType}'"),
+                                        Expression.Return(returnLabel, fieldValue)))
+                        yield Expression.FailWith(
+                            $"unknown case name for union of type '{dotnetType}'")
+                        yield Expression.Label(returnLabel, Expression.Default(returnLabel.Type))
+                    })
+                :> Expression
+            Option.Some (Deserializer.record dotnetType fieldDeserializers createFromFieldValues)
+
+    let tryCreateOptionalDeserializer recordSchema unionInfo settings =
+        tryCreateRequiredDeserializer recordSchema unionInfo settings
+        |> Option.map (Deserializer.optionalNullableTypeWrapper converterSettings.AllowNull)
 
     static member val Default = MultiCaseUnionConverter(MultiCaseUnionConverterSettings.Default)
 
@@ -212,7 +214,10 @@ type internal MultiCaseUnionConverter(converterSettings: MultiCaseUnionConverter
                 match unionInfo.UnionCategory with
                 | UnionCategory.Enum -> Option.None
                 | UnionCategory.SingleCase -> Option.None
-                | UnionCategory.MultiCase -> Option.Some (createSerializer unionInfo settings)
+                | UnionCategory.MultiCase ->
+                    if converterSettings.Optional
+                    then Option.Some (createOptionalSerializer unionInfo settings)
+                    else Option.Some (createRequiredSerializer unionInfo settings)
             | _ -> Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
@@ -222,5 +227,12 @@ type internal MultiCaseUnionConverter(converterSettings: MultiCaseUnionConverter
                 | UnionCategory.Enum -> Option.None
                 | UnionCategory.SingleCase -> Option.None
                 | UnionCategory.MultiCase ->
-                    tryCreateDeserializer sourceSchema unionInfo settings
+                    match sourceSchema.Type with
+                    | ValueTypeSchema.Record recordSchema ->
+                        if sourceSchema.IsOptional && converterSettings.Optional
+                        then tryCreateOptionalDeserializer recordSchema unionInfo settings
+                        elif not sourceSchema.IsOptional && not converterSettings.Optional
+                        then tryCreateRequiredDeserializer recordSchema unionInfo settings
+                        else Option.None
+                    | _ -> Option.None
             | _ -> Option.None

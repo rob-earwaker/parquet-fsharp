@@ -166,14 +166,12 @@ type ParquetMultiCaseUnionAttribute() =
 
     let default' = MultiCaseUnionConverterSettings.Default
     
-    member val CaseTypeFieldName = default'.CaseTypeFieldName with get, set
     member val Optional = default'.Optional with get, set
     member val AllowNull = default'.AllowNull with get, set
 
     override this.ApplyValueSettings(valueSettings) =
         let converter =
             MultiCaseUnionConverter {
-                CaseTypeFieldName = this.CaseTypeFieldName
                 Optional = this.Optional
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter

@@ -3,6 +3,8 @@ namespace Parquet.FSharp
 open System
 open System.Linq.Expressions
 
+// TODO: Allow configuration of time unit
+
 type internal DateTimeOffsetConverter private () =
     let dotnetType = typeof<DateTimeOffset>
     let dataDotnetType = typeof<DateTime>

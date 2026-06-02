@@ -6,7 +6,7 @@ open Swensen.Unquote
 open System
 open Xunit
 
-// TODO: Add min/max range tests for nanosecond precision - bug in Parquet.Net?
+// TODO: Add min/max tests for nanoseconds - bug in Parquet.Net? Document in README!
 
 module ``{ default } serialize`` =
     type Input = { Field1: DateTime }

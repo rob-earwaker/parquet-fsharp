@@ -81,7 +81,7 @@ The followng settings can be used to customize serialization of boolean values v
 
 | Setting | Type | Default | Description |
 |-|-|-|-|
-| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization from an optional value then a `SerializationException` will be raised. |
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -141,13 +141,20 @@ The `TimeSpan` type uses 'ticks' as a base unit, where each tick represents 100 
 
 Applies to: `DateTime`, `DateTimeOffset`
 
-Date times are serialized as required UTC values with microsecond precision by default. They can be deserialized from either required or optional date time values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
+Date times are serialized as required UTC values with microsecond precision by default and must be deserialized from required date time values.
 
 Since `DateTime` values have an associated `DateTimeKind`, which is one of `Unspecified`, `Utc` or `Local`, conversion to UTC can be ambiguous. Default serialization does not make any assumptions or do any implicit conversions, so any `DateTime` values that are not defined with `DateTimeKind.Utc` will result in a `SerializationException`.
 
 `DateTimeOffset` values always map to a specific instant in time, so can always be converted to UTC in an unambiguous way. During serialization, `DateTimeOffset` values will be converted to their UTC equivalent. This means that the offset information is lost, but the serialized value is guaranteed to identify the same instant in time.
 
 Both `DateTime` and `DateTimeOffset` use 'ticks' as their base unit, where each tick represents 100 nanoseconds. Since the default precision is microseconds, serialization results in a slight truncation, equivalent to rounding the values down to the nearest 10 ticks.
+
+The followng settings can be used to customize serialization of `DateTime` values via the `[<ParquetDateTime>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Unit` | `TimeUnit` | `Microseconds` | Allows the value to be serialized with a millisecond or nanosecond precision instead of the default microsecond precision. Serialization with millisecond precision will result in truncation. |
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -185,8 +192,8 @@ The followng settings can be used to customize serialization of sequences via th
 
 | Setting | Type | Default | Description |
 |-|-|-|-|
-| `Optional` | `bool` | `false` | Allows the sequence to be serialized as an optional Parquet list and allows it to be deserialized from an optional list. Since null values are not an idiomatic way to represent optionality in F#, if a null value is encountered during deserialization from an optional list then a `SerializationException` will be raised. This behaviour can be explicitly overriden using the `AllowNull` setting. |
-| `AllowNull` | `bool` | `false` | Allows null sequences to be serialized and deserialized. This setting has no effect unless the sequence has been configured as optional using the `Optional` setting. |
+| `Optional` | `bool` | `false` | Allows the sequence to be serialized as an optional Parquet list and allows it to be deserialized from an optional list. Since null values are not an idiomatic way to represent optionality in F#, if a null value is encountered during deserialization then a `SerializationException` will still be raised. This behaviour can be explicitly overriden using the `AllowNull` setting. |
+| `AllowNull` | `bool` | `false` | Allows null sequences to be serialized and deserialized. This setting has no effect unless the sequence has been configured as `Optional`. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 

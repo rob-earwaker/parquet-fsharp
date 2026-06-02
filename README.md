@@ -75,7 +75,13 @@ let nodes = ParquetSerializer.Deserialize<Node>(file)
 
 Applies to: `bool`
 
-Booleans are serialized as required values by default. They can be deserialized from either required or optional boolean values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
+Boolean values map to the `BOOLEAN` primitive type in the Parquet file format. By default, they are serialized as required values and must be deserialized from required values.
+
+The followng settings can be used to customize serialization of boolean values via the `[<ParquetBool>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization from an optional value then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -173,9 +179,14 @@ Applies to: `'Element list`, `'Element[]`, `ResizeArray<'Element>`
 
 Sequences of values are stored as [Parquet lists](https://github.com/apache/parquet-format/blob/4b1c72c837bec5b792b2514f0057533030fcedf8/LogicalTypes.md#lists), which contain repeated elements, analagous to the `'Element seq` or  `IEnumerable<'Element>` .NET types.
 
-Supported sequence types are serialized as required Parquet lists by default, even for sequences that allow null as a valid value. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating sequences as required provides a guarantee that any serialized sequences are not null. If a null sequence is encountered during serialization, a `SerializationException` will be raised.
+Supported sequence types are serialized as required Parquet lists by default, even for sequences that allow null as a valid value. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating sequences as required provides a guarantee that any serialized sequences are not null. If a null sequence is encountered during serialization or deserialization, a `SerializationException` will be raised.
 
-Sequences can be deserialized from optional Parquet lists as well as required lists, but the same null guarantee is provided, so any null lists encountered during deserialization will still result in an exception.
+The followng settings can be used to customize serialization of sequences via the `[<ParquetList>]`, `[<ParquetArray1d>]` or `[<ParquetResizeArray>]` attributes depending on the sequence type:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the sequence to be serialized as an optional Parquet list and allows it to be deserialized from an optional list. Since null values are not an idiomatic way to represent optionality in F#, if a null value is encountered during deserialization from an optional list then a `SerializationException` will be raised. This behaviour can be explicitly overriden using the `AllowNull` setting. |
+| `AllowNull` | `bool` | `false` | Allows null sequences to be serialized and deserialized. This setting has no effect unless the sequence has been configured as optional using the `Optional` setting. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -265,7 +276,7 @@ Single-case unions can be deserialized from record values containing the correct
 
 #### Multi-Case Unions
 
-Unions with multiple cases where at least one case as one or more associated data fields are the most complex category of union and therefore require the most flexible approach. Some examples are shown below, taken from [Microsoft Learn - F# Discriminated Unions](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/discriminated-unions):
+Unions with multiple cases where at least one case has one or more associated data fields are the most complex category of union and therefore require the most flexible approach. Some examples are shown below, taken from [Microsoft Learn - F# Discriminated Unions](https://learn.microsoft.com/en-us/dotnet/fsharp/language-reference/discriminated-unions):
 
 ```fsharp
 type Shape =

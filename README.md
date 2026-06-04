@@ -213,9 +213,22 @@ Applies to: `'FSharpRecord`
 
 As well as allowing sequences of values, Parquet allows arbitrary nesting of fields through records (also called structs). During serialization, these records are deconstructed into columns - 'shredded' in Parquet terminology - one column for each field. Information about the record nesting structure is also captured and stored alongside the columnar values, which allows records to be re-constructed during deserialization - 'assembled' in Parquet terminology. More information on how this works can be found in Google's [Dremel paper](https://research.google.com/pubs/archive/36632.pdf), on which Parquet is based.
 
-Support for arbitrarily nested data is made possible through serialization support for F# record types. Record types are not nullable in F#, so are serialized as required values by default. They can be deserialized from either optional or required records. Any null values encountered during deserialization from an optional record will result in a `SerializationException`. Records using the `[<Struct>]` attribute are supported in addition to standard (reference-type) records, and are serialized in exactly the same way. Mutable record fields are also supported.
+Support for arbitrarily nested data is made possible through serialization support for F# record types. Record types do not allow null as a valid value in F#, so are serialized as required records by default and must be deserialized from required records. Any null values encountered during serialization or deserialization will result in a `SerializationException`. Records using the `[<Struct>]` attribute are supported in addition to standard (reference-type) records, and are serialized in exactly the same way. Mutable record fields are also supported.
 
 One of the advantages of Parquet being a columnar data format is that it's possible and efficient to load only a subset of columns, and this behaviour is supported in **Parquet.FSharp**. When deserializing records, any fields in the Parquet file that are not specified in the target F# record type will be skipped. This enables a degree of forwards compatability - if new fields are added to the schema, it will still possible to deserialize using the old F# record types.
+
+The following settings can be used to customize serialization of standard (reference-type) records via the `[<ParquetRecord>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the record to be serialized as an optional Parquet record and allows it to be deserialized from an optional record. Any null records encountered during serialization or deserialization will still result in a `SerializationException` unless this behaviour is explicitly overriden using the `AllowNull` setting. |
+| `AllowNull` | `bool` | `false` | Allows null records to be serialized and deserialized. This setting has no effect unless the record has been configured as `Optional`. |
+
+The following settings can be used to customize serialization of `[<Struct>]` (value-type) records via the `[<ParquetRecordStruct>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the record to be serialized as an optional Parquet record and allows it to be deserialized from an optional record. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 

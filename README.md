@@ -77,7 +77,7 @@ Applies to: `bool`
 
 Boolean values map to the `BOOLEAN` primitive type in the Parquet file format. By default, they are serialized as required values and must be deserialized from required values.
 
-The followng settings can be used to customize serialization of boolean values via the `[<ParquetBool>]` attribute:
+The following settings can be used to customize serialization of boolean values via the `[<ParquetBool>]` attribute:
 
 | Setting | Type | Default | Description |
 |-|-|-|-|
@@ -149,11 +149,11 @@ Since `DateTime` values have an associated `DateTimeKind`, which is one of `Unsp
 
 Both `DateTime` and `DateTimeOffset` use 'ticks' as their base unit, where each tick represents 100 nanoseconds. Since the default precision is microseconds, serialization results in a slight truncation, equivalent to rounding the values down to the nearest 10 ticks.
 
-The followng settings can be used to customize serialization of `DateTime` values via the `[<ParquetDateTime>]` attribute:
+The following settings can be used to customize serialization of `DateTime` values via the `[<ParquetDateTime>]` attribute:
 
 | Setting | Type | Default | Description |
 |-|-|-|-|
-| `Unit` | `TimeUnit` | `Microseconds` | Allows the value to be serialized with a millisecond or nanosecond precision instead of the default microsecond precision. Serialization with millisecond precision will result in truncation. |
+| `Unit` | `TimeUnit` | `Microseconds` | Allows the value to be serialized as a millisecond or nanosecond precision date time instead of the default microsecond precision and allows deserialization from date times with these precisions. Serialization with millisecond precision will result in truncation. |
 | `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
@@ -162,9 +162,14 @@ The followng settings can be used to customize serialization of `DateTime` value
 
 Applies to: `string`
 
-Strings are serialized as required values by default, despite being reference types and having null as a valid value. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating strings as required provides a guarantee that any serialized values are not null. If a null value is encountered during serialization, a `SerializationException` will be raised.
+Despite being reference types and having null as a valid value, strings are serialized as required values by default and must be deserialized from required values. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating strings as required provides a guarantee that any serialized values are not null. If a null value is encountered during serialization or deserialization, a `SerializationException` will be raised.
 
-Strings can be deserialized from optional values as well as required values, but the same null guarantee is provided, so any null values encountered during deserialization will still result in an exception.
+The following settings can be used to customize serialization of string values via the `[<ParquetString>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Any null values encountered during serialization or deserialization will still result in a `SerializationException` unless this behaviour is explicitly overriden using the `AllowNull` setting. |
+| `AllowNull` | `bool` | `false` | Allows null values to be serialized and deserialized. This setting has no effect unless the value has been configured as `Optional`. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -174,9 +179,14 @@ Applies to: `byte[]`
 
 Byte arrays are not treated the same as other array types since Parquet has native support for them. This means that instead of being treated as repeated values they are treated as atomic values.
 
-Byte arrays are serialized as required values by default, despite being reference types and having null as a valid value. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating byte arrays as required provides a guarantee that any serialized values are not null. If a null value is encountered during serialization, a `SerializationException` will be raised.
+Despite being reference types and having null as a valid value, byte arrays are serialized as required values by default and must be deserialized from required values. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating byte arrays as required provides a guarantee that any serialized values are not null. If a null value is encountered during serialization or deserialization, a `SerializationException` will be raised.
 
-Byte arrays can be deserialized from optional values as well as required values, but the same null guarantee is provided, so any null values encountered during deserialization will still result in an exception.
+The following settings can be used to customize serialization of byte array values via the `[<ParquetByteArray>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Any null values encountered during serialization or deserialization will still result in a `SerializationException` unless this behaviour is explicitly overriden using the `AllowNull` setting. |
+| `AllowNull` | `bool` | `false` | Allows null values to be serialized and deserialized. This setting has no effect unless the value has been configured as `Optional`. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -188,11 +198,11 @@ Sequences of values are stored as [Parquet lists](https://github.com/apache/parq
 
 Supported sequence types are serialized as required Parquet lists by default, even for sequences that allow null as a valid value. In F#, nullable values are not an idiomatic way to represent optionality - the preferred alternative being option types. Treating sequences as required provides a guarantee that any serialized sequences are not null. If a null sequence is encountered during serialization or deserialization, a `SerializationException` will be raised.
 
-The followng settings can be used to customize serialization of sequences via the `[<ParquetList>]`, `[<ParquetArray1d>]` or `[<ParquetResizeArray>]` attributes depending on the sequence type:
+The following settings can be used to customize serialization of sequences via the `[<ParquetList>]`, `[<ParquetArray1d>]` or `[<ParquetResizeArray>]` attributes depending on the sequence type:
 
 | Setting | Type | Default | Description |
 |-|-|-|-|
-| `Optional` | `bool` | `false` | Allows the sequence to be serialized as an optional Parquet list and allows it to be deserialized from an optional list. Since null values are not an idiomatic way to represent optionality in F#, if a null value is encountered during deserialization then a `SerializationException` will still be raised. This behaviour can be explicitly overriden using the `AllowNull` setting. |
+| `Optional` | `bool` | `false` | Allows the sequence to be serialized as an optional Parquet list and allows it to be deserialized from an optional list. Any null sequences encountered during serialization or deserialization will still result in a `SerializationException` unless this behaviour is explicitly overriden using the `AllowNull` setting. |
 | `AllowNull` | `bool` | `false` | Allows null sequences to be serialized and deserialized. This setting has no effect unless the sequence has been configured as `Optional`. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>

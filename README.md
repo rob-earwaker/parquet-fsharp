@@ -3,7 +3,7 @@
 [![NuGet Version](https://img.shields.io/nuget/v/Parquet.FSharp?style=flat-square&label=NuGet&logo=nuget)](https://www.nuget.org/packages/Parquet.FSharp)
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/rob-earwaker/parquet-fsharp/build.yml?style=flat-square&label=Build&logo=github)](https://github.com/rob-earwaker/parquet-fsharp/actions/workflows/build.yml?query=branch%3Amain)
 
-An F# serailization library for the [Apache Parquet](https://parquet.apache.org/) file format, built on top of the fantastic [Parquet.Net](https://github.com/aloneguid/parquet-dotnet) library. **Parquet.FSharp** adds first-class support for F# types such as records, options, lists and discriminated unions, whilst maintaining the performance of **Parquet.Net**.
+An F# serialization library for the [Apache Parquet](https://parquet.apache.org/) file format, built on top of the fantastic [Parquet.Net](https://github.com/aloneguid/parquet-dotnet) library. **Parquet.FSharp** adds first-class support for F# types such as records, options, lists and discriminated unions, whilst maintaining the performance of **Parquet.Net**.
 
 >NOTE: **Parquet.FSharp** is in its initial development phase - the behaviour and public API may change between minor version increments. Feedback, ideas and feature requests are all welcome!
 
@@ -131,7 +131,7 @@ Applies to: `TimeSpan`
 
 The Parquet format does not have built-in support for arbitrary durations. It only supports time-of-day durations via the [Time](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#time) logical type and positive durations with millisecond precision via the [Interval](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#interval) logical type. Neither of these are particularly compatible with the range of values that can be represented by a `TimeSpan`.
 
-Due to the limitations above, `TimeSpan` values are serialized and deserailized as `int64` microsecond values. See [Numeric Types](#numeric-types) for details of `int64` serialization.
+Due to the limitations above, `TimeSpan` values are serialized and deserialized as `int64` microsecond values. See [Numeric Types](#numeric-types) for details of `int64` serialization.
 
 The `TimeSpan` type uses 'ticks' as a base unit, where each tick represents 100 nanoseconds. Since the default precision is microseconds, serialization results in a slight truncation, equivalent to rounding the values down to the nearest 10 ticks.
 
@@ -290,7 +290,7 @@ type Name = Name of firstName:string * lastName:string
 type EmailAddress = EmailAddress of string
 ```
 
-Since there is only a single case, there is no need to store the case name so only the fields are serailized. Single-case unions are serialized as required records, with one field for each associated data field. For example, the types above are serialized as if they were the following equivalent record types:
+Since there is only a single case, there is no need to store the case name so only the fields are serialized. Single-case unions are serialized as required records, with one field for each associated data field. For example, the types above are serialized as if they were the following equivalent record types:
 
 ```fsharp
 type Age = { age: int }
@@ -319,7 +319,7 @@ type BinaryTree =
     | Node of value:int * left:BinaryTree * right:BinaryTree
 ```
 
-Since there are multiple cases, the case name is serailized alongside the data fields as a string value. Like single-case unions, the case data fields are serialized as a record. However since each case contains its own distinct set of fields, each is serialized into its own independent record structure. The complete schema for a multi-case union consists of an outer record containing a required string field `Type` for the case name and one or more case data fields. Each case data field is itself a record, containing any associated data fields. Since only one case will have data for any given union value, the case data fields are optional. The following demonstrates the equivalent serialization structure for the union types above:
+Since there are multiple cases, the case name is serialized alongside the data fields as a string value. Like single-case unions, the case data fields are serialized as a record. However since each case contains its own distinct set of fields, each is serialized into its own independent record structure. The complete schema for a multi-case union consists of an outer record containing a required string field `Type` for the case name and one or more case data fields. Each case data field is itself a record, containing any associated data fields. Since only one case will have data for any given union value, the case data fields are optional. The following demonstrates the equivalent serialization structure for the union types above:
 
 ```fsharp
 type Rectangle = { width: float; length: float }

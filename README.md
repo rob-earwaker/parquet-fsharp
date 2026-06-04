@@ -266,7 +266,7 @@ Discriminated unions can be used to represent a range of different types with va
 
 #### Enumeration Unions
 
-The simplest type of union is one in which there are no associated data fields for any of the cases. This gives an enum-like type, but without an explicit backing value. An example is as follows:
+The simplest type of union is one in which there are no associated data fields for any of the cases. This gives a type that's very similar to an enum but without explicit backing values. An example is as follows:
 
 ```fsharp
 type Shape =
@@ -276,7 +276,14 @@ type Shape =
     | Rectangle
 ```
 
-Since none of the cases has any associated data fields, there is no additional nesting required to represent these union values. Enumeration unions are serialized as required string values. They can be deserialized from either required or optional string values, but because unions are treated as non-nullable in F#, any null values encountered during deserialization will result in a `SerializationException`.
+Since none of the cases has any associated data fields, there is no additional nesting required to represent these union values. By default, enum unions are serialized as required string values and must be deserialized from required string values. Unions do not allow null as a valid value in F#, so any null values encountered during serialization or deserialization will result in a `SerializationException`.
+
+The following settings can be used to customize serialization of enum unions via the `[<ParquetEnumUnion>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the union to be serialized as an optional string value and allows it to be deserialized from an optional string value. Any null unions encountered during serialization or deserialization will still result in a `SerializationException` unless this behaviour is explicitly overriden using the `AllowNull` setting. |
+| `AllowNull` | `bool` | `false` | Allows null unions to be serialized and deserialized. This setting has no effect unless the union has been configured as `Optional`. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -300,7 +307,14 @@ type Name = { firstName: string; lastName: string }
 type EmailAddress = { Item1: string }
 ```
 
-Single-case unions can be deserialized from record values containing the correct field definitions. These records can be either required or optional values, but because unions are treated as non-nullable in F#, any null values encountered during deserialization will result in a `SerializationException`.
+Single-case unions must be deserialized from required record values containing the correct field definitions. Unions do not allow null as a valid value in F#, so any null values encountered during serialization or deserialization will result in a `SerializationException`.
+
+The following settings can be used to customize serialization of single-case unions via the `[<ParquetSingleCaseUnion>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the union to be serialized as an optional record and allows it to be deserialized from an optional record. Any null unions encountered during serialization or deserialization will still result in a `SerializationException` unless this behaviour is explicitly overriden using the `AllowNull` setting. |
+| `AllowNull` | `bool` | `false` | Allows null unions to be serialized and deserialized. This setting has no effect unless the union has been configured as `Optional`. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -319,26 +333,33 @@ type BinaryTree =
     | Node of value:int * left:BinaryTree * right:BinaryTree
 ```
 
-Since there are multiple cases, the case name is serialized alongside the data fields as a string value. Like single-case unions, the case data fields are serialized as a record. However since each case contains its own distinct set of fields, each is serialized into its own independent record structure. The complete schema for a multi-case union consists of an outer record containing a required string field `Type` for the case name and one or more case data fields. Each case data field is itself a record, containing any associated data fields. Since only one case will have data for any given union value, the case data fields are optional. The following demonstrates the equivalent serialization structure for the union types above:
+Since there are multiple cases, the case name is serialized alongside the data fields as a string value. Like single-case unions, the case data fields are serialized as a record. However, since each case contains its own distinct set of fields with different names and types, each is serialized into its own independent record structure. The complete schema for a multi-case union consists of a required outer record containing a required string field `Type` for the case name and one or more case data fields. Each case data field is itself a record, containing any associated data fields. Since only one case will have data for any given union value, the case data fields are optional. The following demonstrates the equivalent serialization structures for the union types above:
 
 ```fsharp
-type Rectangle = { width: float; length: float }
-type Circle = { radius: float }
-type Prism = { width: float; height: float; length: float }
 type Shape = {
     Type: string
     Rectangle: Rectangle option
     Circle: Circle option
     Prism: Prism option }
+and Rectangle = { width: float; length: float }
+and Circle = { radius: float }
+and Prism = { width: float; height: float; length: float }
 
-// The 'Leaf' case has no data fields so no inner record is required.
-type Node = { value: int; left: BinaryTree; right: BinaryTree }
 type BinaryTree = {
     Type: string
     Node: Node option }
+and Node = { value: int; left: BinaryTree; right: BinaryTree }
+// The 'Leaf' case has no data fields so no inner record is required.
 ```
 
-Multi-case unions can be deserialized from record values containing the correct structure. These records can be either required or optional values, but because unions are treated as non-nullable in F#, any null values encountered during deserialization will result in a `SerializationException`.
+Multi-case unions must be deserialized from required record values containing the correct structure. Unions do not allow null as a valid value in F#, so any null values encountered during serialization or deserialization will result in a `SerializationException`.
+
+The following settings can be used to customize serialization of multi-case unions via the `[<ParquetMultiCaseUnion>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the union to be serialized as an optional record and allows it to be deserialized from an optional record. Any null unions encountered during serialization or deserialization will still result in a `SerializationException` unless this behaviour is explicitly overriden using the `AllowNull` setting. |
+| `AllowNull` | `bool` | `false` | Allows null unions to be serialized and deserialized. This setting has no effect unless the union has been configured as `Optional`. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 

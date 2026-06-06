@@ -24,6 +24,9 @@ An F# serialization library for the [Apache Parquet](https://parquet.apache.org/
     - [Enumeration Unions](#enumeration-unions)
     - [Single-Case Unions](#single-case-unions)
     - [Multi-Case Unions](#multi-case-unions)
+- [Customization](#customization)
+  - [Field Settings](#field-settings)
+  - [Value Settings](#value-settings)
 - [Roadmap](#roadmap)
   - [Extend Supported Types](#extend-supported-types)
   - [Serialization Options](#serialization-options)
@@ -360,6 +363,73 @@ The following settings can be used to customize serialization of multi-case unio
 |-|-|-|-|
 | `Optional` | `bool` | `false` | Allows the union to be serialized as an optional record and allows it to be deserialized from an optional record. Any null unions encountered during serialization or deserialization will still result in a `SerializationException` unless this behaviour is explicitly overriden using the `AllowNull` setting. |
 | `AllowNull` | `bool` | `false` | Allows null unions to be serialized and deserialized. This setting has no effect unless the union has been configured as `Optional`. |
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
+## Customization
+
+**Parquet.FSharp** aims to support a wide range of commonly used types and to provide sensible defaults for serialization, but there are cases when it's useful to extend and/or override this default behaviour. This customization is currently achieved through use of attributes, which allow default settings for serialization of fields and values to be overriden.
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
+### Field Settings
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Name` | `string option` | `Option.None` | Allows the name of the target field to be overriden. |
+
+Field settings can be customized using attributes derived from the `ParquetFieldSettingsAttribute` abstract class. **Parquet.FSharp** provides a single derived attribute `[<ParquetField>]`, which can be used as follows:
+
+```fsharp
+type Event = {
+    [<ParquetField(Name = "EventId")>]
+    Id: int64
+    [<ParquetField(Name = "EventType")>]
+    Type: string }
+```
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
+### Value Settings
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Converter` | `IValueConverter option` | `Option.None` | Allows the converter used to serialize the target value to be overriden. If not specified, the default converter for the target value type will be used. See [Supported Types](#supported-types) for more information on this default behaviour. |
+
+Value settings can be customized using attributes derived from the `ParquetValueSettingsAttribute` abstract class. **Parquet.FSharp** defines derived attributes for each of the built-in value converters, allowing the settings of these converters to be customized. Information on the attributes and converter settings available can be found in [Supported Types](#supported-types). Some examples are shown below:
+
+```fsharp
+// Always serialize this record as if it was an optional value rather than a
+// required value. Any null values encountered will still raise an exception.
+[<ParquetRecord(Optional = true)>]
+type DataSample = {
+    // Override the date time precision from the default of microseconds.
+    [<ParquetDateTime(Unit = TimeUnit.Milliseconds)>]
+    Time: DateTime
+    // Serialize as an optional string and explicitly allow null values.
+    [<ParquetString(Optional = true, AllowNull = true)>]
+    Type: string
+    // No attribute so default float converter will be used.
+    Value: float }
+```
+
+There are cases where values can be nested inside other (generic) types, primarily for optional and sequence types. In these situations you may want to customize the behaviour of both the parent and child types. To allow configuration to an arbitrary nesting depth, the `ParquetValueSettingsAttribute` base class defines an integer `NestingLevel` property. This property defaults to a value of zero indicating no nesting, i.e. the attribute is applied to the target field type. When set to a value greater than zero, the attribute is applied to the type at the specified nesting level, as shown in the following (fairly contrived!) examples:
+
+```fsharp
+type Task = {
+    Id: Guid
+    Description: string
+    // Treat the option type as required rather than optional.
+    // Override the precision of the nested date time value.
+    [<ParquetOption(Required = true)>]
+    [<ParquetDateTime(NestingLevel = 1, Unit = TimeUnit.Milliseconds)>]
+    DueAt: DateTime option
+    // Treat the inner list as optional.
+    // Treat the string value as optional and allow nulls.
+    [<ParquetList(NestingLevel = 1, Optional = true)>]
+    [<ParquetString(NestingLevel = 2, Optional = true, AllowNull = true)>]
+    TagsGroups: string list list }
+```
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 

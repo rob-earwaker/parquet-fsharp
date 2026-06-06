@@ -17,6 +17,9 @@ type internal MultiCaseUnionConverterSettings = {
 // TODO: Allow case type field name to be configured
 // TODO: Should single-field union cases be inlined?
 
+// TODO: We should allow all union types really, so that enum and
+// single field unions can be serialized in this way too.
+
 type internal MultiCaseUnionConverter(converterSettings: MultiCaseUnionConverterSettings) =
     let createCaseSerializer (unionInfo: UnionInfo) (unionCase: UnionCaseInfo) settings =
         // Union case data is represented as an optional record containing the

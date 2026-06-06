@@ -35,6 +35,10 @@ type ValueDefinition = {
     Type: Type
     Attributes: Attribute[] }
 
+// TODO: Could be useful to have field or value definitions available when
+// overriding the settings, e.g. for implementing global case conversion for
+// field names. Should we update policies to just be a single merged method?
+
 type IFieldSettingsPolicy =
     abstract member IsValidFor : field:FieldDefinition -> bool
     abstract member ApplyFieldSettings : fieldSettings:FieldSettings -> FieldSettings

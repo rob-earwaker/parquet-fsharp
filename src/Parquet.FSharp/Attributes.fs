@@ -140,6 +140,20 @@ type ParquetRecordStructAttribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
+/// Configures the settings used to serialize an F# option value.
+type ParquetOptionAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = OptionConverterSettings.Default
+
+    member val Required = default'.Required with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            OptionConverter {
+                Required = this.Required }
+        valueSettings |> ValueSettings.converter converter
+
 /// Configures the settings used to serialize an F# union value with no
 /// associated data fields for any of the cases.
 type ParquetEnumUnionAttribute() =
@@ -188,18 +202,4 @@ type ParquetMultiCaseUnionAttribute() =
             MultiCaseUnionConverter {
                 Optional = this.Optional
                 AllowNull = this.AllowNull }
-        valueSettings |> ValueSettings.converter converter
-
-/// Configures the settings used to serialize an F# option value.
-type ParquetOptionAttribute() =
-    inherit ParquetValueSettingsAttribute()
-
-    let default' = OptionConverterSettings.Default
-
-    member val Required = default'.Required with get, set
-
-    override this.ApplyValueSettings(valueSettings) =
-        let converter =
-            OptionConverter {
-                Required = this.Required }
         valueSettings |> ValueSettings.converter converter

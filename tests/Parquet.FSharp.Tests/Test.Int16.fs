@@ -63,7 +63,7 @@ module ``deserialize int16 from optional int16`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int16>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int16>}'" @>)
 
     [<Theory>]
     [<InlineData(Int16.MinValue)>]
@@ -106,7 +106,7 @@ module ``deserialize int16 from optional int8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int16>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int16>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) SByte.MinValue, (* outputValue *) -128s)>]
@@ -147,7 +147,7 @@ module ``deserialize int16 from optional uint8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int16>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int16>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) Byte.MinValue, (* outputValue *)   0s)>]

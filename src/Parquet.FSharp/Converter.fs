@@ -2,163 +2,47 @@
 
 open System
 open System.Linq.Expressions
+open System.Reflection
 
-type SerializationException(message) =
-    inherit Exception(message)
+// Add module suffix so we can define the module in a different file to the type.
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
+module internal FieldDefinition =
+    let [<Literal>] private RootName = "$root"
 
-// TODO: Attribute ideas:
-//   - ParquetAttribute (base class)
-//
-//   - ParquetField(name: string, required: bool, optional: bool, allowNulls: bool)
-//   - ParquetDecimalField(<inherited>, scale: int, precision: int)
-//   - ParquetDateTimeField(<inherited>, isAdjustedToUtc: bool, unit: <enum TimeUnit>)
-//   - ParquetDateTimeOffsetField(<inherited>, unit: <enum TimeUnit>)
-//   - ParquetUnionField(<inherited>, enum: bool, caseTypeFieldName: string)
+    let create name valueType attributes =
+        { FieldDefinition.Name = name
+          FieldDefinition.ValueType = valueType
+          FieldDefinition.Attributes = attributes }
 
-//   - ParquetUnion(caseTypeFieldName: string)
-//   - ParquetUnionCase(typeName: string, dataFieldName: string)
-//   - ParquetRequired()
-//   - ParquetOptional(allowNulls: bool)
+    let forRoot (recordType: Type) =
+        let attributes = [||]
+        create RootName recordType attributes
 
-// TODO: Types supported by Parquet.Net:
+    let ofProperty (property: PropertyInfo) =
+        let attributes = property.GetCustomAttributes() |> Array.ofSeq
+        create property.Name property.PropertyType attributes
 
-//   Implemented:
-//     - bool
-//     - int8, int16, int32, int64
-//     - uint8, uint16, uint32, uint64
-//     - float32, float64
-//     - decimal
-//     - DateTime
-//     - string
-//     - Guid
-//     - byte[]
-//     - Enums
-//     - TimeSpan
+// Add module suffix so we can define the module in a different file to the type.
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
+module internal ValueDefinition =
+    let create field nestingLevel valueType attributes =
+        { ValueDefinition.Field = field
+          ValueDefinition.NestingLevel = nestingLevel
+          ValueDefinition.Type = valueType
+          ValueDefinition.Attributes = attributes }
 
-//   Not implemented:
-//     - BigInteger
-//     - DateOnly, TimeOnly
-//     - Interval
+    let ofField (field: FieldDefinition) =
+        let nestingLevel = 0
+        let attributes = field.ValueType.GetCustomAttributes() |> Array.ofSeq
+        create field nestingLevel field.ValueType attributes
 
-// TODO: Replace 'failwith' with 'SerializationException'.
+    let forNestedValue (nestedValueType: Type) (value: ValueDefinition) =
+        let nestingLevel = value.NestingLevel + 1
+        let attributes = nestedValueType.GetCustomAttributes() |> Array.ofSeq
+        create value.Field nestingLevel nestedValueType attributes
 
-// TODO: Attribute to select specific serializer type to use? Alternatively could
-// be part of the serializer configuration?
-
-// TODO: Add converter type to serializer/deserializer so we can catch exceptions
-// that occur when calling the compiled lambda functions and enrich with info about
-// which converter they originated from and which lambda function they originated from.
-
-type internal Settings = {
-    ValueConverters: IValueConverter[] }
-
-type internal IValueConverter =
-    abstract member TryCreateSerializer
-        : sourceType:Type * settings:Settings -> Serializer option
-    abstract member TryCreateDeserializer
-        : sourceSchema:ValueSchema * targetType:Type * settings:Settings -> Deserializer option
-
-type internal Serializer =
-    | Atomic of AtomicSerializer
-    | List of ListSerializer
-    | Record of RecordSerializer
-    | Optional of OptionalSerializer
-    with
-    member this.Schema =
-        match this with
-        | Serializer.Atomic atomicSerializer -> atomicSerializer.Schema
-        | Serializer.List listSerializer -> listSerializer.Schema
-        | Serializer.Record recordSerializer -> recordSerializer.Schema
-        | Serializer.Optional optionalSerializer -> optionalSerializer.Schema
-
-    member this.DotnetType =
-        match this with
-        | Serializer.Atomic atomicSerializer -> atomicSerializer.DotnetType
-        | Serializer.List listSerializer -> listSerializer.DotnetType
-        | Serializer.Record recordSerializer -> recordSerializer.DotnetType
-        | Serializer.Optional optionalSerializer -> optionalSerializer.DotnetType
-
-type internal AtomicSerializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    DataDotnetType: Type
-    GetDataValue: Expression -> Expression }
-
-type internal ListSerializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    ElementSerializer: Serializer
-    GetEnumerator: Expression -> Expression }
-
-type internal FieldSerializer = {
-    Schema: FieldSchema
-    Name: string
-    ValueSerializer: Serializer
-    GetValue: Expression -> Expression }
-
-type internal RecordSerializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    FieldSerializers: FieldSerializer[] }
-
-type internal OptionalSerializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    ValueSerializer: Serializer
-    IsNull: Expression -> Expression
-    GetValue: Expression -> Expression }
-
-type internal Deserializer =
-    | Atomic of AtomicDeserializer
-    | List of ListDeserializer
-    | Record of RecordDeserializer
-    | Optional of OptionalDeserializer
-    with
-    member this.Schema =
-        match this with
-        | Deserializer.Atomic atomicDeserializer -> atomicDeserializer.Schema
-        | Deserializer.List listDeserializer -> listDeserializer.Schema
-        | Deserializer.Record recordDeserializer -> recordDeserializer.Schema
-        | Deserializer.Optional optionalDeserializer -> optionalDeserializer.Schema
-
-    member this.DotnetType =
-        match this with
-        | Deserializer.Atomic atomicDeserializer -> atomicDeserializer.DotnetType
-        | Deserializer.List listDeserializer -> listDeserializer.DotnetType
-        | Deserializer.Record recordDeserializer -> recordDeserializer.DotnetType
-        | Deserializer.Optional optionalDeserializer -> optionalDeserializer.DotnetType
-
-type internal AtomicDeserializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    DataDotnetType: Type
-    CreateFromDataValue: Expression -> Expression }
-
-type internal ListDeserializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    ElementDeserializer: Deserializer
-    CreateEmpty: Expression
-    CreateFromElementValues: Expression -> Expression }
-
-type internal FieldDeserializer = {
-    Schema: FieldSchema
-    Name: string
-    ValueDeserializer: Deserializer }
-
-type internal RecordDeserializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    FieldDeserializers: FieldDeserializer[]
-    CreateFromFieldValues: Expression[] -> Expression }
-
-type internal OptionalDeserializer = {
-    Schema: ValueSchema
-    DotnetType: Type
-    ValueDeserializer: Deserializer
-    CreateNull: Expression
-    CreateFromValue: Expression -> Expression }
-
+// Add module suffix so we can define the module in a different file to the type.
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal Serializer =
     let atomic schema dotnetType dataDotnetType getDataValue =
         let schema =
@@ -202,6 +86,7 @@ module internal Serializer =
             IsNull = isNull
             GetValue = getValue }
 
+    // TODO: This might end up only being used by optional values. Can we simplify?
     let wrapAs dotnetType (serializer: Serializer) unwrapValue =
         // Modify an existing serializer such that it instead serializes a
         // wrapper type, providing an expression builder that converts from the
@@ -241,41 +126,67 @@ module internal Serializer =
                 optionalSerializer.GetValue unwrappedOptional
             Serializer.optional dotnetType valueSerializer isNull getValue
 
-    let throwIfNull (value: Expression) =
-        // if isNull value then
-        //     raise SerializationException(...)
+    let throwIfNull optional (value: Expression) =
+        let exnMessage =
+            if not optional
+            then
+                "null value encountered during serialization for type"
+                + $" '{value.Type}' which is not optional by default"
+            else
+                "null value encountered during serialization for type"
+                + $" '{value.Type}' for which nulls are not allowed by default"
         Expression.IfThen(
             Expression.IsNull(value),
-            Expression.FailWith<SerializationException>(
-                "null value encountered during serialization for type"
-                + $" '{value.Type.FullName}' which is not treated as nullable"
-                + " by default"))
+            Expression.FailWith<SerializationException>(exnMessage))
         :> Expression
 
-    let referenceTypeWrapper (valueSerializer: Serializer) =
-        let dotnetType = valueSerializer.DotnetType
-        let isNull = Expression.IsNull
-        let getValue = id
-        Serializer.optional dotnetType valueSerializer isNull getValue
-
-    let nonNullableReferenceTypeWrapper (valueSerializer: Serializer) =
+    let optionalNonNullableTypeWrapper (valueSerializer: Serializer) =
         let dotnetType = valueSerializer.DotnetType
         let isNull = fun value -> Expression.False
         let getValue = id
         Serializer.optional dotnetType valueSerializer isNull getValue
 
-    let resolve (sourceType: Type) (settings: Settings) =
-        settings.ValueConverters
-        |> Array.tryPick _.TryCreateSerializer(sourceType, settings)
-        |> Option.defaultWith (fun () ->
-            // TODO: This will likely end up depending on attributes as well,
-            // so probably will want to make the exception more generic to
-            // avoid confusion if there is a converter registered to support the
-            // specified type.
-            failwith <|
-                "could not find converter to serialize type"
-                + $" '{sourceType.FullName}'")
+    let optionalNullableTypeWrapper allowNull (valueSerializer: Serializer) =
+        let dotnetType = valueSerializer.DotnetType
+        // If nulls are allowed then we check for null to ensure that any null
+        // values are written as NULL. If nulls are not allowed then we always
+        // return false regardless of whether the value is null or not. This
+        // ensures that the value always gets passed through to the value
+        // serializer, which should check for null given that this is a nullable
+        // type.
+        let isNull =
+            if allowNull
+            then Expression.IsNull
+            else fun value -> Expression.False
+        let getValue = id
+        Serializer.optional dotnetType valueSerializer isNull getValue
 
+    // TODO: Should this live in Settings.fs?
+    // TODO: Exceptions could be improved with field path and nesting level info!
+    let resolve sourceValue settings =
+        let valueSettings = Settings.resolveForValue sourceValue settings
+        match valueSettings.Converter with
+        | Option.Some assignedConverter ->
+            assignedConverter.TryCreateSerializer(sourceValue, settings)
+            |> Option.defaultWith (fun () ->
+                // TODO: Add ToString() implementation to converters with
+                // settings info to make it more obvious why this has happened.
+                raise <| SerializationException(
+                    $"could not create serializer for type '{sourceValue.Type}'"
+                    + $" using assigned converter '{assignedConverter}'"))
+        | Option.None ->
+            settings.ValueConverters
+            |> List.tryPick _.TryCreateSerializer(sourceValue, settings)
+            |> Option.defaultWith (fun () ->
+                // TODO: This will likely end up depending on attributes as well,
+                // so probably will want to make the exception more generic to
+                // avoid confusion if there is a converter registered to support the
+                // specified type.
+                raise <| SerializationException(
+                    $"could not find converter to serialize type '{sourceValue.Type}'"))
+
+// Add module suffix so we can define the module in a different file to the type.
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal Deserializer =
     let atomic schema dotnetType dataDotnetType createFromDataValue =
         let schema =
@@ -321,6 +232,7 @@ module internal Deserializer =
             CreateNull = createNull
             CreateFromValue = createFromValue }
 
+    // TODO: This might end up only being used by optional values. Can we simplify?
     let wrapAs dotnetType (deserializer: Deserializer) wrapValue =
         // Modify an existing deserializer such that it instead deserializes
         // into a wrapper type, providing an expression builder that converts
@@ -356,54 +268,61 @@ module internal Deserializer =
             Deserializer.optional
                 dotnetType valueDeserializer createNull createFromValue
 
-    let referenceTypeWrapper (valueDeserializer: Deserializer) =
-        let dotnetType = valueDeserializer.DotnetType
-        let createNull = Expression.Null(dotnetType)
-        let createFromValue = id
-        Deserializer.optional
-            dotnetType valueDeserializer createNull createFromValue
-
-    let throwNullValueEncounteredForNonNullableType (dotnetType: Type) =
-        Expression.Block(
-            Expression.FailWith<SerializationException>(
-                "null value encountered during deserialization for"
-                + $" non-nullable type '{dotnetType.FullName}'"),
-            Expression.Default(dotnetType))
-        :> Expression
-
     let optionalNonNullableTypeWrapper (valueDeserializer: Deserializer) =
-        let dotnetType = valueDeserializer.DotnetType
-        let createNull = throwNullValueEncounteredForNonNullableType dotnetType
-        let createFromValue = id
-        Deserializer.optional
-            dotnetType valueDeserializer createNull createFromValue
-
-    let optionalNullableTypeWrapper (valueDeserializer: Deserializer) =
         let dotnetType = valueDeserializer.DotnetType
         let createNull =
             Expression.Block(
                 Expression.FailWith<SerializationException>(
-                    "null value encountered during deserialization for type"
-                    + $" '{dotnetType.FullName}' which is not treated as"
-                    + " nullable by default"),
+                    "null value encountered during deserialization for"
+                    + $" non-nullable type '{dotnetType}'"),
                 Expression.Default(dotnetType))
             :> Expression
         let createFromValue = id
         Deserializer.optional
             dotnetType valueDeserializer createNull createFromValue
 
-    let resolve sourceSchema targetType (settings: Settings) =
-        settings.ValueConverters
-        |> Array.tryPick _.TryCreateDeserializer(sourceSchema, targetType, settings)
-        |> Option.defaultWith (fun () ->
-            // TODO: This will likely end up depending on attributes as well,
-            // so probably will want to make the exception more generic to
-            // avoid confusion if there is a converter registered to support the
-            // specified type.
-            failwith <|
-                "could not find converter to deserialize from schema"
-                + $" '{sourceSchema}' to type '{targetType.FullName}'")
+    let optionalNullableTypeWrapper allowNull (valueDeserializer: Deserializer) =
+        let dotnetType = valueDeserializer.DotnetType
+        let createNull =
+            if allowNull
+            then Expression.Null(dotnetType)
+            else
+                Expression.Block(
+                    Expression.FailWith<SerializationException>(
+                        "null value encountered during deserialization for type"
+                        + $" '{dotnetType}' for which nulls are not allowed"
+                        + " by default"),
+                    Expression.Default(dotnetType))
+                :> Expression
+        let createFromValue = id
+        Deserializer.optional
+            dotnetType valueDeserializer createNull createFromValue
 
+    // TODO: Should this live in Settings.fs?
+    let resolve sourceSchema targetValue settings =
+        let valueSettings = Settings.resolveForValue targetValue settings
+        match valueSettings.Converter with
+        | Option.Some assignedConverter ->
+            assignedConverter.TryCreateDeserializer(sourceSchema, targetValue, settings)
+            |> Option.defaultWith (fun () ->
+                raise <| SerializationException(
+                    $"could not create deserializer from schema '{sourceSchema}'"
+                    + $" to type '{targetValue.Type}' using assigned converter"
+                    + $" '{assignedConverter}'"))
+        | Option.None ->
+            settings.ValueConverters
+            |> List.tryPick _.TryCreateDeserializer(sourceSchema, targetValue, settings)
+            |> Option.defaultWith (fun () ->
+                // TODO: This will likely end up depending on attributes as well,
+                // so probably will want to make the exception more generic to
+                // avoid confusion if there is a converter registered to support the
+                // specified type.
+                raise <| SerializationException(
+                    "could not find converter to deserialize from schema"
+                    + $" '{sourceSchema}' to type '{targetValue.Type}'"))
+
+// Add module suffix so we can define the module in a different file to the type.
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal FieldSerializer =
     let create name (valueSerializer: Serializer) getValue =
         let schema = FieldSchema.create name valueSerializer.Schema
@@ -412,12 +331,30 @@ module internal FieldSerializer =
           FieldSerializer.ValueSerializer = valueSerializer
           FieldSerializer.GetValue = getValue }
 
-    let ofField (field: FieldInfo) settings =
-        let name = field.Name
-        let valueSerializer = Serializer.resolve field.Type settings
-        let getValue = field.GetValue
+    let ofClassField (fieldInfo: Parquet.FSharp.FieldInfo) optional settings =
+        let fieldDefinition = FieldDefinition.ofProperty fieldInfo.Property
+        let fieldSettings = Settings.resolveForField fieldDefinition settings
+        let name = fieldSettings.Name |> Option.defaultValue fieldInfo.Name
+        let valueDefinition = ValueDefinition.ofField fieldDefinition
+        let valueSerializer = Serializer.resolve valueDefinition settings
+        let getValue (record: Expression) =
+            Expression.Block(
+                Serializer.throwIfNull optional record,
+                fieldInfo.GetValue record)
+            :> Expression
         create name valueSerializer getValue
 
+    let ofStructField (fieldInfo: Parquet.FSharp.FieldInfo) settings =
+        let fieldDefinition = FieldDefinition.ofProperty fieldInfo.Property
+        let fieldSettings = Settings.resolveForField fieldDefinition settings
+        let name = fieldSettings.Name |> Option.defaultValue fieldInfo.Name
+        let valueDefinition = ValueDefinition.ofField fieldDefinition
+        let valueSerializer = Serializer.resolve valueDefinition settings
+        let getValue = fieldInfo.GetValue
+        create name valueSerializer getValue
+
+// Add module suffix so we can define the module in a different file to the type.
+[<CompilationRepresentationAttribute(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal FieldDeserializer =
     let create name (valueDeserializer: Deserializer) =
         let schema = FieldSchema.create name valueDeserializer.Schema
@@ -425,7 +362,15 @@ module internal FieldDeserializer =
           FieldDeserializer.Name = name
           FieldDeserializer.ValueDeserializer = valueDeserializer }
 
-    let ofField schema (field: FieldInfo) settings =
-        let name = field.Name
-        let deserializer = Deserializer.resolve schema field.Type settings
-        create name deserializer
+    let tryOfField (recordSchema: RecordTypeSchema) (fieldInfo: Parquet.FSharp.FieldInfo) settings =
+        let fieldDefinition = FieldDefinition.ofProperty fieldInfo.Property
+        let fieldSettings = Settings.resolveForField fieldDefinition settings
+        // Override field name with configured name (if present) before looking
+        // for matching field in the schema.
+        let name = fieldSettings.Name |> Option.defaultValue fieldInfo.Name
+        recordSchema.Fields
+        |> Array.tryFind _.Name.Equals(name)
+        |> Option.map (fun fieldSchema ->
+            let valueDefinition = ValueDefinition.ofField fieldDefinition
+            let deserializer = Deserializer.resolve fieldSchema.Value valueDefinition settings
+            create name deserializer)

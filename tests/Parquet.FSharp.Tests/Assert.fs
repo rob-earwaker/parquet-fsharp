@@ -119,7 +119,7 @@ let private buildGenericTypeEqualityAssertion (dotnetType: Type) =
     then Assert.objEqual
     elif genericTypeDefinition = typedefof<option<_>>
     then buildUnionEqualityAssertion dotnetType
-    else failwith $"unsupported type '{dotnetType.FullName}'"
+    else failwith $"unsupported type '{dotnetType}'"
 
 let private EqualityAssertionCache = Dictionary<Type, obj -> obj -> unit>()
 
@@ -159,7 +159,7 @@ let private buildEqualityAssertion (dotnetType: Type) =
             elif dotnetType.IsGenericType then buildGenericTypeEqualityAssertion dotnetType
             elif FSharpType.IsUnion(dotnetType) then buildUnionEqualityAssertion dotnetType
             elif dotnetType.IsClass then buildClassEqualityAssertion dotnetType
-            else failwith  $"unsupported type '{dotnetType.FullName}'"
+            else failwith  $"unsupported type '{dotnetType}'"
         addEqualityAssertionToCache dotnetType equalityAssertion
         equalityAssertion
 

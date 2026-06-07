@@ -149,7 +149,7 @@ module ``deserialize date time offset from optional utc microseconds logical tim
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<DateTimeOffset>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<DateTimeOffset>}'" @>)
 
     [<Theory>]
     [<InlineData(                  0L)>] // Min value

@@ -31,7 +31,7 @@ module ParquetFSharp =
     let deserialize<'Record> (bytes: byte[]) =
         use stream = new MemoryStream(bytes)
         Parquet.FSharp.ParquetSerializer.Deserialize<'Record>(stream)
-        
+
 [<CLIMutable>]
 type Inner = {
     Field1: bool

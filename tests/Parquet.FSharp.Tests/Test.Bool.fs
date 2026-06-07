@@ -5,7 +5,7 @@ open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
-module ``serialize bool`` =
+module ``{ default } serialize`` =
     type Input = { Field1: bool }
     type Output = { Field1: bool }
 
@@ -30,7 +30,32 @@ module ``serialize bool`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize bool from required bool`` =
+module ``{ optional=true } serialize`` =
+    type Input = { [<ParquetBool(Optional = true)>] Field1: bool }
+    type Output = { Field1: bool option }
+
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isOptional
+                Assert.Field.Type.isBool
+                Assert.Field.LogicalType.hasNoValue
+                Assert.Field.ConvertedType.hasNoValue
+                Assert.Field.hasNoChildren ] ]
+
+    [<Theory>]
+    [<InlineData(false)>]
+    [<InlineData( true)>]
+    let ``value`` value =
+        let inputRecords = [| { Input.Field1 = value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
+
+module ``{ default } deserialize`` =
     type Input = { Field1: bool }
     type Output = { Field1: bool }
 
@@ -43,9 +68,9 @@ module ``deserialize bool from required bool`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = value } |] @>
 
-module ``deserialize bool from optional bool`` =
+module ``{ optional=true } deserialize`` =
     type Input = { Field1: bool option }
-    type Output = { Field1: bool }
+    type Output = { [<ParquetBool(Optional = true)>] Field1: bool }
 
     [<Fact>]
     let ``null value`` () =
@@ -56,7 +81,7 @@ module ``deserialize bool from optional bool`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<bool>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<bool>}'" @>)
 
     [<Theory>]
     [<InlineData(false)>]

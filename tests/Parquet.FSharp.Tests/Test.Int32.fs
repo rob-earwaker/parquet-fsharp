@@ -63,7 +63,7 @@ module ``deserialize int32 from optional int32`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int32>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int32>}'" @>)
 
     [<Theory>]
     [<InlineData(Int32.MinValue)>]
@@ -106,7 +106,7 @@ module ``deserialize int32 from optional int16`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int32>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int32>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) Int16.MinValue, (* outputValue *) -32768)>]
@@ -149,7 +149,7 @@ module ``deserialize int32 from optional int8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int32>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int32>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) SByte.MinValue, (* outputValue *) -128)>]
@@ -190,7 +190,7 @@ module ``deserialize int32 from optional uint16`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int32>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int32>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) UInt16.MinValue, (* outputValue *)     0)>]
@@ -229,7 +229,7 @@ module ``deserialize int32 from optional uint8`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<int32>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<int32>}'" @>)
 
     [<Theory>]
     [<InlineData((* inputValue *) Byte.MinValue, (* outputValue *)   0)>]

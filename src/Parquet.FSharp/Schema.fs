@@ -6,20 +6,20 @@ open System
 type internal RootSchema = {
     Fields: FieldSchema[] }
 
-type internal FieldSchema = {
+type FieldSchema = {
     Name: string
     Value: ValueSchema }
     with
     override this.ToString() =
         $"{this.Name}: {this.Value}"
 
-type internal ValueSchema = {
+type ValueSchema = {
     IsOptional: bool
     Type: ValueTypeSchema }
     with
     member this.MakeOptional() =
         { this with IsOptional = true }
-        
+
     member this.MakeRequired() =
         { this with IsOptional = false }
 
@@ -27,7 +27,7 @@ type internal ValueSchema = {
         let optionality = if this.IsOptional then "optional" else "required"
         $"{optionality} {string this.Type}"
 
-type internal ValueTypeSchema =
+type ValueTypeSchema =
     // TODO: Maybe these should just capture the Parquet.Net fields?
     | Primitive of PrimitiveTypeSchema
     | DateTime of DateTimeTypeSchema
@@ -41,39 +41,39 @@ type internal ValueTypeSchema =
         | ValueTypeSchema.List list -> string list
         | ValueTypeSchema.Record record -> string record
 
-type internal PrimitiveTypeSchema = {
+type PrimitiveTypeSchema = {
     DataDotnetType: Type }
     with
     override this.ToString() =
         // TODO: Could enumerate all primitive types here to make it nicer.
         this.DataDotnetType.Name.ToLower()
 
-type internal DateTimeTypeSchema = {
+type DateTimeTypeSchema = {
     IsAdjustedToUtc: bool
     Unit: TimeUnit }
     with
     override this.ToString() =
         let kind = if this.IsAdjustedToUtc then "utc" else "local"
-        $"datetime[{kind}, {this.Unit}]"
+        let unit =
+            match this.Unit with
+            | TimeUnit.Milliseconds -> "ms"
+            | TimeUnit.Microseconds -> "us"
+            | TimeUnit.Nanoseconds -> "ns"
+            | _ -> "??"
+        $"datetime[{kind}, {unit}]"
 
-type internal TimeUnit =
-    | Milliseconds
-    | Microseconds
-    | Nanoseconds
-    with
-    override this.ToString() =
-        match this with
-        | TimeUnit.Milliseconds -> "ms"
-        | TimeUnit.Microseconds -> "us"
-        | TimeUnit.Nanoseconds -> "ns"
+type TimeUnit =
+    | Milliseconds = 0
+    | Microseconds = 1
+    | Nanoseconds = 2
 
-type internal ListTypeSchema = {
+type ListTypeSchema = {
     Element: ValueSchema }
     with
     override this.ToString() =
         $"[ {this.Element} ]"
 
-type internal RecordTypeSchema = {
+type RecordTypeSchema = {
     Fields: FieldSchema[] }
     with
     override this.ToString() =
@@ -83,7 +83,7 @@ type internal RecordTypeSchema = {
 module internal ValueTypeSchema =
     let primitive dataDotnetType =
         ValueTypeSchema.Primitive { DataDotnetType = dataDotnetType }
-        
+
     let dateTime isAdjustedToUtc unit =
         ValueTypeSchema.DateTime {
             IsAdjustedToUtc = isAdjustedToUtc
@@ -111,7 +111,8 @@ module internal ValueSchema =
                     match dateTimeField.Unit with
                     | DateTimeTimeUnit.Millis -> TimeUnit.Milliseconds
                     | DateTimeTimeUnit.Micros -> TimeUnit.Microseconds
-                    | _ -> TimeUnit.Nanoseconds
+                    | DateTimeTimeUnit.Nanos -> TimeUnit.Nanoseconds
+                    | unit -> failwith $"unsupported {nameof DateTimeTimeUnit} '{unit}'"
                 ValueTypeSchema.dateTime isAdjustedToUtc unit
             | :? DataField as dataField ->
                 let dataDotnetType = dataField.ClrType
@@ -124,7 +125,7 @@ module internal ValueSchema =
                 |> Seq.map FieldSchema.ofParquetNet
                 |> Array.ofSeq
                 |> ValueTypeSchema.record
-            | _ -> failwith $"unsupported field type '{field.GetType().FullName}'"
+            | _ -> failwith $"unsupported field type '{field.GetType()}'"
         ValueSchema.create isOptional valueType
 
     // The {ListField} and {StructField} defined in Parquet.Net assume all lists
@@ -150,11 +151,17 @@ module internal ValueSchema =
         | ValueTypeSchema.Primitive primitive ->
             DataField(fieldName, primitive.DataDotnetType, valueSchema.IsOptional)
         | ValueTypeSchema.DateTime dateTime ->
+            let unit =
+                match dateTime.Unit with
+                | TimeUnit.Milliseconds -> DateTimeTimeUnit.Millis
+                | TimeUnit.Microseconds -> DateTimeTimeUnit.Micros
+                | TimeUnit.Nanoseconds -> DateTimeTimeUnit.Nanos
+                | unit -> failwith $"unsupported {nameof TimeUnit} '{unit}'"
             DateTimeDataField(
                 fieldName,
                 DateTimeFormat.Timestamp,
                 dateTime.IsAdjustedToUtc,
-                Nullable(DateTimeTimeUnit.Micros),
+                Nullable(unit),
                 valueSchema.IsOptional)
         | ValueTypeSchema.List list ->
             let element = toParquetNet ListField.ElementName list.Element

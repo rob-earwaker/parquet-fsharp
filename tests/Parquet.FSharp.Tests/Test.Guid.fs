@@ -59,7 +59,7 @@ module ``deserialize guid from optional uuid`` =
             (fun exn ->
                 <@ exn.Message =
                     "null value encountered during deserialization for"
-                    + $" non-nullable type '{typeof<Guid>.FullName}'" @>)
+                    + $" non-nullable type '{typeof<Guid>}'" @>)
 
     [<Theory>]
     [<InlineData("00000000-0000-0000-0000-000000000000")>]

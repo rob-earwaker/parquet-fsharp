@@ -313,16 +313,12 @@ module private rec ValueShredder =
 
 type private Shredder<'Record>(settings) =
     let recordSerializer =
-        match Serializer.resolve typeof<'Record> settings with
+        let recordValue =
+            FieldDefinition.forRoot typeof<'Record>
+            |> ValueDefinition.ofField
+        match Serializer.resolve recordValue settings with
         | Serializer.Record recordSerializer -> recordSerializer
-        // The root record should never be optional. If it is an optional
-        // record, unwrap it to remove this optionality. This ensures that the
-        // root defnition level is always zero.
-        | Serializer.Optional optionalSerializer ->
-            match optionalSerializer.ValueSerializer with
-            | Serializer.Record recordSerializer -> recordSerializer
-            | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
-        | _ -> failwith $"type {typeof<'Record>.FullName} is not a record"
+        | _ -> raise <| SerializationException($"root type '{recordValue.Type}' is not a record")
 
     let schema = RootSchema.ofValueSchema recordSerializer.Schema
     let parquetNetSchema = RootSchema.toParquetNet schema

@@ -29,9 +29,9 @@ An F# serialization library for the [Apache Parquet](https://parquet.apache.org/
   - [Value Settings](#value-settings)
 - [Roadmap](#roadmap)
   - [Extend Supported Types](#extend-supported-types)
+  - [Extend Attribute Support](#extend-attribute-support)
   - [Serialization Options](#serialization-options)
-  - [Serialization Attributes](#serialization-attributes)
-  - [Custom Serializers](#custom-serializers)
+  - [Custom Converters](#custom-converters)
   - [Improved Error Handling](#improved-error-handling)
   - [Schema Evolution](#schema-evolution)
 
@@ -368,7 +368,7 @@ The following settings can be used to customize serialization of multi-case unio
 
 ## Customization
 
-**Parquet.FSharp** aims to support a wide range of commonly used types and to provide sensible defaults for serialization, but there are cases when it's useful to extend and/or override this default behaviour. This customization is currently achieved through use of attributes, which allow default settings for serialization of fields and values to be overriden.
+**Parquet.FSharp** supports a wide range of commonly used types and provides sensible defaults for serialization, but there are cases when it's useful to extend and/or override this default behaviour. This customization is currently achieved through use of attributes, which allow default serialization settings to be overriden for fields and values.
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -394,7 +394,7 @@ type Event = {
 
 | Setting | Type | Default | Description |
 |-|-|-|-|
-| `Converter` | `IValueConverter option` | `Option.None` | Allows the converter used to serialize the target value to be overriden. If not specified, the default converter for the target value type will be used. See [Supported Types](#supported-types) for more information on this default behaviour. |
+| `Converter` | `IValueConverter option` | `Option.None` | Allows a converter instance to be specified for serialization of the target value. If not specified, the default converter for the target value type will be used. See [Supported Types](#supported-types) for more information on this default behaviour. |
 
 Value settings can be customized using attributes derived from the `ParquetValueSettingsAttribute` abstract class. **Parquet.FSharp** defines derived attributes for each of the built-in value converters, allowing the settings of these converters to be customized. Information on the attributes and converter settings available can be found in [Supported Types](#supported-types). Some examples are shown below:
 
@@ -456,28 +456,26 @@ The following types are not currently supported but will likely be added in the 
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
+### Extend Attribute Support
+
+Attributes can already be used to control serialization behaviour, but there are several more options that could be made available for built-in converters, for example the ability to:
+
+- Override union case names.
+- Treat date time values as local rather than UTC.
+- Specify the precision and scale of decimal values.
+- Ignore certain fields within a record.
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
 ### Serialization Options
 
-The ability to specify options when serializing and deserializing to allow finer-grained control of serialization behaviour. This will hopefully include the ability to apply options to either all fields that are being serialized or just to specific fields. Configuration options could include the ability to:
-
-- Override field names and union case names.
-- Serialize fields that would normally be serialized as required fields as optional instead.
-- Allow serialization and deserialization of null values for reference types.
-- Treat date time values as local rather than UTC.
-- Allow millisecond and nanosecond precision for date times in addition to the default microsecond precision.
-- Specify the precision and scale of decimal values.
+The ability to specify options at the serialization call site to allow finer-grained control of serialization behaviour. This would essentially allow the same set of configuration options currently provided by attributes to be configured dynamically at serialization time rather than at compile time.
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
-### Serialization Attributes
+### Custom Converters
 
-Attributes that can be applied to types and fields to allow the above serialization options to be defined as part of type definitions rather than requiring configuration at the point of serialization.
-
-<sub>[[Return to top]](#parquetfsharp)</sub>
-
-### Custom Serializers
-
-Allow the definition of custom serializers and deserializers that can be used to override the default serialization behaviour provided by the library for specific types, or allow serialization of types that aren't supported by the library. The default serialization behaviour defined in the library is already set up in this way, but the list of registered converters is not yet configurable and just contains a default converter for each supported type.
+Allow the definition of custom converters that can be used to override the default serialization behaviour provided by the library for specific types, or allow serialization of types that aren't supported by the library. The default serialization behaviour defined in the library is already set up in this way, but the list of registered converters is not yet configurable and just contains a default converter for each supported type.
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 

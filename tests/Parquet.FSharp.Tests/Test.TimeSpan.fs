@@ -34,8 +34,8 @@ module ``serialize time span`` =
     [<InlineData(        86400000L)>] //  1.00:00:00.000
     [<InlineData(        86400001L)>] //  1.00:00:00.001
     [<InlineData( 922337203685477L)>] // Max value (truncated to millis)
-    let ``millisecond precision`` (milliseconds: int64) =
-        let value = TimeSpan.FromMilliseconds(milliseconds)
+    let ``millisecond precision`` milliseconds =
+        let value = TimeSpan(milliseconds * TimeSpan.TicksPerMillisecond)
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
@@ -59,8 +59,8 @@ module ``serialize time span`` =
     [<InlineData(        86400000000L)>] //  1.00:00:00.000000
     [<InlineData(        86400000001L)>] //  1.00:00:00.000001
     [<InlineData( 922337203685477580L)>] // Max value (truncated to micros)
-    let ``microsecond precision`` (microseconds: int64) =
-        let value = TimeSpan.FromMicroseconds(microseconds)
+    let ``microsecond precision`` microseconds =
+        let value = TimeSpan(microseconds * TimeSpan.TicksPerMicrosecond)
         let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let schema = ParquetFile.readSchema bytes
@@ -119,7 +119,7 @@ module ``deserialize time span from required int64`` =
         let inputRecords = [| { Input.Field1 = microseconds } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        let expectedValue = TimeSpan.FromMicroseconds(microseconds)
+        let expectedValue = TimeSpan(microseconds * TimeSpan.TicksPerMicrosecond)
         test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
 
 module ``deserialize time span from optional int64`` =
@@ -127,7 +127,7 @@ module ``deserialize time span from optional int64`` =
     type Output = { Field1: TimeSpan }
 
     [<Fact>]
-    let ``null value`` () =
+    let ``null`` () =
         let inputRecords = [| { Input.Field1 = Option.None } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         raisesWith<SerializationException>
@@ -151,9 +151,9 @@ module ``deserialize time span from optional int64`` =
     [<InlineData(        86400000000L)>] //  1.00:00:00.000000
     [<InlineData(        86400000001L)>] //  1.00:00:00.000001
     [<InlineData( 922337203685477580L)>] // Max value (truncated to micros)
-    let ``non-null value`` microseconds =
+    let ``non-null`` microseconds =
         let inputRecords = [| { Input.Field1 = Option.Some microseconds } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        let expectedValue = TimeSpan.FromMicroseconds(microseconds)
+        let expectedValue = TimeSpan(microseconds * TimeSpan.TicksPerMicrosecond)
         test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>

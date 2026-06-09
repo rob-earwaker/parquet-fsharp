@@ -21,12 +21,14 @@ type ParquetDateTimeAttribute() =
     let default' = DateTimeConverterSettings.Default
     
     member val Unit = default'.Unit with get, set
+    member val Local = default'.Local with get, set
     member val Optional = default'.Optional with get, set
 
     override this.ApplyValueSettings(valueSettings) =
         let converter =
             DateTimeConverter {
                 Unit = this.Unit
+                Local = this.Local
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 

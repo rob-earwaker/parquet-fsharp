@@ -29,39 +29,42 @@ open System.Linq.Expressions
 
 type internal DateTimeConverterSettings = {
     Unit: TimeUnit
+    Local: bool
     Optional: bool }
     with
     static member val Default = {
         DateTimeConverterSettings.Unit = TimeUnit.Microseconds
+        DateTimeConverterSettings.Local = false
         DateTimeConverterSettings.Optional = false }
 
-// TODO: Allow configuration of local vs utc - enum in schema definition or bool?
 // TODO: Allow date time kind to be ignored
 
 type internal DateTimeConverter(converterSettings: DateTimeConverterSettings) =
     let dotnetType = typeof<DateTime>
     let dataDotnetType = typeof<DateTime>
+    let isAdjustedToUtc = not converterSettings.Local
 
     let requiredSerializer =
-        let schema =
-            let isAdjustedToUtc = true
-            let unit = converterSettings.Unit
-            ValueTypeSchema.dateTime isAdjustedToUtc unit
+        let schema = ValueTypeSchema.dateTime isAdjustedToUtc converterSettings.Unit
         let getDataValue (dateTime: Expression) =
-            // if dateTime.Kind <> DateTimeKind.Utc then
+            let expectedKind, semanticName =
+                if isAdjustedToUtc
+                then DateTimeKind.Utc, "instant"
+                else DateTimeKind.Local, "local"
+            // if dateTime.Kind <> expectedKind then
             //     raise SerializationException(...)
             // dateTime
             let kind = Expression.Property(dateTime, "Kind")
             Expression.Block(
                 Expression.IfThen(
-                    Expression.NotEqual(kind, Expression.Constant(DateTimeKind.Utc)),
+                    Expression.NotEqual(kind, Expression.Constant(expectedKind)),
                     Expression.FailWith<SerializationException>(
                         Expression.Constant(
                             "encountered 'DateTime' with 'DateTimeKind."),
                         Expression.Call(kind, "ToString", []),
                         Expression.Constant(
-                            "' during serialization of timestamp with instant"
-                            + " semantics which only allows 'DateTimeKind.Utc'"
+                            $"' during serialization of timestamp with {semanticName}"
+                            + $" semantics which only allows 'DateTimeKind.{expectedKind}'"
                             + " by default"))),
                 dateTime)
             :> Expression
@@ -72,10 +75,7 @@ type internal DateTimeConverter(converterSettings: DateTimeConverterSettings) =
         |> Serializer.optionalNonNullableTypeWrapper
 
     let requiredDeserializer =
-        let schema =
-            let isAdjustedToUtc = true
-            let unit = converterSettings.Unit
-            ValueTypeSchema.dateTime isAdjustedToUtc unit
+        let schema = ValueTypeSchema.dateTime isAdjustedToUtc converterSettings.Unit
         let createFromDataValue = id
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
@@ -100,7 +100,7 @@ type internal DateTimeConverter(converterSettings: DateTimeConverterSettings) =
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.DateTime dateTimeSchema
-                    when dateTimeSchema.IsAdjustedToUtc
+                    when dateTimeSchema.IsAdjustedToUtc = isAdjustedToUtc
                         && dateTimeSchema.Unit = converterSettings.Unit ->
                     if sourceSchema.IsOptional && converterSettings.Optional
                     then Option.Some optionalDeserializer

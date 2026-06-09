@@ -144,9 +144,9 @@ The `TimeSpan` type uses 'ticks' as a base unit, where each tick represents 100 
 
 Applies to: `DateTime`, `DateTimeOffset`
 
-Date times are serialized as required UTC values with microsecond precision by default and must be deserialized from required date time values.
+Date times are serialized as required UTC values with microsecond precision by default and must be deserialized from required UTC date time values.
 
-Since `DateTime` values have an associated `DateTimeKind`, which is one of `Unspecified`, `Utc` or `Local`, conversion to UTC can be ambiguous. Default serialization does not make any assumptions or do any implicit conversions, so any `DateTime` values that are not defined with `DateTimeKind.Utc` will result in a `SerializationException`.
+Since `DateTime` values have an associated `DateTimeKind`, which is one of `Unspecified`, `Utc` or `Local`, conversion to UTC can be ambiguous. Default serialization does not make any assumptions or do any implicit conversions, so any `DateTime` values that do not have `DateTimeKind.Utc` will result in a `SerializationException`.
 
 `DateTimeOffset` values always map to a specific instant in time, so can always be converted to UTC in an unambiguous way. During serialization, `DateTimeOffset` values will be converted to their UTC equivalent. This means that the offset information is lost, but the serialized value is guaranteed to identify the same instant in time.
 
@@ -156,7 +156,8 @@ The following settings can be used to customize serialization of `DateTime` valu
 
 | Setting | Type | Default | Description |
 |-|-|-|-|
-| `Unit` | `TimeUnit` | `Microseconds` | Allows the value to be serialized as a millisecond or nanosecond precision date time instead of the default microsecond precision and allows deserialization from date times with these precisions. Serialization with millisecond precision will result in truncation. |
+| `Unit` | `TimeUnit` | `Microseconds` | Allows the value to be serialized as a millisecond or nanosecond precision date time instead of the default microsecond precision and allows deserialization from date times with these precisions. Serialization with millisecond or microsecond precision will result in truncation. |
+| `Local` | `bool` | `false` | Allows the value to be serialized as a local date time. When serializing local date time values, any `DateTime` values that do not have `DateTimeKind.Local` will result in a `SerializationException`. |
 | `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>

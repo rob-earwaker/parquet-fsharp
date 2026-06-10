@@ -160,6 +160,13 @@ The following settings can be used to customize serialization of `DateTime` valu
 | `Local` | `bool` | `false` | Allows the value to be serialized as a local date time. When serializing local date time values, any `DateTime` values that do not have `DateTimeKind.Local` will result in a `SerializationException`. |
 | `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
+The following settings can be used to customize serialization of `DateTimeOffset` values via the `[<ParquetDateTimeOffset>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Unit` | `TimeUnit` | `Microseconds` | Allows the value to be serialized as a millisecond or nanosecond precision date time instead of the default microsecond precision and allows deserialization from date times with these precisions. Serialization with millisecond or microsecond precision will result in truncation. |
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
+
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
 ### Strings

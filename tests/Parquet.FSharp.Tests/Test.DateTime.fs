@@ -126,7 +126,7 @@ module ``{ default } serialize`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         // Expect the value to be truncated to microsecond precision.
-        let expectedValue = value.AddTicks(-(value.Ticks % 10L))
+        let expectedValue = value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMicrosecond))
         test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
         // Default {DateTime} equality only compares the number of ticks and
         // ignores the {DateTimeKind}, so we need to check this separately.
@@ -250,7 +250,7 @@ module ``{ optional=true } serialize`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         // Expect the value to be truncated to microsecond precision.
-        let expectedValue = value.AddTicks(-(value.Ticks % 10L))
+        let expectedValue = value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMicrosecond))
         test <@ outputRecords = [| { Output.Field1 = Option.Some expectedValue } |] @>
         // Default {DateTime} equality only compares the number of ticks and
         // ignores the {DateTimeKind}, so we need to check this separately.
@@ -375,7 +375,7 @@ module ``{ local=true } serialize`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         // Expect the value to be truncated to microsecond precision.
-        let expectedValue = value.AddTicks(-(value.Ticks % 10L))
+        let expectedValue = value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMicrosecond))
         test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
         // Default {DateTime} equality only compares the number of ticks and
         // ignores the {DateTimeKind}, so we need to check this separately.
@@ -505,7 +505,7 @@ module ``{ local=true; optional=true } serialize`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         // Expect the value to be truncated to microsecond precision.
-        let expectedValue = value.AddTicks(-(value.Ticks % 10L))
+        let expectedValue = value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMicrosecond))
         test <@ outputRecords = [| { Output.Field1 = Option.Some expectedValue } |] @>
         // Default {DateTime} equality only compares the number of ticks and
         // ignores the {DateTimeKind}, so we need to check this separately.
@@ -607,7 +607,7 @@ module ``{ unit=milliseconds } serialize`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         // Expect the value to be truncated to millisecond precision.
-        let expectedValue = value.AddTicks(-(value.Ticks % 10000L))
+        let expectedValue = value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMillisecond))
         test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
         // Default {DateTime} equality only compares the number of ticks and
         // ignores the {DateTimeKind}, so we need to check this separately.
@@ -629,7 +629,7 @@ module ``{ unit=milliseconds } serialize`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         // Expect the value to be truncated to millisecond precision.
-        let expectedValue = value.AddTicks(-(value.Ticks % 10000L))
+        let expectedValue = value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMillisecond))
         test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
         // Default {DateTime} equality only compares the number of ticks and
         // ignores the {DateTimeKind}, so we need to check this separately.
@@ -736,7 +736,7 @@ module ``{ unit=milliseconds; optional=true } serialize`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         // Expect the value to be truncated to millisecond precision.
-        let expectedValue = value.AddTicks(-(value.Ticks % 10000L))
+        let expectedValue = value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMillisecond))
         test <@ outputRecords = [| { Output.Field1 = Option.Some expectedValue } |] @>
         // Default {DateTime} equality only compares the number of ticks and
         // ignores the {DateTimeKind}, so we need to check this separately.
@@ -758,7 +758,7 @@ module ``{ unit=milliseconds; optional=true } serialize`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         // Expect the value to be truncated to millisecond precision.
-        let expectedValue = value.AddTicks(-(value.Ticks % 10000L))
+        let expectedValue = value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMillisecond))
         test <@ outputRecords = [| { Output.Field1 = Option.Some expectedValue } |] @>
         // Default {DateTime} equality only compares the number of ticks and
         // ignores the {DateTimeKind}, so we need to check this separately.
@@ -866,7 +866,7 @@ module ``{ unit=milliseconds; local=true } serialize`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         // Expect the value to be truncated to millisecond precision.
-        let expectedValue = value.AddTicks(-(value.Ticks % 10000L))
+        let expectedValue = value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMillisecond))
         test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
         // Default {DateTime} equality only compares the number of ticks and
         // ignores the {DateTimeKind}, so we need to check this separately.
@@ -888,7 +888,7 @@ module ``{ unit=milliseconds; local=true } serialize`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         // Expect the value to be truncated to millisecond precision.
-        let expectedValue = value.AddTicks(-(value.Ticks % 10000L))
+        let expectedValue = value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMillisecond))
         test <@ outputRecords = [| { Output.Field1 = expectedValue } |] @>
         // Default {DateTime} equality only compares the number of ticks and
         // ignores the {DateTimeKind}, so we need to check this separately.
@@ -996,7 +996,7 @@ module ``{ unit=milliseconds; local=true; optional=true } serialize`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         // Expect the value to be truncated to millisecond precision.
-        let expectedValue = value.AddTicks(-(value.Ticks % 10000L))
+        let expectedValue = value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMillisecond))
         test <@ outputRecords = [| { Output.Field1 = Option.Some expectedValue } |] @>
         // Default {DateTime} equality only compares the number of ticks and
         // ignores the {DateTimeKind}, so we need to check this separately.
@@ -1018,7 +1018,7 @@ module ``{ unit=milliseconds; local=true; optional=true } serialize`` =
         assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         // Expect the value to be truncated to millisecond precision.
-        let expectedValue = value.AddTicks(-(value.Ticks % 10000L))
+        let expectedValue = value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMillisecond))
         test <@ outputRecords = [| { Output.Field1 = Option.Some expectedValue } |] @>
         // Default {DateTime} equality only compares the number of ticks and
         // ignores the {DateTimeKind}, so we need to check this separately.

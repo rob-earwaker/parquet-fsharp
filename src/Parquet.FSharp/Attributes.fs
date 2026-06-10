@@ -32,6 +32,22 @@ type ParquetDateTimeAttribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
+/// Configures the settings used to serialize a `DateTimeOffset` value.
+type ParquetDateTimeOffsetAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = DateTimeOffsetConverterSettings.Default
+    
+    member val Unit = default'.Unit with get, set
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            DateTimeOffsetConverter {
+                Unit = this.Unit
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
 /// Configures the settings used to serialize a `string` value.
 type ParquetStringAttribute() =
     inherit ParquetValueSettingsAttribute()

@@ -186,6 +186,20 @@ type ParquetValueOptionAttribute() =
                 Required = this.Required }
         valueSettings |> ValueSettings.converter converter
 
+/// Configures the settings used to serialize a `Nullable`.
+type ParquetNullableAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = NullableConverterSettings.Default
+
+    member val Required = default'.Required with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            NullableConverter {
+                Required = this.Required }
+        valueSettings |> ValueSettings.converter converter
+
 /// Configures the settings used to serialize an F# union with no associated
 /// data fields for any of the cases.
 type ParquetEnumUnionAttribute() =

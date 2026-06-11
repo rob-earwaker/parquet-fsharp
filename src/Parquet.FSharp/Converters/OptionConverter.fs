@@ -27,7 +27,7 @@ type internal OptionConverter(converterSettings: OptionConverterSettings) =
             Serializer.optional dotnetType valueSerializer isNull getValue
             |> Option.Some
 
-    // Create a serializer for an option type that is always treated as
+    // Create a serializer for an optional type that is always treated as
     // required, i.e. can never be NULL. Optional values are allowed in this
     // situation because they don't result in nested optionals.
     let createRequiredSerializer (optionalInfo: OptionalInfo) optionalValue settings =

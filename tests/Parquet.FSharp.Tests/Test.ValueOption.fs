@@ -127,7 +127,7 @@ module ``{ default } serialize with record value`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
-module ``{ required=false } serialize with required value`` =
+module ``{ required=false } serialize`` =
     type Input = { [<ParquetValueOption(Required = false)>] Field1: int voption }
     type Output = { Field1: int option }
 
@@ -294,7 +294,7 @@ module ``{ default } deserialize with record value`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = ValueOption.Some value } |] @>
 
-module ``{ required=false } deserialize with required value`` =
+module ``{ required=false } deserialize`` =
     type Input = { Field1: int option }
     type Output = { [<ParquetValueOption(Required = false)>] Field1: int voption }
 

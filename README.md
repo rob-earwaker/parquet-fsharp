@@ -251,9 +251,13 @@ Parquet supports both optional and required values. In F#, nullable values are n
 
 Due to the above, the default approach for serialization of other supported types is to treat the values as required, even if they are implicitly nullable through being a reference type. This helps prevent null values from appearing when they aren't expected. Values can instead be serialized as optional values by wrapping them in one of the supported optional types.
 
-Optional types can be deserialized from both optional and required values. When deserailzied from required values, they are guaranteed to have an associated value and will therefore never be 'null'.
+The following settings can be used to customize serialization of optional values via the `[<ParquetOption>]`, `[<ParquetValueOption>]` or `[<ParquetNullable>]` attributes depending on the optional type:
 
-Note that Parquet does not support multiple levels of optionality, so nested optional types such as `'Value option option` are not supported. Attempting to serialize nested optional values will result in a `SerializationException`. Instead, the recommended approach for handling nested optional values is to add another level of nesting using an optional record containing a single optional field, for example:
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Required` | `bool` | `false` | Allows the optional value to be serialized as if it were a required value. When serialized as required, any null values encountered will result in a `SerializationException`. |
+
+Note that Parquet does not support multiple levels of optionality, so nested optional types such as `'Value option option` are not supported by default. Attempting to serialize nested optional values will result in a `SerializationException`. Instead, the recommended approach for handling nested optional values is to add another level of nesting using an optional record containing a single optional field, for example:
 
 ```fsharp
 // Nested options are not allowed by the Parquet format.
@@ -263,6 +267,20 @@ type IntOptionOption = int option option
 // record with an optional field value.
 type IntOption = { Value: int option }
 type IntOptionOption = IntOption option
+```
+
+Alternatively, if one level of the nested optional type is known to always be non-null then it can be set as `Required`, e.g.
+
+```fsharp
+type Record {
+    // Outer option type is always `Some` so can be set as `Required`.
+    [<ParquetOption(Required = true)>]
+    IntOptionOption: int option option }
+
+type Record {
+    // Inner option type is always `Some` so can be set as `Required`.
+    [<ParquetOption(NestingLevel = 1, Required = true)>]
+    IntOptionOption: int option option }
 ```
 
 <sub>[[Return to top]](#parquetfsharp)</sub>

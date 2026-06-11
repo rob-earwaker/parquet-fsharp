@@ -369,6 +369,7 @@ The following settings can be used to customize serialization of multi-case unio
 
 | Setting | Type | Default | Description |
 |-|-|-|-|
+| `CaseTypeFieldName` | `string` | `"Type"` | Allows the name of the field used to store the case name to be overriden. |
 | `Optional` | `bool` | `false` | Allows the union to be serialized as an optional record and allows it to be deserialized from an optional record. Any null unions encountered during serialization or deserialization will still result in a `SerializationException` unless this behaviour is explicitly overriden using the `AllowNull` setting. |
 | `AllowNull` | `bool` | `false` | Allows null unions to be serialized and deserialized. This setting has no effect unless the union has been configured as `Optional`. |
 

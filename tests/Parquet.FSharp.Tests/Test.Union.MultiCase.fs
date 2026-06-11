@@ -6,7 +6,6 @@ open Swensen.Unquote
 open Xunit
 
 // TODO: Add tests for struct unions
-// TODO: Add tests for when 'Type' field is optional.
 
 module ``{ default } serialize with atomic field`` =
     type Union = Case1 | Case2 of field2:int
@@ -389,6 +388,72 @@ module ``{ default } serialize with multiple fields`` =
                 Type = "Case3"
                 Case2 = Option.None
                 Case3 = Option.Some { field4 = 2.34 } } |] |]
+
+    [<Theory>]
+    [<MemberData(nameof NonNull)>]
+    let ``non-null`` inputValue outputValue =
+        let inputRecords = [| { Input.Field1 = inputValue } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
+
+module ``{ caseTypeFieldName='CaseName' } serialize`` =
+    type Union = Case1 | Case2 of field2:int
+    type Case2Record = { field2: int }
+    type UnionRecord = { CaseName: string; Case2: Case2Record option }
+    type Input = { [<ParquetMultiCaseUnion(CaseTypeFieldName = "CaseName")>] Field1: Union }
+    type Output = { Field1: UnionRecord }
+
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isRequired
+                Assert.Field.Type.hasNoValue
+                Assert.Field.LogicalType.hasNoValue
+                Assert.Field.ConvertedType.hasNoValue
+                Assert.Field.children [
+                    Assert.field [
+                        Assert.Field.nameEquals "CaseName"
+                        Assert.Field.isRequired
+                        Assert.Field.Type.isByteArray
+                        Assert.Field.LogicalType.isString
+                        Assert.Field.ConvertedType.isUtf8
+                        Assert.Field.hasNoChildren ]
+                    Assert.field [
+                        Assert.Field.nameEquals "Case2"
+                        Assert.Field.isOptional
+                        Assert.Field.Type.hasNoValue
+                        Assert.Field.LogicalType.hasNoValue
+                        Assert.Field.ConvertedType.hasNoValue
+                        Assert.Field.child [
+                            Assert.Field.nameEquals "field2"
+                            Assert.Field.isRequired
+                            Assert.Field.Type.isInt32
+                            Assert.Field.LogicalType.isInteger 32 true
+                            Assert.Field.ConvertedType.isInt32
+                            Assert.Field.hasNoChildren ] ] ] ] ]
+
+    [<Fact>]
+    let ``null`` () =
+        let inputRecords = [| { Input.Field1 = Unchecked.defaultof<Union> } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "null value encountered during serialization for type"
+                    + $" '{typeof<Union>}' which is not optional by default" @>)
+
+    let NonNull = [|
+        [| (* inputValue *) box <| Union.Case1;
+            (* outputValue *) box {
+                UnionRecord.CaseName = "Case1"; Case2 = Option.None } |]
+
+        [| (* inputValue *) box <| Union.Case2 1;
+            (* outputValue *) box {
+                UnionRecord.CaseName = "Case2"; Case2 = Option.Some { field2 = 1 } } |] |]
 
     [<Theory>]
     [<MemberData(nameof NonNull)>]
@@ -859,6 +924,30 @@ module ``{ default } deserialize with subset of fields`` =
                 Case2 = Option.None
                 Case3 = Option.Some { field4 = 2.34 } };
             (* outputValue *) box <| Union.Case3 |] |]
+
+    [<Theory>]
+    [<MemberData(nameof Value)>]
+    let ``value`` inputValue outputValue =
+        let inputRecords = [| { Input.Field1 = inputValue } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = outputValue } |] @>
+
+module ``{ caseTypeFieldName='CaseName' } deserialize`` =
+    type Case2Record = { field2: int }
+    type UnionRecord = { CaseName: string; Case2: Case2Record option }
+    type Union = Case1 | Case2 of field2:int
+    type Input = { Field1: UnionRecord }
+    type Output = { [<ParquetMultiCaseUnion(CaseTypeFieldName = "CaseName")>] Field1: Union }
+
+    let Value = [|
+        [| (* inputValue *) box {
+            UnionRecord.CaseName = "Case1"; Case2 = Option.None };
+            (* outputValue *) box <| Union.Case1 |]
+
+        [| (* inputValue *) box {
+            UnionRecord.CaseName = "Case2"; Case2 = Option.Some { field2 = 1 } };
+            (* outputValue *) box <| Union.Case2 1 |] |]
 
     [<Theory>]
     [<MemberData(nameof Value)>]

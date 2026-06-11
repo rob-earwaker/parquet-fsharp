@@ -1,6 +1,6 @@
 namespace Parquet.FSharp
 
-/// Configures the settings used to serialize a `bool` value.
+/// Configures the settings used to serialize a `bool`.
 type ParquetBoolAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -14,7 +14,7 @@ type ParquetBoolAttribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize a `DateTime` value.
+/// Configures the settings used to serialize a `DateTime`.
 type ParquetDateTimeAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -32,7 +32,7 @@ type ParquetDateTimeAttribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize a `DateTimeOffset` value.
+/// Configures the settings used to serialize a `DateTimeOffset`.
 type ParquetDateTimeOffsetAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -48,7 +48,7 @@ type ParquetDateTimeOffsetAttribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize a `string` value.
+/// Configures the settings used to serialize a `string`.
 type ParquetStringAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -64,7 +64,7 @@ type ParquetStringAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize a `byte[]` value.
+/// Configures the settings used to serialize a `byte[]`.
 type ParquetByteArrayAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -80,7 +80,7 @@ type ParquetByteArrayAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# list value.
+/// Configures the settings used to serialize an F# list.
 type ParquetListAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -96,7 +96,7 @@ type ParquetListAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize a one-dimensional array value.
+/// Configures the settings used to serialize a one-dimensional array.
 type ParquetArray1dAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -112,7 +112,7 @@ type ParquetArray1dAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize a `ResizeArray` value.
+/// Configures the settings used to serialize a `ResizeArray`.
 type ParquetResizeArrayAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -128,7 +128,7 @@ type ParquetResizeArrayAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# record value.
+/// Configures the settings used to serialize an F# record.
 type ParquetRecordAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -144,7 +144,7 @@ type ParquetRecordAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# record struct value.
+/// Configures the settings used to serialize an F# record struct.
 type ParquetRecordStructAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -158,7 +158,7 @@ type ParquetRecordStructAttribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# option value.
+/// Configures the settings used to serialize an F# option.
 type ParquetOptionAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -172,8 +172,22 @@ type ParquetOptionAttribute() =
                 Required = this.Required }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# union value with no
-/// associated data fields for any of the cases.
+/// Configures the settings used to serialize an F# value option.
+type ParquetValueOptionAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = ValueOptionConverterSettings.Default
+
+    member val Required = default'.Required with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            ValueOptionConverter {
+                Required = this.Required }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize an F# union with no associated
+/// data fields for any of the cases.
 type ParquetEnumUnionAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -189,7 +203,7 @@ type ParquetEnumUnionAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# union value with a single case.
+/// Configures the settings used to serialize an F# union with a single case.
 type ParquetSingleCaseUnionAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -205,8 +219,8 @@ type ParquetSingleCaseUnionAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# union value with multiple
-/// cases where at least one case has one or more associated data fields.
+/// Configures the settings used to serialize an F# union with multiple cases
+/// where at least one case has one or more associated data fields.
 type ParquetMultiCaseUnionAttribute() =
     inherit ParquetValueSettingsAttribute()
 

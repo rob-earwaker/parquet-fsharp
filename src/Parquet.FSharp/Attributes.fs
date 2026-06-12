@@ -14,6 +14,20 @@ type ParquetBoolAttribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
+/// Configures the settings used to serialize an `int8`.
+type ParquetInt8Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = Int8ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            Int8Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
 /// Configures the settings used to serialize a `DateTime`.
 type ParquetDateTimeAttribute() =
     inherit ParquetValueSettingsAttribute()

@@ -28,6 +28,48 @@ type ParquetInt8Attribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
+/// Configures the settings used to serialize an `int16`.
+type ParquetInt16Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = Int16ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            Int16Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize an `int32`.
+type ParquetInt32Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = Int32ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            Int32Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize an `int64`.
+type ParquetInt64Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = Int64ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            Int64Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
 /// Configures the settings used to serialize a `DateTime`.
 type ParquetDateTimeAttribute() =
     inherit ParquetValueSettingsAttribute()

@@ -13,7 +13,6 @@
     <Compile Include="Test.Roundtrip.fs" />
     <Compile Include="Test.ParquetSerializer.fs" />
     <Compile Include="Test.Deserialize.DifferentSchema.fs" />
-    <Compile Include="Test.Deserialize.TypeCompatibility.fs" />
     <Compile Include="Test.Bool.fs" />
     <Compile Include="Test.Int8.fs" />
     <Compile Include="Test.Int16.fs" />

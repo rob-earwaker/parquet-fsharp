@@ -126,6 +126,34 @@ type ParquetUInt64Attribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
+/// Configures the settings used to serialize a `float32`.
+type ParquetFloat32Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = Float32ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            Float32Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `float[64]`.
+type ParquetFloat64Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = Float64ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            Float64Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
 /// Configures the settings used to serialize a `DateTime`.
 type ParquetDateTimeAttribute() =
     inherit ParquetValueSettingsAttribute()

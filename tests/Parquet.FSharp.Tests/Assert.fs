@@ -243,13 +243,13 @@ module Field =
             test <@ field.Schema.LogicalType.INTEGER.BitWidth = sbyte bitWidth @>
             test <@ field.Schema.LogicalType.INTEGER.IsSigned = isSigned @>
 
-        let isDecimal scale precision (field: Field) =
+        let isDecimal precision scale (field: Field) =
             test <@ not (isNull field.Schema.LogicalType) @>
             test <@ not (isNull field.Schema.LogicalType.DECIMAL) @>
-            test <@ field.Schema.LogicalType.DECIMAL.Scale = scale @>
             test <@ field.Schema.LogicalType.DECIMAL.Precision = precision @>
-            test <@ field.Schema.Scale = Nullable(scale) @>
+            test <@ field.Schema.LogicalType.DECIMAL.Scale = scale @>
             test <@ field.Schema.Precision = Nullable(precision) @>
+            test <@ field.Schema.Scale = Nullable(scale) @>
 
         let isTime kind unit (field: Field) =
             test <@ not (isNull field.Schema.LogicalType) @>
@@ -295,9 +295,13 @@ module Field =
         let isUInt16 = is ConvertedType.UINT_16
         let isUInt32 = is ConvertedType.UINT_32
         let isUInt64 = is ConvertedType.UINT_64
-        let isDecimal = is ConvertedType.DECIMAL
         let isTimeMicros = is ConvertedType.TIME_MICROS
         let isList = is ConvertedType.LIST
+
+        let isDecimal precision scale field =
+            is ConvertedType.DECIMAL field
+            test <@ field.Schema.Precision = Nullable(precision) @>
+            test <@ field.Schema.Scale = Nullable(scale) @>
 
     let hasNoChildren (field: Field) =
         test <@ field.Children = [||] @>

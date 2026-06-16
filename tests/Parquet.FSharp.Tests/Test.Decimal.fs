@@ -16,8 +16,8 @@ module ``serialize decimal`` =
                 Assert.Field.nameEquals "Field1"
                 Assert.Field.isRequired
                 Assert.Field.Type.isFixedLengthByteArray 16
-                Assert.Field.LogicalType.isDecimal 18 38
-                Assert.Field.ConvertedType.isDecimal
+                Assert.Field.LogicalType.isDecimal 38 18
+                Assert.Field.ConvertedType.isDecimal 38 18
                 Assert.Field.hasNoChildren ] ]
 
     let Value = [|

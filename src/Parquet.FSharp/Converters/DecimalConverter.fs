@@ -37,18 +37,23 @@ type internal DecimalConverter private () =
             if targetValue.Type <> dotnetType
             then Option.None
             else
-                match sourceSchema.Type with
-                | ValueTypeSchema.Primitive primitiveSchema
-                    when primitiveSchema.DataDotnetType = dotnetType
-                        || primitiveSchema.DataDotnetType = typeof<int64>
-                        || primitiveSchema.DataDotnetType = typeof<int32>
-                        || primitiveSchema.DataDotnetType = typeof<int16>
-                        || primitiveSchema.DataDotnetType = typeof<int8>
-                        || primitiveSchema.DataDotnetType = typeof<uint64>
-                        || primitiveSchema.DataDotnetType = typeof<uint32>
-                        || primitiveSchema.DataDotnetType = typeof<uint16>
-                        || primitiveSchema.DataDotnetType = typeof<uint8> ->
+                let dataDotnetType =
+                    match sourceSchema.Type with
+                    | ValueTypeSchema.Decimal decimalSchema -> Option.Some typeof<decimal>
+                    | ValueTypeSchema.Primitive primitiveSchema
+                        when primitiveSchema.DataDotnetType = typeof<int64>
+                            || primitiveSchema.DataDotnetType = typeof<int32>
+                            || primitiveSchema.DataDotnetType = typeof<int16>
+                            || primitiveSchema.DataDotnetType = typeof<int8>
+                            || primitiveSchema.DataDotnetType = typeof<uint64>
+                            || primitiveSchema.DataDotnetType = typeof<uint32>
+                            || primitiveSchema.DataDotnetType = typeof<uint16>
+                            || primitiveSchema.DataDotnetType = typeof<uint8> ->
+                            Option.Some primitiveSchema.DataDotnetType
+                    | _ -> Option.None
+                match dataDotnetType with
+                | Option.None -> Option.None
+                | Option.Some dataDotnetType ->
                     if sourceSchema.IsOptional
-                    then Option.Some (createOptionalDeserializer primitiveSchema.DataDotnetType)
-                    else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
-                | _ -> Option.None
+                    then Option.Some (createOptionalDeserializer dataDotnetType)
+                    else Option.Some (createRequiredDeserializer dataDotnetType)

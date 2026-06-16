@@ -70,6 +70,62 @@ type ParquetInt64Attribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
+/// Configures the settings used to serialize a `uint8`.
+type ParquetUInt8Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = UInt8ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            UInt8Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `uint16`.
+type ParquetUInt16Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = UInt16ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            UInt16Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `uint32`.
+type ParquetUInt32Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = UInt32ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            UInt32Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `uint64`.
+type ParquetUInt64Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = UInt64ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            UInt64Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
 /// Configures the settings used to serialize a `DateTime`.
 type ParquetDateTimeAttribute() =
     inherit ParquetValueSettingsAttribute()

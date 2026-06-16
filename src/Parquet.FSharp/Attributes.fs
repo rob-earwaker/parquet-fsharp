@@ -154,6 +154,24 @@ type ParquetFloat64Attribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
+/// Configures the settings used to serialize a `decimal`.
+type ParquetDecimalAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = DecimalConverterSettings.Default
+
+    member val Precision = default'.Precision with get, set
+    member val Scale = default'.Scale with get, set
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            DecimalConverter {
+                Precision = this.Precision
+                Scale = this.Scale
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
 /// Configures the settings used to serialize a `DateTime`.
 type ParquetDateTimeAttribute() =
     inherit ParquetValueSettingsAttribute()

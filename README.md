@@ -10,7 +10,9 @@ An F# serialization library for the [Apache Parquet](https://parquet.apache.org/
 - [Quickstart](#quickstart)
 - [Supported Types](#supported-types)
   - [Booleans](#booleans)
-  - [Numeric Types](#numeric-types)
+  - [Integers](#integers)
+  - [Floats](#floats)
+  - [Decimals](#decimals)
   - [GUIDs](#guids)
   - [Enums](#enums)
   - [Durations](#durations)
@@ -88,27 +90,47 @@ The following settings can be used to customize serialization of boolean values 
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
-### Numeric Types
+### Integers
 
-Applies to: `int8`, `int16`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, `uint64`, `float32`, `float[64]`, `decimal`
+Applies to: `int8`, `int16`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, `uint64`
 
-Numeric types are serialized as required values by default. They can be deserialized from either required or optional values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
+Integer types are serialized as required values by default, and must be deserialized from required values.
 
-For deserialization, the target .NET numeric type does not have to match the source Parquet numeric type. Numeric type compatibility is determined based on whether the source type is implicitly convertible to the target type, e.g. a field of type `int32` can be deserialized from a field of type `int16`. The following compatibility table lists the possible combinations - largely derived from [.NET Implicit Numerical Conversions](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/numeric-conversions#implicit-numeric-conversions):
+The following settings can be used to customize serialization of integer values via the `[<ParquetInt*>]` and `[<ParquetUInt*>]` attributes depending on the integer type:
 
-| Target Type | Supported Source Types |
-|-|-|
-| `int8` | `int8` |
-| `int16` | `int16`, `int8`, `uint8` |
-| `int32` | `int32`, `int16`, `int8`, `uint16`, `uint8` |
-| `int64` | `int64`, `int32`, `int16`, `int8`, `uint32`, `uint16`, `uint8` |
-| `uint8` | `uint8` |
-| `uint16` | `uint16`, `uint8` |
-| `uint32` | `uint32`, `uint16`, `uint8` |
-| `uint64` | `uint64`, `uint32`, `uint16`, `uint8` |
-| `float32` | `float32`, `int16`, `int8`, `uint16`, `uint8` |
-| `float[64]` | `float[64]`, `float32`, `int32`, `int16`, `int8`, `uint32`, `uint16`, `uint8` |
-| `decimal` | `decimal`, `int64`, `int32`, `int16`, `int8`, `uint64`, `uint32`, `uint16`, `uint8` |
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since integer types are non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
+### Floats
+
+Applies to: `float32`, `float[64]`
+
+Floating-point types are serialized as required values by default, and must be deserialized from required values.
+
+The following settings can be used to customize serialization of float values via the `[<ParquetFloat32>]` and `[<ParquetFloat64>]` attributes:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since float types are non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
+### Decimals
+
+Applies to: `decimal`
+
+Decimals are serialized as required values by default and must be deserialized from required values. They are serialized with a precision of 38 and a scale of 18, i.e. allowing 20 digits to the left of the decimal point and 18 digits to the right. When deserializing, the precision and scale of the source schema must match these default values.
+
+The following settings can be used to customize serialization of decimal values via the `[<ParquetDecimal>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Precision` | `int` | `38` | The maximum number of digits that can be stored in the decimal value. |
+| `Scale` | `int` | `18` | The number of digits to the right of the decimal point. |
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 

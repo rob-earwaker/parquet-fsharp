@@ -162,9 +162,15 @@ Applies to: `TimeSpan`
 
 The Parquet format does not have built-in support for arbitrary durations. It only supports time-of-day durations via the [Time](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#time) logical type and positive durations with millisecond precision via the [Interval](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#interval) logical type. Neither of these are particularly compatible with the range of values that can be represented by a `TimeSpan`.
 
-Due to the limitations above, `TimeSpan` values are serialized and deserialized as `int64` microsecond values. See [Integers](#integers) for details of `int64` serialization.
+Due to the limitations above, `TimeSpan` values are serialized and deserialized as `int64` microsecond values by default.
 
 The `TimeSpan` type uses 'ticks' as a base unit, where each tick represents 100 nanoseconds. Since the default precision is microseconds, serialization results in a slight truncation, equivalent to rounding the values down to the nearest 10 ticks.
+
+The following settings can be used to customize serialization of `TimeSpan` values via the `[<ParquetTimeSpan>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 

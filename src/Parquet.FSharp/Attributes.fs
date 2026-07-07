@@ -186,6 +186,20 @@ type ParquetGuidAttribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
+/// Configures the settings used to serialize a `TimeSpan`.
+type ParquetTimeSpanAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = TimeSpanConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            TimeSpanConverter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
 /// Configures the settings used to serialize a `DateTime`.
 type ParquetDateTimeAttribute() =
     inherit ParquetValueSettingsAttribute()

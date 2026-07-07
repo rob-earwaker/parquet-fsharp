@@ -3,6 +3,9 @@ namespace Parquet.FSharp
 open System
 open System.Linq.Expressions
 
+// TODO: Add support for different units.
+// TODO: Add support for mapping to TIME logical type (TimeOnly).
+
 type internal TimeSpanConverterSettings = {
     Optional: bool }
     with

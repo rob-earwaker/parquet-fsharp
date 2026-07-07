@@ -122,7 +122,7 @@ The following settings can be used to customize serialization of float values vi
 
 Applies to: `decimal`
 
-Decimals are serialized as required values by default and must be deserialized from required values. They are serialized with a precision of 38 and a scale of 18, i.e. allowing 20 digits to the left of the decimal point and 18 digits to the right. When deserializing, the precision and scale of the source schema must match these default values.
+Decimals are serialized as required values by default, and must be deserialized from required values. They are serialized with a precision of 38 and a scale of 18, i.e. allowing 20 digits to the left of the decimal point and 18 digits to the right. When deserializing, the precision and scale of the source schema must match these default values.
 
 The following settings can be used to customize serialization of decimal values via the `[<ParquetDecimal>]` attribute:
 
@@ -138,7 +138,13 @@ The following settings can be used to customize serialization of decimal values 
 
 Applies to: `Guid`
 
-GUIDs are serialized as required values by default. They can be deserialized from either required or optional GUID values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
+GUIDs are serialized as required values by default, and must be deserialized from required values.
+
+The following settings can be used to customize serialization of GUID values via the `[<ParquetGuid>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -146,7 +152,7 @@ GUIDs are serialized as required values by default. They can be deserialized fro
 
 Applies to: `'Enum` (with underlying type: `int8`, `int16`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, `uint64`)
 
-Enums are serialized and deserialized as if they were their underlying integral numeric type - see [Numeric Types](#numeric-types) for details.
+Enums are serialized and deserialized as if they were their underlying integral numeric type - see [Integers](#integers) for details.
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -156,7 +162,7 @@ Applies to: `TimeSpan`
 
 The Parquet format does not have built-in support for arbitrary durations. It only supports time-of-day durations via the [Time](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#time) logical type and positive durations with millisecond precision via the [Interval](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#interval) logical type. Neither of these are particularly compatible with the range of values that can be represented by a `TimeSpan`.
 
-Due to the limitations above, `TimeSpan` values are serialized and deserialized as `int64` microsecond values. See [Numeric Types](#numeric-types) for details of `int64` serialization.
+Due to the limitations above, `TimeSpan` values are serialized and deserialized as `int64` microsecond values. See [Integers](#integers) for details of `int64` serialization.
 
 The `TimeSpan` type uses 'ticks' as a base unit, where each tick represents 100 nanoseconds. Since the default precision is microseconds, serialization results in a slight truncation, equivalent to rounding the values down to the nearest 10 ticks.
 

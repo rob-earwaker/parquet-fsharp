@@ -10,7 +10,9 @@ An F# serialization library for the [Apache Parquet](https://parquet.apache.org/
 - [Quickstart](#quickstart)
 - [Supported Types](#supported-types)
   - [Booleans](#booleans)
-  - [Numeric Types](#numeric-types)
+  - [Integers](#integers)
+  - [Floats](#floats)
+  - [Decimals](#decimals)
   - [GUIDs](#guids)
   - [Enums](#enums)
   - [Durations](#durations)
@@ -88,27 +90,47 @@ The following settings can be used to customize serialization of boolean values 
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
-### Numeric Types
+### Integers
 
-Applies to: `int8`, `int16`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, `uint64`, `float32`, `float[64]`, `decimal`
+Applies to: `int8`, `int16`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, `uint64`
 
-Numeric types are serialized as required values by default. They can be deserialized from either required or optional values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
+Integer types are serialized as required values by default, and must be deserialized from required values.
 
-For deserialization, the target .NET numeric type does not have to match the source Parquet numeric type. Numeric type compatibility is determined based on whether the source type is implicitly convertible to the target type, e.g. a field of type `int32` can be deserialized from a field of type `int16`. The following compatibility table lists the possible combinations - largely derived from [.NET Implicit Numerical Conversions](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/numeric-conversions#implicit-numeric-conversions):
+The following settings can be used to customize serialization of integer values via the `[<ParquetInt*>]` and `[<ParquetUInt*>]` attributes depending on the integer type:
 
-| Target Type | Supported Source Types |
-|-|-|
-| `int8` | `int8` |
-| `int16` | `int16`, `int8`, `uint8` |
-| `int32` | `int32`, `int16`, `int8`, `uint16`, `uint8` |
-| `int64` | `int64`, `int32`, `int16`, `int8`, `uint32`, `uint16`, `uint8` |
-| `uint8` | `uint8` |
-| `uint16` | `uint16`, `uint8` |
-| `uint32` | `uint32`, `uint16`, `uint8` |
-| `uint64` | `uint64`, `uint32`, `uint16`, `uint8` |
-| `float32` | `float32`, `int16`, `int8`, `uint16`, `uint8` |
-| `float[64]` | `float[64]`, `float32`, `int32`, `int16`, `int8`, `uint32`, `uint16`, `uint8` |
-| `decimal` | `decimal`, `int64`, `int32`, `int16`, `int8`, `uint64`, `uint32`, `uint16`, `uint8` |
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since integer types are non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
+### Floats
+
+Applies to: `float32`, `float[64]`
+
+Floating-point types are serialized as required values by default, and must be deserialized from required values.
+
+The following settings can be used to customize serialization of float values via the `[<ParquetFloat32>]` and `[<ParquetFloat64>]` attributes:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since float types are non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
+
+<sub>[[Return to top]](#parquetfsharp)</sub>
+
+### Decimals
+
+Applies to: `decimal`
+
+Decimals are serialized as required values by default, and must be deserialized from required values. They are serialized with a precision of 38 and a scale of 18, i.e. allowing 20 digits to the left of the decimal point and 18 digits to the right. When deserializing, the precision and scale of the source schema must match these default values.
+
+The following settings can be used to customize serialization of decimal values via the `[<ParquetDecimal>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Precision` | `int` | `38` | The maximum number of digits that can be stored in the decimal value. |
+| `Scale` | `int` | `18` | The number of digits to the right of the decimal point. |
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -116,7 +138,13 @@ For deserialization, the target .NET numeric type does not have to match the sou
 
 Applies to: `Guid`
 
-GUIDs are serialized as required values by default. They can be deserialized from either required or optional GUID values. When deserialized from optional values, any null values encountered will result in a `SerializationException`.
+GUIDs are serialized as required values by default, and must be deserialized from required values.
+
+The following settings can be used to customize serialization of GUID values via the `[<ParquetGuid>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -124,7 +152,13 @@ GUIDs are serialized as required values by default. They can be deserialized fro
 
 Applies to: `'Enum` (with underlying type: `int8`, `int16`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, `uint64`)
 
-Enums are serialized and deserialized as if they were their underlying integral numeric type - see [Numeric Types](#numeric-types) for details.
+Enums are serialized and deserialized as their underlying integral numeric type. They are serialized as required values by default and must be deserialized from required values.
+
+The following settings can be used to customize serialization of enum values via the `[<ParquetEnum>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the enum to be serialized as an optional value and allows it to be deserialized from an optional value. Since enums are non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -134,9 +168,15 @@ Applies to: `TimeSpan`
 
 The Parquet format does not have built-in support for arbitrary durations. It only supports time-of-day durations via the [Time](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#time) logical type and positive durations with millisecond precision via the [Interval](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#interval) logical type. Neither of these are particularly compatible with the range of values that can be represented by a `TimeSpan`.
 
-Due to the limitations above, `TimeSpan` values are serialized and deserialized as `int64` microsecond values. See [Numeric Types](#numeric-types) for details of `int64` serialization.
+Due to the limitations above, `TimeSpan` values are serialized and deserialized as `int64` microsecond values by default.
 
 The `TimeSpan` type uses 'ticks' as a base unit, where each tick represents 100 nanoseconds. Since the default precision is microseconds, serialization results in a slight truncation, equivalent to rounding the values down to the nearest 10 ticks.
+
+The following settings can be used to customize serialization of `TimeSpan` values via the `[<ParquetTimeSpan>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 
@@ -144,9 +184,9 @@ The `TimeSpan` type uses 'ticks' as a base unit, where each tick represents 100 
 
 Applies to: `DateTime`, `DateTimeOffset`
 
-Date times are serialized as required UTC values with microsecond precision by default and must be deserialized from required date time values.
+Date times are serialized as required UTC values with microsecond precision by default and must be deserialized from required UTC date time values.
 
-Since `DateTime` values have an associated `DateTimeKind`, which is one of `Unspecified`, `Utc` or `Local`, conversion to UTC can be ambiguous. Default serialization does not make any assumptions or do any implicit conversions, so any `DateTime` values that are not defined with `DateTimeKind.Utc` will result in a `SerializationException`.
+Since `DateTime` values have an associated `DateTimeKind`, which is one of `Unspecified`, `Utc` or `Local`, conversion to UTC can be ambiguous. Default serialization does not make any assumptions or do any implicit conversions, so any `DateTime` values that do not have `DateTimeKind.Utc` will result in a `SerializationException`.
 
 `DateTimeOffset` values always map to a specific instant in time, so can always be converted to UTC in an unambiguous way. During serialization, `DateTimeOffset` values will be converted to their UTC equivalent. This means that the offset information is lost, but the serialized value is guaranteed to identify the same instant in time.
 
@@ -156,7 +196,15 @@ The following settings can be used to customize serialization of `DateTime` valu
 
 | Setting | Type | Default | Description |
 |-|-|-|-|
-| `Unit` | `TimeUnit` | `Microseconds` | Allows the value to be serialized as a millisecond or nanosecond precision date time instead of the default microsecond precision and allows deserialization from date times with these precisions. Serialization with millisecond precision will result in truncation. |
+| `Unit` | `TimeUnit` | `Microseconds` | Allows the value to be serialized as a millisecond or nanosecond precision date time instead of the default microsecond precision and allows deserialization from date times with these precisions. Serialization with millisecond or microsecond precision will result in truncation. |
+| `Local` | `bool` | `false` | Allows the value to be serialized as a local date time. When serializing local date time values, any `DateTime` values that do not have `DateTimeKind.Local` will result in a `SerializationException`. |
+| `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
+
+The following settings can be used to customize serialization of `DateTimeOffset` values via the `[<ParquetDateTimeOffset>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Unit` | `TimeUnit` | `Microseconds` | Allows the value to be serialized as a millisecond or nanosecond precision date time instead of the default microsecond precision and allows deserialization from date times with these precisions. Serialization with millisecond or microsecond precision will result in truncation. |
 | `Optional` | `bool` | `false` | Allows the value to be serialized as an optional value and allows it to be deserialized from an optional value. Since this type is non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
@@ -243,9 +291,13 @@ Parquet supports both optional and required values. In F#, nullable values are n
 
 Due to the above, the default approach for serialization of other supported types is to treat the values as required, even if they are implicitly nullable through being a reference type. This helps prevent null values from appearing when they aren't expected. Values can instead be serialized as optional values by wrapping them in one of the supported optional types.
 
-Optional types can be deserialized from both optional and required values. When deserailzied from required values, they are guaranteed to have an associated value and will therefore never be 'null'.
+The following settings can be used to customize serialization of optional values via the `[<ParquetOption>]`, `[<ParquetValueOption>]` or `[<ParquetNullable>]` attributes depending on the optional type:
 
-Note that Parquet does not support multiple levels of optionality, so nested optional types such as `'Value option option` are not supported. Attempting to serialize nested optional values will result in a `SerializationException`. Instead, the recommended approach for handling nested optional values is to add another level of nesting using an optional record containing a single optional field, for example:
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Required` | `bool` | `false` | Allows the optional value to be serialized as if it were a required value. When serialized as required, any null values encountered will result in a `SerializationException`. |
+
+Note that Parquet does not support multiple levels of optionality, so nested optional types such as `'Value option option` are not supported by default. Attempting to serialize nested optional values will result in a `SerializationException`. Instead, the recommended approach for handling nested optional values is to add another level of nesting using an optional record containing a single optional field, for example:
 
 ```fsharp
 // Nested options are not allowed by the Parquet format.
@@ -255,6 +307,20 @@ type IntOptionOption = int option option
 // record with an optional field value.
 type IntOption = { Value: int option }
 type IntOptionOption = IntOption option
+```
+
+Alternatively, if one level of the nested optional type is known to always be non-null then it can be set as `Required`, e.g.
+
+```fsharp
+type Record {
+    // Outer option type is always `Some` so can be set as `Required`.
+    [<ParquetOption(Required = true)>]
+    IntOptionOption: int option option }
+
+type Record {
+    // Inner option type is always `Some` so can be set as `Required`.
+    [<ParquetOption(NestingLevel = 1, Required = true)>]
+    IntOptionOption: int option option }
 ```
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
@@ -361,6 +427,7 @@ The following settings can be used to customize serialization of multi-case unio
 
 | Setting | Type | Default | Description |
 |-|-|-|-|
+| `CaseTypeFieldName` | `string` | `"Type"` | Allows the name of the field used to store the case name to be overriden. |
 | `Optional` | `bool` | `false` | Allows the union to be serialized as an optional record and allows it to be deserialized from an optional record. Any null unions encountered during serialization or deserialization will still result in a `SerializationException` unless this behaviour is explicitly overriden using the `AllowNull` setting. |
 | `AllowNull` | `bool` | `false` | Allows null unions to be serialized and deserialized. This setting has no effect unless the union has been configured as `Optional`. |
 

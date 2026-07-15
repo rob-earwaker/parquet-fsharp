@@ -1,6 +1,6 @@
 namespace Parquet.FSharp
 
-/// Configures the settings used to serialize a `bool` value.
+/// Configures the settings used to serialize a `bool`.
 type ParquetBoolAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -14,23 +14,241 @@ type ParquetBoolAttribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize a `DateTime` value.
+/// Configures the settings used to serialize an `int8`.
+type ParquetInt8Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = Int8ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            Int8Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize an `int16`.
+type ParquetInt16Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = Int16ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            Int16Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize an `int32`.
+type ParquetInt32Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = Int32ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            Int32Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize an `int64`.
+type ParquetInt64Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = Int64ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            Int64Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `uint8`.
+type ParquetUInt8Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = UInt8ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            UInt8Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `uint16`.
+type ParquetUInt16Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = UInt16ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            UInt16Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `uint32`.
+type ParquetUInt32Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = UInt32ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            UInt32Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `uint64`.
+type ParquetUInt64Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = UInt64ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            UInt64Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `float32`.
+type ParquetFloat32Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = Float32ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            Float32Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `float[64]`.
+type ParquetFloat64Attribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = Float64ConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            Float64Converter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `decimal`.
+type ParquetDecimalAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = DecimalConverterSettings.Default
+
+    member val Precision = default'.Precision with get, set
+    member val Scale = default'.Scale with get, set
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            DecimalConverter {
+                Precision = this.Precision
+                Scale = this.Scale
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `Guid`.
+type ParquetGuidAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = GuidConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            GuidConverter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize an enum.
+type ParquetEnumAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = EnumConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            EnumConverter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `TimeSpan`.
+type ParquetTimeSpanAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = TimeSpanConverterSettings.Default
+
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            TimeSpanConverter {
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `DateTime`.
 type ParquetDateTimeAttribute() =
     inherit ParquetValueSettingsAttribute()
 
     let default' = DateTimeConverterSettings.Default
     
     member val Unit = default'.Unit with get, set
+    member val Local = default'.Local with get, set
     member val Optional = default'.Optional with get, set
 
     override this.ApplyValueSettings(valueSettings) =
         let converter =
             DateTimeConverter {
                 Unit = this.Unit
+                Local = this.Local
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize a `string` value.
+/// Configures the settings used to serialize a `DateTimeOffset`.
+type ParquetDateTimeOffsetAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = DateTimeOffsetConverterSettings.Default
+    
+    member val Unit = default'.Unit with get, set
+    member val Optional = default'.Optional with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            DateTimeOffsetConverter {
+                Unit = this.Unit
+                Optional = this.Optional }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `string`.
 type ParquetStringAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -46,7 +264,7 @@ type ParquetStringAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize a `byte[]` value.
+/// Configures the settings used to serialize a `byte[]`.
 type ParquetByteArrayAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -62,7 +280,7 @@ type ParquetByteArrayAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# list value.
+/// Configures the settings used to serialize an F# list.
 type ParquetListAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -78,7 +296,7 @@ type ParquetListAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize a one-dimensional array value.
+/// Configures the settings used to serialize a one-dimensional array.
 type ParquetArray1dAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -94,7 +312,7 @@ type ParquetArray1dAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize a `ResizeArray` value.
+/// Configures the settings used to serialize a `ResizeArray`.
 type ParquetResizeArrayAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -110,7 +328,7 @@ type ParquetResizeArrayAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# record value.
+/// Configures the settings used to serialize an F# record.
 type ParquetRecordAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -126,7 +344,7 @@ type ParquetRecordAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# record struct value.
+/// Configures the settings used to serialize an F# record struct.
 type ParquetRecordStructAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -140,7 +358,7 @@ type ParquetRecordStructAttribute() =
                 Optional = this.Optional }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# option value.
+/// Configures the settings used to serialize an F# option.
 type ParquetOptionAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -154,8 +372,36 @@ type ParquetOptionAttribute() =
                 Required = this.Required }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# union value with no
-/// associated data fields for any of the cases.
+/// Configures the settings used to serialize an F# value option.
+type ParquetValueOptionAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = ValueOptionConverterSettings.Default
+
+    member val Required = default'.Required with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            ValueOptionConverter {
+                Required = this.Required }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize a `Nullable`.
+type ParquetNullableAttribute() =
+    inherit ParquetValueSettingsAttribute()
+
+    let default' = NullableConverterSettings.Default
+
+    member val Required = default'.Required with get, set
+
+    override this.ApplyValueSettings(valueSettings) =
+        let converter =
+            NullableConverter {
+                Required = this.Required }
+        valueSettings |> ValueSettings.converter converter
+
+/// Configures the settings used to serialize an F# union with no associated
+/// data fields for any of the cases.
 type ParquetEnumUnionAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -171,7 +417,7 @@ type ParquetEnumUnionAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# union value with a single case.
+/// Configures the settings used to serialize an F# union with a single case.
 type ParquetSingleCaseUnionAttribute() =
     inherit ParquetValueSettingsAttribute()
 
@@ -187,19 +433,21 @@ type ParquetSingleCaseUnionAttribute() =
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter
 
-/// Configures the settings used to serialize an F# union value with multiple
-/// cases where at least one case has one or more associated data fields.
+/// Configures the settings used to serialize an F# union with multiple cases
+/// where at least one case has one or more associated data fields.
 type ParquetMultiCaseUnionAttribute() =
     inherit ParquetValueSettingsAttribute()
 
     let default' = MultiCaseUnionConverterSettings.Default
     
+    member val CaseTypeFieldName = default'.CaseTypeFieldName with get, set
     member val Optional = default'.Optional with get, set
     member val AllowNull = default'.AllowNull with get, set
 
     override this.ApplyValueSettings(valueSettings) =
         let converter =
             MultiCaseUnionConverter {
+                CaseTypeFieldName = this.CaseTypeFieldName
                 Optional = this.Optional
                 AllowNull = this.AllowNull }
         valueSettings |> ValueSettings.converter converter

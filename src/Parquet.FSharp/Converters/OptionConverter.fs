@@ -27,7 +27,7 @@ type internal OptionConverter(converterSettings: OptionConverterSettings) =
             Serializer.optional dotnetType valueSerializer isNull getValue
             |> Option.Some
 
-    // Create a serializer for an option type that is always treated as
+    // Create a serializer for an optional type that is always treated as
     // required, i.e. can never be NULL. Optional values are allowed in this
     // situation because they don't result in nested optionals.
     let createRequiredSerializer (optionalInfo: OptionalInfo) optionalValue settings =
@@ -55,26 +55,20 @@ type internal OptionConverter(converterSettings: OptionConverterSettings) =
     // {OptionalDeserializer} to handle NULL values. When we read a NULL value
     // we convert it to the {Option.None} case. When we read a NOTNULL value we
     // wrap it in the {Option.Some} case.
-    let tryCreateOptionalDeserializer
+    let createOptionalDeserializer
         (sourceSchema: ValueSchema) (optionalInfo: OptionalInfo) optionalValue settings =
-        if not sourceSchema.IsOptional
-        then Option.None
-        else
-            // Resolve the value deserializer. Since we're dealing with an optional
-            // field value and we're going to deal with this optionality by wrapping
-            // the value deserializer in an {OptionalDeserializer}, we want to pass
-            // down an equivalent non-optional value schema.
-            let valueSchema = sourceSchema.MakeRequired()
-            let value = optionalValue |> ValueDefinition.forNestedValue optionalInfo.ValueType
-            let valueDeserializer = Deserializer.resolve valueSchema value settings
-            // Build the {OptionalDeserializer} wrapper.
-            let dotnetType = optionalInfo.Type
-            let createNull = optionalInfo.CreateNull
-            let createFromValue = optionalInfo.CreateFromValue
-            let deserializer =
-                Deserializer.optional
-                    dotnetType valueDeserializer createNull createFromValue
-            Option.Some deserializer
+        // Resolve the value deserializer. Since we're dealing with an optional
+        // field value and we're going to deal with this optionality by wrapping
+        // the value deserializer in an {OptionalDeserializer}, we want to pass
+        // down an equivalent non-optional value schema.
+        let valueSchema = sourceSchema.MakeRequired()
+        let value = optionalValue |> ValueDefinition.forNestedValue optionalInfo.ValueType
+        let valueDeserializer = Deserializer.resolve valueSchema value settings
+        // Build the {OptionalDeserializer} wrapper.
+        let dotnetType = optionalInfo.Type
+        let createNull = optionalInfo.CreateNull
+        let createFromValue = optionalInfo.CreateFromValue
+        Deserializer.optional dotnetType valueDeserializer createNull createFromValue
 
     // Create a deserializer for a required field value. There's no need to wrap
     // the value deserializer in an {OptionalDeserializer} in this case since
@@ -106,5 +100,7 @@ type internal OptionConverter(converterSettings: OptionConverterSettings) =
             | DotnetType.Option optionalInfo ->
                 if converterSettings.Required
                 then Option.Some (createRequiredDeserializer sourceSchema optionalInfo targetValue settings)
-                else tryCreateOptionalDeserializer sourceSchema optionalInfo targetValue settings
+                elif sourceSchema.IsOptional
+                then Option.Some (createOptionalDeserializer sourceSchema optionalInfo targetValue settings)
+                else Option.None
             | _ -> Option.None

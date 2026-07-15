@@ -1,7 +1,15 @@
 namespace Parquet.FSharp
 
-type internal ValueOptionConverter private () =
-    let tryCreateSerializer (optionalInfo: OptionalInfo) optionalValue settings =
+open System.Linq.Expressions
+
+type internal ValueOptionConverterSettings = {
+    Required: bool }
+    with
+    static member val Default = {
+        ValueOptionConverterSettings.Required = false }
+
+type internal ValueOptionConverter(converterSettings: ValueOptionConverterSettings) =
+    let tryCreateOptionalSerializer (optionalInfo: OptionalInfo) optionalValue settings =
         let value = optionalValue |> ValueDefinition.forNestedValue optionalInfo.ValueType
         let valueSerializer = Serializer.resolve value settings
         // Parquet doesn't support nested optional values, so if the value is
@@ -14,6 +22,29 @@ type internal ValueOptionConverter private () =
             let getValue = optionalInfo.GetValue
             Serializer.optional dotnetType valueSerializer isNull getValue
             |> Option.Some
+
+    // Create a serializer for an optional type that is always treated as
+    // required, i.e. can never be NULL. Optional values are allowed in this
+    // situation because they don't result in nested optionals.
+    let createRequiredSerializer (optionalInfo: OptionalInfo) optionalValue settings =
+        let value = optionalValue |> ValueDefinition.forNestedValue optionalInfo.ValueType
+        let valueSerializer = Serializer.resolve value settings
+        let unwrapValue (option: Expression) =
+            // if option.IsNone then
+            //     raise SerializationException(...)
+            // option.Value
+            Expression.Block(
+                Expression.IfThen(
+                    optionalInfo.IsNull option,
+                    // TODO: Some of these exceptions are a little misleading
+                    // since it might be the field that's been configured rather
+                    // than the type. Can we include the field path?
+                    Expression.FailWith<SerializationException>(
+                        $"null value encountered during serialization for type '{optionalInfo.Type}'"
+                        + " which has been configured as required")),
+                optionalInfo.GetValue(option))
+            :> Expression
+        Serializer.wrapAs optionalInfo.Type valueSerializer unwrapValue
 
     // Create a deserializer for an optional field value. In this situation we
     // need to wrap the value deserializer in an {OptionalDeserializer} to
@@ -33,8 +64,7 @@ type internal ValueOptionConverter private () =
         let dotnetType = optionalInfo.Type
         let createNull = optionalInfo.CreateNull
         let createFromValue = optionalInfo.CreateFromValue
-        Deserializer.optional
-            dotnetType valueDeserializer createNull createFromValue
+        Deserializer.optional dotnetType valueDeserializer createNull createFromValue
 
     // Create a deserializer for a required field value. There's no need to wrap
     // the value deserializer in an {OptionalDeserializer} in this case since
@@ -50,21 +80,23 @@ type internal ValueOptionConverter private () =
         let wrapValue = optionalInfo.CreateFromValue
         Deserializer.wrapAs optionalInfo.Type valueDeserializer wrapValue
 
-    static member val Default = ValueOptionConverter()
+    static member val Default = ValueOptionConverter(ValueOptionConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceValue, settings) =
             match sourceValue.Type with
             | DotnetType.ValueOption optionalInfo ->
-                tryCreateSerializer optionalInfo sourceValue settings
+                if converterSettings.Required
+                then Option.Some (createRequiredSerializer optionalInfo sourceValue settings)
+                else tryCreateOptionalSerializer optionalInfo sourceValue settings
             | _ -> Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
             match targetValue.Type with
             | DotnetType.ValueOption optionalInfo ->
-                let deserializer =
-                    if sourceSchema.IsOptional
-                    then createOptionalDeserializer sourceSchema optionalInfo targetValue settings
-                    else createRequiredDeserializer sourceSchema optionalInfo targetValue settings
-                Option.Some deserializer
+                if converterSettings.Required
+                then Option.Some (createRequiredDeserializer sourceSchema optionalInfo targetValue settings)
+                elif sourceSchema.IsOptional
+                then Option.Some (createOptionalDeserializer sourceSchema optionalInfo targetValue settings)
+                else Option.None
             | _ -> Option.None

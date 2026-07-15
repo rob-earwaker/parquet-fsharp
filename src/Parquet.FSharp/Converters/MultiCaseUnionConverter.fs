@@ -7,14 +7,16 @@ open System.Linq.Expressions
 // any associated case data.
 
 type internal MultiCaseUnionConverterSettings = {
+    CaseTypeFieldName: string
     Optional: bool
     AllowNull: bool }
     with
     static member val Default = {
+        MultiCaseUnionConverterSettings.CaseTypeFieldName = "Type"
         MultiCaseUnionConverterSettings.Optional = false
         MultiCaseUnionConverterSettings.AllowNull = false }
 
-// TODO: Allow case type field name to be configured
+// TODO: Allow case type field optionality to be configured?
 // TODO: Should single-field union cases be inlined?
 
 // TODO: We should allow all union types really, so that enum and
@@ -54,7 +56,7 @@ type internal MultiCaseUnionConverter(converterSettings: MultiCaseUnionConverter
         // nullable there must always be a case name present. We therefore model
         // this as a required string value.
         let typeFieldSerializer =
-            let name = "Type"
+            let name = converterSettings.CaseTypeFieldName
             let valueSerializer =
                 let dotnetType = typeof<string>
                 let dataDotnetType = typeof<string>
@@ -130,7 +132,7 @@ type internal MultiCaseUnionConverter(converterSettings: MultiCaseUnionConverter
             |> Array.filter (fun unionCase -> unionCase.Fields.Length > 0)
         // The case type field holds the case name as a required string.
         let typeFieldDeserializer =
-            let name = "Type"
+            let name = converterSettings.CaseTypeFieldName
             let valueDeserializer =
                 let dotnetType = typeof<string>
                 let dataDotnetType = typeof<string>

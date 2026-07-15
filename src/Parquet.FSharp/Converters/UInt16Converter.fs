@@ -1,35 +1,43 @@
 namespace Parquet.FSharp
 
-open System.Linq.Expressions
+type internal UInt16ConverterSettings = {
+    Optional: bool }
+    with
+    static member val Default = {
+        UInt16ConverterSettings.Optional = false }
 
-type internal UInt16Converter private () =
+type internal UInt16Converter(converterSettings: UInt16ConverterSettings) =
     let dotnetType = typeof<uint16>
+    let dataDotnetType = typeof<uint16>
 
-    let serializer =
-        let dataDotnetType = dotnetType
+    let requiredSerializer =
         let schema = ValueTypeSchema.primitive dataDotnetType
         let getDataValue = id
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 
-    let createRequiredDeserializer dataDotnetType =
+    let optionalSerializer =
+        requiredSerializer
+        |> Serializer.optionalNonNullableTypeWrapper
+
+    let requiredDeserializer =
         let schema = ValueTypeSchema.primitive dataDotnetType
-        let createFromDataValue (dataValue: Expression) =
-            if dataDotnetType = dotnetType
-            then dataValue
-            else Expression.Convert(dataValue, dotnetType)
+        let createFromDataValue = id
         Deserializer.atomic schema dotnetType dataDotnetType createFromDataValue
 
-    let createOptionalDeserializer dataDotnetType =
-        createRequiredDeserializer dataDotnetType
+    let optionalDeserializer =
+        requiredDeserializer
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Default = UInt16Converter()
+    static member val Default = UInt16Converter(UInt16ConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceValue, settings) =
-            if sourceValue.Type = dotnetType
-            then Option.Some serializer
-            else Option.None
+            if sourceValue.Type <> dotnetType
+            then Option.None
+            else
+                if converterSettings.Optional
+                then Option.Some optionalSerializer
+                else Option.Some requiredSerializer
 
         member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
             if targetValue.Type <> dotnetType
@@ -37,9 +45,10 @@ type internal UInt16Converter private () =
             else
                 match sourceSchema.Type with
                 | ValueTypeSchema.Primitive primitiveSchema
-                    when primitiveSchema.DataDotnetType = dotnetType
-                        || primitiveSchema.DataDotnetType = typeof<uint8> ->
-                    if sourceSchema.IsOptional
-                    then Option.Some (createOptionalDeserializer primitiveSchema.DataDotnetType)
-                    else Option.Some (createRequiredDeserializer primitiveSchema.DataDotnetType)
+                    when primitiveSchema.DataDotnetType = dataDotnetType ->
+                    if sourceSchema.IsOptional && converterSettings.Optional
+                    then Option.Some optionalDeserializer
+                    elif not sourceSchema.IsOptional && not converterSettings.Optional
+                    then Option.Some requiredDeserializer
+                    else Option.None
                 | _ -> Option.None

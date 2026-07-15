@@ -5,7 +5,7 @@ open Parquet.FSharp.Tests
 open Swensen.Unquote
 open Xunit
 
-module ``serialize value option with atomic value`` =
+module ``{ default } serialize with atomic value`` =
     type Input = { Field1: int voption }
     type Output = { Field1: int option }
 
@@ -37,7 +37,7 @@ module ``serialize value option with atomic value`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some 1 } |] @>
 
-module ``serialize value option with list value`` =
+module ``{ default } serialize with list value`` =
     type Input = { Field1: int list voption }
     type Output = { Field1: int list option }
 
@@ -87,7 +87,7 @@ module ``serialize value option with list value`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
-module ``serialize value option with record value`` =
+module ``{ default } serialize with record value`` =
     type Record = { Field2: int }
     type Input = { Field1: Record voption }
     type Output = { Field1: Record option }
@@ -127,18 +127,112 @@ module ``serialize value option with record value`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = Option.Some value } |] @>
 
-module ``deserialize value option with atomic value from required atomic`` =
-    type Input = { Field1: int }
-    type Output = { Field1: int voption }
+module ``{ required=false } serialize`` =
+    type Input = { [<ParquetValueOption(Required = false)>] Field1: int voption }
+    type Output = { Field1: int option }
+
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isOptional
+                Assert.Field.Type.isInt32
+                Assert.Field.LogicalType.isInteger 32 true
+                Assert.Field.ConvertedType.isInt32
+                Assert.Field.hasNoChildren ] ]
 
     [<Fact>]
-    let ``value`` () =
-        let inputRecords = [| { Input.Field1 = 1 } |]
+    let ``none`` () =
+        let inputRecords = [| { Input.Field1 = ValueOption.None } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = ValueOption.Some 1 } |] @>
+        test <@ outputRecords = [| { Output.Field1 = Option.None } |] @>
 
-module ``deserialize value option with atomic value from optional atomic`` =
+    [<Fact>]
+    let ``some`` () =
+        let inputRecords = [| { Input.Field1 = ValueOption.Some 1 } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = Option.Some 1 } |] @>
+
+module ``{ required=true } serialize with required value`` =
+    type Input = { [<ParquetValueOption(Required = true)>] Field1: int voption }
+    type Output = { Field1: int }
+
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isRequired
+                Assert.Field.Type.isInt32
+                Assert.Field.LogicalType.isInteger 32 true
+                Assert.Field.ConvertedType.isInt32
+                Assert.Field.hasNoChildren ] ]
+
+    [<Fact>]
+    let ``none`` () =
+        let inputRecords = [| { Input.Field1 = ValueOption.None } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "null value encountered during serialization for type"
+                    + $" '{typeof<int voption>}' which has been"
+                    + " configured as required" @>)
+
+    [<Fact>]
+    let ``some`` () =
+        let inputRecords = [| { Input.Field1 = ValueOption.Some 1 } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = 1 } |] @>
+
+module ``{ required=true } serialize with optional value`` =
+    type Input = { [<ParquetValueOption(Required = true)>] Field1: int option voption }
+    type Output = { Field1: int option }
+
+    let assertSchemaMatchesExpected schema =
+        Assert.schema schema [
+            Assert.field [
+                Assert.Field.nameEquals "Field1"
+                Assert.Field.isOptional
+                Assert.Field.Type.isInt32
+                Assert.Field.LogicalType.isInteger 32 true
+                Assert.Field.ConvertedType.isInt32
+                Assert.Field.hasNoChildren ] ]
+
+    [<Fact>]
+    let ``none`` () =
+        let inputRecords = [| { Input.Field1 = ValueOption.None } |]
+        raisesWith<SerializationException>
+            <@ ParquetSerializer.Serialize(inputRecords) @>
+            (fun exn ->
+                <@ exn.Message =
+                    "null value encountered during serialization for type"
+                    + $" '{typeof<int option voption>}' which has been"
+                    + " configured as required" @>)
+
+    let Some = [|
+        [| box<int option> <| (**) Option.None (**) |]
+        [| box<int option> <| (**) Option.Some 1 (**) |] |]
+
+    [<Theory>]
+    [<MemberData(nameof Some)>]
+    let ``some`` value =
+        let inputRecords = [| { Input.Field1 = ValueOption.Some value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let schema = ParquetFile.readSchema bytes
+        assertSchemaMatchesExpected schema
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = value } |] @>
+
+module ``{ default } deserialize with atomic value`` =
     type Input = { Field1: int option }
     type Output = { Field1: int voption }
 
@@ -156,24 +250,7 @@ module ``deserialize value option with atomic value from optional atomic`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = ValueOption.Some 1 } |] @>
 
-module ``deserialize value option with list value from required list`` =
-    type Input = { Field1: int list }
-    type Output = { Field1: int list voption }
-
-    let Value = [|
-        [| box<int list> (**) [] (**) |]
-        [| box<int list> (**) [ 1 ] (**) |]
-        [| box<int list> (**) [ 1; 2; 3 ] (**) |] |]
-
-    [<Theory>]
-    [<MemberData(nameof Value)>]
-    let ``value`` value =
-        let inputRecords = [| { Input.Field1 = value } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = ValueOption.Some value } |] @>
-
-module ``deserialize value option with list value from optional list`` =
+module ``{ default } deserialize with list value`` =
     type Input = { Field1: int list option }
     type Output = { Field1: int list voption }
 
@@ -197,20 +274,7 @@ module ``deserialize value option with list value from optional list`` =
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = ValueOption.Some value } |] @>
 
-module ``deserialize value option with record value from required record`` =
-    type Record = { Field2: int }
-    type Input = { Field1: Record }
-    type Output = { Field1: Record voption }
-
-    [<Fact>]
-    let ``value`` () =
-        let value = { Record.Field2 = 1 }
-        let inputRecords = [| { Input.Field1 = value } |]
-        let bytes = ParquetSerializer.Serialize(inputRecords)
-        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
-        test <@ outputRecords = [| { Output.Field1 = ValueOption.Some value } |] @>
-
-module ``deserialize value option with record value from optional record`` =
+module ``{ default } deserialize with record value`` =
     type Record = { Field2: int }
     type Input = { Field1: Record option }
     type Output = { Field1: Record voption }
@@ -226,6 +290,51 @@ module ``deserialize value option with record value from optional record`` =
     let ``non-null value`` () =
         let value = { Record.Field2 = 1 }
         let inputRecords = [| { Input.Field1 = Option.Some value } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = ValueOption.Some value } |] @>
+
+module ``{ required=false } deserialize`` =
+    type Input = { Field1: int option }
+    type Output = { [<ParquetValueOption(Required = false)>] Field1: int voption }
+
+    [<Fact>]
+    let ``null value`` () =
+        let inputRecords = [| { Input.Field1 = Option.None } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = ValueOption.None } |] @>
+
+    [<Fact>]
+    let ``non-null value`` () =
+        let inputRecords = [| { Input.Field1 = Option.Some 1 } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = ValueOption.Some 1 } |] @>
+
+module ``{ required=true } deserialize with required value`` =
+    type Input = { Field1: int }
+    type Output = { [<ParquetValueOption(Required = true)>] Field1: int voption }
+
+    [<Fact>]
+    let ``value`` () =
+        let inputRecords = [| { Input.Field1 = 1 } |]
+        let bytes = ParquetSerializer.Serialize(inputRecords)
+        let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
+        test <@ outputRecords = [| { Output.Field1 = ValueOption.Some 1 } |] @>
+
+module ``{ required=true } deserialize with optional value`` =
+    type Input = { Field1: int option }
+    type Output = { [<ParquetValueOption(Required = true)>] Field1: int option voption }
+
+    let Value = [|
+        [| box<int option> <| (**) Option.None (**) |]
+        [| box<int option> <| (**) Option.Some 1 (**) |] |]
+
+    [<Theory>]
+    [<MemberData(nameof Value)>]
+    let ``value`` value =
+        let inputRecords = [| { Input.Field1 = value } |]
         let bytes = ParquetSerializer.Serialize(inputRecords)
         let outputRecords = ParquetSerializer.Deserialize<Output>(bytes)
         test <@ outputRecords = [| { Output.Field1 = ValueOption.Some value } |] @>

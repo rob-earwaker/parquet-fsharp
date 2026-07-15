@@ -30,6 +30,7 @@ type ValueSchema = {
 type ValueTypeSchema =
     // TODO: Maybe these should just capture the Parquet.Net fields?
     | Primitive of PrimitiveTypeSchema
+    | Decimal of DecimalTypeSchema
     | DateTime of DateTimeTypeSchema
     | List of ListTypeSchema
     | Record of RecordTypeSchema
@@ -37,6 +38,7 @@ type ValueTypeSchema =
     override this.ToString() =
         match this with
         | ValueTypeSchema.Primitive primitive -> string primitive
+        | ValueTypeSchema.Decimal decimal -> string decimal
         | ValueTypeSchema.DateTime dateTime -> string dateTime
         | ValueTypeSchema.List list -> string list
         | ValueTypeSchema.Record record -> string record
@@ -47,6 +49,13 @@ type PrimitiveTypeSchema = {
     override this.ToString() =
         // TODO: Could enumerate all primitive types here to make it nicer.
         this.DataDotnetType.Name.ToLower()
+
+type DecimalTypeSchema = {
+    Precision: int
+    Scale: int }
+    with
+    override this.ToString() =
+        $"decimal[{this.Precision}, {this.Scale}]"
 
 type DateTimeTypeSchema = {
     IsAdjustedToUtc: bool
@@ -83,6 +92,11 @@ type RecordTypeSchema = {
 module internal ValueTypeSchema =
     let primitive dataDotnetType =
         ValueTypeSchema.Primitive { DataDotnetType = dataDotnetType }
+        
+    let decimal precision scale =
+        ValueTypeSchema.Decimal {
+            Precision = precision
+            Scale = scale }
 
     let dateTime isAdjustedToUtc unit =
         ValueTypeSchema.DateTime {
@@ -104,6 +118,9 @@ module internal ValueSchema =
         let isOptional = field.IsNullable
         let valueType =
             match field with
+            // This inherits from {DataField} so must come before it.
+            | :? DecimalDataField as decimalField ->
+                ValueTypeSchema.decimal decimalField.Precision decimalField.Scale
             // This inherits from {DataField} so must come before it.
             | :? DateTimeDataField as dateTimeField ->
                 let isAdjustedToUtc = dateTimeField.IsAdjustedToUTC
@@ -150,6 +167,12 @@ module internal ValueSchema =
         match valueSchema.Type with
         | ValueTypeSchema.Primitive primitive ->
             DataField(fieldName, primitive.DataDotnetType, valueSchema.IsOptional)
+        | ValueTypeSchema.Decimal decimal ->
+            DecimalDataField(
+                fieldName,
+                decimal.Precision,
+                decimal.Scale,
+                isNullable = valueSchema.IsOptional)
         | ValueTypeSchema.DateTime dateTime ->
             let unit =
                 match dateTime.Unit with

@@ -2,11 +2,16 @@ namespace Parquet.FSharp
 
 open System.Linq.Expressions
 
-// TODO: Add back support for conversions to other backing types, e.g.
-// enum<int16> serialized as int32.
+// TODO: Support serialization as string value.
 
-type internal EnumConverter private () =
-    let createSerializer (enumInfo: EnumInfo) =
+type internal EnumConverterSettings = {
+    Optional: bool }
+    with
+    static member val Default = {
+        EnumConverterSettings.Optional = false }
+
+type internal EnumConverter(converterSettings: EnumConverterSettings) =
+    let createRequiredSerializer (enumInfo: EnumInfo) =
         let dotnetType = enumInfo.Type
         // All enum value types are simple primitive atomic values (int8, int16,
         // int32, int64, uint8, uint16, uint32, uint64).
@@ -16,6 +21,10 @@ type internal EnumConverter private () =
             Expression.Convert(enum, enumInfo.ValueType)
             :> Expression
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
+
+    let createOptionalSerializer enumInfo =
+        createRequiredSerializer enumInfo
+        |> Serializer.optionalNonNullableTypeWrapper
 
     let createRequiredDeserializer (enumInfo: EnumInfo) =
         let dotnetType = enumInfo.Type
@@ -32,13 +41,15 @@ type internal EnumConverter private () =
         createRequiredDeserializer enumInfo
         |> Deserializer.optionalNonNullableTypeWrapper
 
-    static member val Default = EnumConverter()
+    static member val Default = EnumConverter(EnumConverterSettings.Default)
 
     interface IValueConverter with
         member this.TryCreateSerializer(sourceValue, settings) =
             match sourceValue.Type with
             | DotnetType.Enum enumInfo ->
-                Option.Some (createSerializer enumInfo)
+                if converterSettings.Optional
+                then Option.Some (createOptionalSerializer enumInfo)
+                else Option.Some (createRequiredSerializer enumInfo)
             | _ -> Option.None
 
         member this.TryCreateDeserializer(sourceSchema, targetValue, settings) =
@@ -47,8 +58,10 @@ type internal EnumConverter private () =
                 match sourceSchema.Type with
                 | ValueTypeSchema.Primitive primitiveSchema
                     when primitiveSchema.DataDotnetType = enumInfo.ValueType ->
-                    if sourceSchema.IsOptional
+                    if sourceSchema.IsOptional && converterSettings.Optional
                     then Option.Some (createOptionalDeserializer enumInfo)
-                    else Option.Some (createRequiredDeserializer enumInfo)
+                    elif not sourceSchema.IsOptional && not converterSettings.Optional
+                    then Option.Some (createRequiredDeserializer enumInfo)
+                    else Option.None
                 | _ -> Option.None
             | _ -> Option.None

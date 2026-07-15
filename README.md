@@ -152,7 +152,13 @@ The following settings can be used to customize serialization of GUID values via
 
 Applies to: `'Enum` (with underlying type: `int8`, `int16`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, `uint64`)
 
-Enums are serialized and deserialized as if they were their underlying integral numeric type - see [Integers](#integers) for details.
+Enums are serialized and deserialized as their underlying integral numeric type. They are serialized as required values by default and must be deserialized from required values.
+
+The following settings can be used to customize serialization of enum values via the `[<ParquetEnum>]` attribute:
+
+| Setting | Type | Default | Description |
+|-|-|-|-|
+| `Optional` | `bool` | `false` | Allows the enum to be serialized as an optional value and allows it to be deserialized from an optional value. Since enums are non-nullable, if a null value is encountered during deserialization then a `SerializationException` will be raised. |
 
 <sub>[[Return to top]](#parquetfsharp)</sub>
 

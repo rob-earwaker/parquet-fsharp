@@ -51,11 +51,10 @@ type internal DateTimeConverter(converterSettings: DateTimeConverterSettings) =
                 if isAdjustedToUtc
                 then DateTimeKind.Utc, "instant"
                 else DateTimeKind.Local, "local"
-            // if dateTime.Kind <> expectedKind then
-            //     raise SerializationException(...)
-            // dateTime
             let kind = Expression.Property(dateTime, "Kind")
             Expression.Block(
+                // if dateTime.Kind <> expectedKind then
+                //     raise SerializationException(...)
                 Expression.IfThen(
                     Expression.NotEqual(kind, Expression.Constant(expectedKind)),
                     Expression.FailWith<SerializationException>(
@@ -66,7 +65,13 @@ type internal DateTimeConverter(converterSettings: DateTimeConverterSettings) =
                             $"' during serialization of timestamp with {semanticName}"
                             + $" semantics which only allows 'DateTimeKind.{expectedKind}'"
                             + " by default"))),
-                dateTime)
+                // Parquet.Net converts DateTime values to UTC before serializing, even when
+                // serializing using local semantics. To work around this, we convert all DateTime
+                // values to UTC without modifying the underlying tick value so that the values
+                // don't get modified during serialization.
+                Expression.Call(
+                    typeof<DateTime>, "SpecifyKind", [||],
+                    [| dateTime; Expression.Constant(DateTimeKind.Utc) |]))
             :> Expression
         Serializer.atomic schema dotnetType dataDotnetType getDataValue
 

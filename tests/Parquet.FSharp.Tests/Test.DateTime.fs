@@ -24,7 +24,8 @@ module ``{ default } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``unspecified kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Unspecified)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -39,7 +40,8 @@ module ``{ default } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``utc kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -54,7 +56,8 @@ module ``{ default } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``local kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Local)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -72,7 +75,8 @@ module ``{ default } serialize`` =
     [<InlineData( 621355967999990000L)>] // Unix epoch - 1ms
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000010000L)>] // Unix epoch + 1ms
-    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123
+    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123 (winter)
+    [<InlineData( 639207515429490000L)>] // 27/07/2026 12:19:02.949 (summer)
     [<InlineData(3155378975999990000L)>] // Max value (truncated to millis)
     let ``millisecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -94,7 +98,8 @@ module ``{ default } serialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``microsecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -116,7 +121,8 @@ module ``{ default } serialize`` =
     [<InlineData( 621355967999999999L)>] // Unix epoch - 100ns
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000001L)>] // Unix epoch + 100ns
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567 (winter)
+    [<InlineData( 639207515429492179L)>] // 27/07/2026 12:19:02.9492179 (summer)
     [<InlineData(3155378975999999999L)>] // Max value
     let ``nanosecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -148,7 +154,8 @@ module ``{ unit=milliseconds } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``unspecified kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Unspecified)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -163,7 +170,8 @@ module ``{ unit=milliseconds } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``utc kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -178,7 +186,8 @@ module ``{ unit=milliseconds } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``local kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Local)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -196,7 +205,8 @@ module ``{ unit=milliseconds } serialize`` =
     [<InlineData( 621355967999990000L)>] // Unix epoch - 1ms
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000010000L)>] // Unix epoch + 1ms
-    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123
+    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123 (winter)
+    [<InlineData( 639207515429490000L)>] // 27/07/2026 12:19:02.949 (summer)
     [<InlineData(3155378975999990000L)>] // Max value (truncated to millis)
     let ``millisecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -218,7 +228,8 @@ module ``{ unit=milliseconds } serialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``microsecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -240,7 +251,8 @@ module ``{ unit=milliseconds } serialize`` =
     [<InlineData( 621355967999999999L)>] // Unix epoch - 100ns
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000001L)>] // Unix epoch + 100ns
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567 (winter)
+    [<InlineData( 639207515429492179L)>] // 27/07/2026 12:19:02.9492179 (summer)
     [<InlineData(3155378975999999999L)>] // Max value
     let ``nanosecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -272,7 +284,8 @@ module ``{ unit=microseconds } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``unspecified kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Unspecified)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -287,7 +300,8 @@ module ``{ unit=microseconds } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``utc kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -302,7 +316,8 @@ module ``{ unit=microseconds } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``local kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Local)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -320,7 +335,8 @@ module ``{ unit=microseconds } serialize`` =
     [<InlineData( 621355967999990000L)>] // Unix epoch - 1ms
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000010000L)>] // Unix epoch + 1ms
-    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123
+    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123 (winter)
+    [<InlineData( 639207515429490000L)>] // 27/07/2026 12:19:02.949 (summer)
     [<InlineData(3155378975999990000L)>] // Max value (truncated to millis)
     let ``millisecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -342,7 +358,8 @@ module ``{ unit=microseconds } serialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``microsecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -364,7 +381,8 @@ module ``{ unit=microseconds } serialize`` =
     [<InlineData( 621355967999999999L)>] // Unix epoch - 100ns
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000001L)>] // Unix epoch + 100ns
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567 (winter)
+    [<InlineData( 639207515429492179L)>] // 27/07/2026 12:19:02.9492179 (summer)
     [<InlineData(3155378975999999999L)>] // Max value
     let ``nanosecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -396,7 +414,8 @@ module ``{ unit=nanoseconds } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``unspecified kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Unspecified)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -411,7 +430,8 @@ module ``{ unit=nanoseconds } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``utc kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -426,7 +446,8 @@ module ``{ unit=nanoseconds } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``local kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Local)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -444,7 +465,8 @@ module ``{ unit=nanoseconds } serialize`` =
     [<InlineData( 621355967999990000L)>] // Unix epoch - 1ms
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000010000L)>] // Unix epoch + 1ms
-    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123
+    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123 (winter)
+    [<InlineData( 639207515429490000L)>] // 27/07/2026 12:19:02.949 (summer)
     //[<InlineData(3155378975999990000L)>] // Max value (truncated to millis)
     let ``millisecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -466,7 +488,8 @@ module ``{ unit=nanoseconds } serialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     //[<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``microsecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -488,7 +511,8 @@ module ``{ unit=nanoseconds } serialize`` =
     [<InlineData( 621355967999999999L)>] // Unix epoch - 100ns
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000001L)>] // Unix epoch + 100ns
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567 (winter)
+    [<InlineData( 639207515429492179L)>] // 27/07/2026 12:19:02.9492179 (summer)
     //[<InlineData(3155378975999999999L)>] // Max value
     let ``nanosecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -520,7 +544,8 @@ module ``{ local=false } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``unspecified kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Unspecified)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -535,7 +560,8 @@ module ``{ local=false } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``utc kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -550,7 +576,8 @@ module ``{ local=false } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``local kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Local)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -568,7 +595,8 @@ module ``{ local=false } serialize`` =
     [<InlineData( 621355967999990000L)>] // Unix epoch - 1ms
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000010000L)>] // Unix epoch + 1ms
-    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123
+    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123 (winter)
+    [<InlineData( 639207515429490000L)>] // 27/07/2026 12:19:02.949 (summer)
     [<InlineData(3155378975999990000L)>] // Max value (truncated to millis)
     let ``millisecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -590,7 +618,8 @@ module ``{ local=false } serialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``microsecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -612,7 +641,8 @@ module ``{ local=false } serialize`` =
     [<InlineData( 621355967999999999L)>] // Unix epoch - 100ns
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000001L)>] // Unix epoch + 100ns
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567 (winter)
+    [<InlineData( 639207515429492179L)>] // 27/07/2026 12:19:02.9492179 (summer)
     [<InlineData(3155378975999999999L)>] // Max value
     let ``nanosecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -644,7 +674,8 @@ module ``{ local=true } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``unspecified kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Unspecified)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -659,7 +690,8 @@ module ``{ local=true } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``utc kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -674,7 +706,8 @@ module ``{ local=true } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``local kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Local)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -693,7 +726,8 @@ module ``{ local=true } serialize`` =
     [<InlineData( 621355967999990000L)>] // Unix epoch - 1ms
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000010000L)>] // Unix epoch + 1ms
-    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123
+    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123 (winter)
+    [<InlineData( 639207515429490000L)>] // 27/07/2026 12:19:02.949 (summer)
     [<InlineData(3155378975999990000L)>] // Max value (truncated to millis)
     let ``millisecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Local)
@@ -715,7 +749,8 @@ module ``{ local=true } serialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``microsecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Local)
@@ -737,7 +772,8 @@ module ``{ local=true } serialize`` =
     [<InlineData( 621355967999999999L)>] // Unix epoch - 100ns
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000001L)>] // Unix epoch + 100ns
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567 (winter)
+    [<InlineData( 639207515429492179L)>] // 27/07/2026 12:19:02.9492179 (summer)
     [<InlineData(3155378975999999999L)>] // Max value
     let ``nanosecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Local)
@@ -769,7 +805,8 @@ module ``{ optional=false } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``unspecified kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Unspecified)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -784,7 +821,8 @@ module ``{ optional=false } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``utc kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -799,7 +837,8 @@ module ``{ optional=false } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``local kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Local)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -817,7 +856,8 @@ module ``{ optional=false } serialize`` =
     [<InlineData( 621355967999990000L)>] // Unix epoch - 1ms
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000010000L)>] // Unix epoch + 1ms
-    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123
+    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123 (winter)
+    [<InlineData( 639207515429490000L)>] // 27/07/2026 12:19:02.949 (summer)
     [<InlineData(3155378975999990000L)>] // Max value (truncated to millis)
     let ``millisecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -839,7 +879,8 @@ module ``{ optional=false } serialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``microsecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -861,7 +902,8 @@ module ``{ optional=false } serialize`` =
     [<InlineData( 621355967999999999L)>] // Unix epoch - 100ns
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000001L)>] // Unix epoch + 100ns
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567 (winter)
+    [<InlineData( 639207515429492179L)>] // 27/07/2026 12:19:02.9492179 (summer)
     [<InlineData(3155378975999999999L)>] // Max value
     let ``nanosecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -893,7 +935,8 @@ module ``{ optional=true } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``unspecified kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Unspecified)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -908,7 +951,8 @@ module ``{ optional=true } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``utc kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -923,7 +967,8 @@ module ``{ optional=true } serialize`` =
 
     [<Theory>]
     [<InlineData(621355968000000000L)>] // Unix epoch
-    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17
+    [<InlineData(638752524170000000L)>] // 15/02/2025 21:40:17 (winter)
+    [<InlineData(639207515420000000L)>] // 27/07/2026 12:19:02 (summer)
     let ``local kind`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Local)
         let inputRecords = [| { Input.Field1 = value } |]
@@ -941,7 +986,8 @@ module ``{ optional=true } serialize`` =
     [<InlineData( 621355967999990000L)>] // Unix epoch - 1ms
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000010000L)>] // Unix epoch + 1ms
-    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123
+    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123 (winter)
+    [<InlineData( 639207515429490000L)>] // 27/07/2026 12:19:02.949 (summer)
     [<InlineData(3155378975999990000L)>] // Max value (truncated to millis)
     let ``millisecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -963,7 +1009,8 @@ module ``{ optional=true } serialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``microsecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -985,7 +1032,8 @@ module ``{ optional=true } serialize`` =
     [<InlineData( 621355967999999999L)>] // Unix epoch - 100ns
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000001L)>] // Unix epoch + 100ns
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567 (winter)
+    [<InlineData( 639207515429492179L)>] // 27/07/2026 12:19:02.9492179 (summer)
     [<InlineData(3155378975999999999L)>] // Max value
     let ``nanosecond precision`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -1011,7 +1059,8 @@ module ``{ default } deserialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``value`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -1033,7 +1082,8 @@ module ``{ unit=milliseconds } deserialize`` =
     [<InlineData( 621355967999990000L)>] // Unix epoch - 1ms
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000010000L)>] // Unix epoch + 1ms
-    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123
+    [<InlineData( 638752524171230000L)>] // 15/02/2025 21:40:17.123 (winter)
+    [<InlineData( 639207515429490000L)>] // 27/07/2026 12:19:02.949 (summer)
     [<InlineData(3155378975999990000L)>] // Max value (truncated to millis)
     let ``value`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -1055,7 +1105,8 @@ module ``{ unit=microseconds } deserialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``value`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -1077,7 +1128,8 @@ module ``{ unit=nanoseconds } deserialize`` =
     [<InlineData( 621355967999999999L)>] // Unix epoch - 100ns
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000001L)>] // Unix epoch + 100ns
-    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567
+    [<InlineData( 638752524171234567L)>] // 15/02/2025 21:40:17.1234567 (winter)
+    [<InlineData( 639207515429492179L)>] // 27/07/2026 12:19:02.9492179 (summer)
     //[<InlineData(3155378975999999999L)>] // Max value
     let ``value`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -1099,7 +1151,8 @@ module ``{ local=false } deserialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``value`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -1121,7 +1174,8 @@ module ``{ local=true } deserialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``value`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Local)
@@ -1143,7 +1197,8 @@ module ``{ optional=false } deserialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``value`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)
@@ -1176,7 +1231,8 @@ module ``{ optional=true } deserialize`` =
     [<InlineData( 621355967999999990L)>] // Unix epoch - 1us
     [<InlineData( 621355968000000000L)>] // Unix epoch
     [<InlineData( 621355968000000010L)>] // Unix epoch + 1us
-    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456
+    [<InlineData( 638752524171234560L)>] // 15/02/2025 21:40:17.123456 (winter)
+    [<InlineData( 639207515429492170L)>] // 27/07/2026 12:19:02.949217 (summer)
     [<InlineData(3155378975999999990L)>] // Max value (truncated to micros)
     let ``non-null`` (ticks: int64) =
         let value = DateTime(ticks, DateTimeKind.Utc)

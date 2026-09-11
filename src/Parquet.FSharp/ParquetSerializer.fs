@@ -4,6 +4,8 @@ open Parquet
 open System.IO
 
 // TODO: Support for various serializer options in Parquet.Net.
+// TODO: Empty files should not contain an empty row group but just schema.
+// TODO: Allow reading file with zero row groups.
 
 type ParquetSerializer =
     static member private DefaultSettings = {
